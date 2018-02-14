@@ -93,7 +93,7 @@ lazy val distributed_worker = Project(
     name := "distributed_worker",
     version := "0.1",
     scalaVersion := "2.12.4",
-    mainClass in Compile := Some("com.honta.trembita.distributed.bootstrap.WorkerMain")
+    mainClass in Compile := Some("com.github.vitaliihonta.trembita.distributed.bootstrap.WorkerMain")
   )
 
 lazy val distributed = Project(
@@ -107,6 +107,11 @@ lazy val distributed = Project(
   )
 
 lazy val root = Project(id = "trembita", base = file("."))
+  .aggregate(
+    core, functional, slf4j,
+    cassandra_connector_phantom,
+    distributed, distributed_worker
+  )
   .settings(
     name := "trembita",
     version := "0.1",
