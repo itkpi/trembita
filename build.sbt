@@ -89,11 +89,36 @@ lazy val distributed_worker = Project(
   id = "distributed_worker",
   base = file("./distributed_worker"))
   .dependsOn(distributed_internal)
+  .enablePlugins(DockerPlugin)
   .settings(
     name := "distributed_worker",
     version := "0.1",
     scalaVersion := "2.12.4",
-    mainClass in Compile := Some("com.github.vitaliihonta.trembita.distributed.bootstrap.WorkerMain")
+    mainClass in Compile := Some("com.github.vitaliihonta.trembita.distributed.bootstrap.WorkerMain"),
+    assemblyJarName in assembly := "distributed_worker.jar",
+    dockerfile in docker := {
+      // The assembly task generates a fat JAR file
+      val artifact: File = assembly.value
+      val artifactTargetPath = s"/app/${artifact.name}"
+
+      new Dockerfile {
+        from("openjdk:8-jre-alpine")
+        maintainer("Vitalii Honta")
+        add(artifact, artifactTargetPath)
+        env("CLUSTER_MASTER_HOST", "127.0.0.1")
+        env("CLUSTER_MASTER_PORT", "2551")
+        env("WORKER_HOST", "127.0.0.1")
+        env("WORKER_PORT", "2551")
+        env("CLUSTER_TOKEN", "your-token")
+        entryPoint("java", "-jar", artifactTargetPath)
+      }
+    },
+    imageNames in docker := Seq("latest").map { imgTag =>
+      ImageName(
+        repository = "distributed_worker",
+        tag = Some(imgTag)
+      )
+    }
   )
 
 lazy val distributed = Project(
