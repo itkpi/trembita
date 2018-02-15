@@ -1,8 +1,31 @@
-lazy val core = Project(id = "core", base = file("./core"))
+import xerial.sbt.Sonatype._
+
+
+lazy val snapshot: Boolean = true
+lazy val v: String = {
+  val vv = "0.1.0"
+  if (!snapshot) vv
+  else vv + "-SNAPSHOT"
+}
+
+def sonatypeProject(id: String, base: File) = Project(id, base)
   .settings(
-    name := "core",
-    version := "0.1",
+    name := id,
+    isSnapshot := snapshot,
+    version := v,
     scalaVersion := "2.12.4",
+    organization in ThisBuild := "com.github.vitaliihonta.trembita",
+    publishTo := {
+      val nexus = "https://oss.sonatype.org/"
+      if (isSnapshot.value)
+        Some("snapshots" at nexus + "content/repositories/snapshots")
+      else
+        Some("releases" at nexus + "service/local/staging/deploy/maven2")
+    }
+  )
+
+lazy val core = sonatypeProject(id = "trembita-core", base = file("./core"))
+  .settings(
     libraryDependencies ++= {
       val testV = "3.0.4"
       Seq(
@@ -12,12 +35,9 @@ lazy val core = Project(id = "core", base = file("./core"))
     }
   )
 
-lazy val cassandra_connector = Project(id = "cassandra_connector", base = file("./cassandra_connector"))
+lazy val cassandra_connector = sonatypeProject(id = "trembita-cassandra_connector", base = file("./cassandra_connector"))
   .dependsOn(core)
   .settings(
-    name := "cassandra_connector",
-    version := "0.1",
-    scalaVersion := "2.12.4",
     libraryDependencies ++= {
       Seq(
         "com.datastax.cassandra" % "cassandra-driver-core" % "3.4.0"
@@ -25,12 +45,9 @@ lazy val cassandra_connector = Project(id = "cassandra_connector", base = file("
     }
   )
 
-lazy val cassandra_connector_phantom = Project(id = "cassandra_connector_phantom", base = file("./cassandra_connector_phantom"))
+lazy val cassandra_connector_phantom = sonatypeProject(id = "trembita-cassandra_connector_phantom", base = file("./cassandra_connector_phantom"))
   .dependsOn(cassandra_connector)
   .settings(
-    name := "cassandra_connector_phantom",
-    version := "0.1",
-    scalaVersion := "2.12.4",
     libraryDependencies ++= {
       Seq(
         "com.outworkers" %% "phantom-jdk8" % "2.20.0",
@@ -39,12 +56,9 @@ lazy val cassandra_connector_phantom = Project(id = "cassandra_connector_phantom
     }
   )
 
-lazy val functional = Project(id = "functional", base = file("./functional"))
+lazy val functional = sonatypeProject(id = "trembita-functional", base = file("./functional"))
   .dependsOn(core)
   .settings(
-    name := "functional",
-    version := "0.1",
-    scalaVersion := "2.12.4",
     scalacOptions += "-Ypartial-unification",
     libraryDependencies ++= {
       Seq(
@@ -54,12 +68,9 @@ lazy val functional = Project(id = "functional", base = file("./functional"))
     }
   )
 
-lazy val slf4j = Project(id = "trembita-slf4j", base = file("./trembita-slf4j"))
+lazy val slf4j = sonatypeProject(id = "trembita-slf4j", base = file("./trembita-slf4j"))
   .dependsOn(core)
   .settings(
-    name := "trembita-slf4j",
-    version := "0.1",
-    scalaVersion := "2.12.4",
     libraryDependencies ++= {
       Seq(
         "org.slf4j" % "slf4j-api" % "1.7.25"
@@ -67,14 +78,11 @@ lazy val slf4j = Project(id = "trembita-slf4j", base = file("./trembita-slf4j"))
     }
   )
 
-lazy val distributed_internal = Project(
-  id = "distributed_internal",
+lazy val distributed_internal = sonatypeProject(
+  id = "trembita-distributed_internal",
   base = file("./distributed_internal"))
   .dependsOn(core, slf4j)
   .settings(
-    name := "distributed-internal",
-    version := "0.1",
-    scalaVersion := "2.12.4",
     libraryDependencies ++= {
       Seq(
         "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
@@ -85,17 +93,14 @@ lazy val distributed_internal = Project(
     }
   )
 
-lazy val distributed_worker = Project(
-  id = "distributed_worker",
+lazy val distributed_worker = sonatypeProject(
+  id = "trembita-distributed_worker",
   base = file("./distributed_worker"))
   .dependsOn(distributed_internal)
   .enablePlugins(DockerPlugin)
   .settings(
-    name := "distributed_worker",
-    version := "0.1",
-    scalaVersion := "2.12.4",
     mainClass in Compile := Some("com.github.vitaliihonta.trembita.distributed.bootstrap.WorkerMain"),
-    assemblyJarName in assembly := "distributed_worker.jar",
+    assemblyJarName in assembly := "trembita-distributed_worker.jar",
     dockerfile in docker := {
       // The assembly task generates a fat JAR file
       val artifact: File = assembly.value
@@ -115,21 +120,16 @@ lazy val distributed_worker = Project(
     },
     imageNames in docker := Seq("latest").map { imgTag =>
       ImageName(
-        repository = "distributed_worker",
+        repository = "trembita-distributed_worker",
         tag = Some(imgTag)
       )
     }
   )
 
-lazy val distributed = Project(
-  id = "distributed",
+lazy val distributed = sonatypeProject(
+  id = "trembita-distributed",
   base = file("./distributed"))
   .dependsOn(distributed_internal)
-  .settings(
-    name := "distributed",
-    version := "0.1",
-    scalaVersion := "2.12.4"
-  )
 
 lazy val root = Project(id = "trembita", base = file("."))
   .aggregate(
@@ -139,6 +139,10 @@ lazy val root = Project(id = "trembita", base = file("."))
   )
   .settings(
     name := "trembita",
-    version := "0.1",
-    scalaVersion := "2.12.4"
+    version := v,
+    scalaVersion := "2.12.4",
+    isSnapshot := snapshot,
+    skip in publish := true,
+    publish := {},
+    publishLocal := {}
   )
