@@ -1,10 +1,15 @@
 package com.datarootlabs.trembita.parallel
 
 
+import cats.effect._
+import cats.implicits._
+import cats.effect.implicits._
 import com.datarootlabs.trembita._
 import com.datarootlabs.trembita.internal._
+import com.datarootlabs.trembita.utils._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.language.higherKinds
 import scala.reflect.ClassTag
 
 
@@ -22,6 +27,13 @@ class ParMapPipeline[+A, B](f: A => B, source: DataPipeline[A])
       }
     }
     Await.result(futureRes, ParDataPipeline.defaultTimeout).flatten
+  }
+
+  override def runM[BB >: B, M[_]](implicit M: Sync[M]): M[Iterable[BB]] = {
+    val forced: Iterable[A] = source.force
+    ListUtils.split(ParDataPipeline.defaultParallelism)(forced)
+      .mapM(group ⇒ M.delay(group.map(f)))
+      .map(_.flatten)
   }
 
   override def seq: DataPipeline[B] = new MapingPipeline[A, B](f, source)
@@ -49,6 +61,14 @@ class ParFlatMapPipeline[+A, B](f: A => Iterable[B], source: DataPipeline[A])
     }
     Await.result(futureRes, ParDataPipeline.defaultTimeout).flatten
   }
+
+  override def runM[BB >: B, M[_]](implicit M: Sync[M]): M[Iterable[BB]] = {
+    val forced: Iterable[A] = source.force
+    ListUtils.split(ParDataPipeline.defaultParallelism)(forced)
+      .mapM(group ⇒ M.delay(group.flatMap(f)))
+      .map(_.flatten)
+  }
+
   override def seq: DataPipeline[B] = new FlatMapPipeline[A, B](f, source)
   override def mapAsync[C](timeout: FiniteDuration,
                            parallelism: Int = ParDataPipeline.defaultParallelism)
@@ -77,6 +97,14 @@ class ParCollectPipeline[+A, B](pf: PartialFunction[A, B], source: DataPipeline[
     }
     Await.result(futureRes, ParDataPipeline.defaultTimeout).flatten
   }
+
+  override def runM[BB >: B, M[_]](implicit M: Sync[M]): M[Iterable[BB]] = {
+    val forced: Iterable[A] = source.force
+    ListUtils.split(ParDataPipeline.defaultParallelism)(forced)
+      .mapM(group ⇒ M.delay(group.collect(pf)))
+      .map(_.flatten)
+  }
+
   override def seq: DataPipeline[B] = new ParCollectPipeline[A, B](pf, source)
   override def mapAsync[C](timeout: FiniteDuration,
                            parallelism: Int = ParDataPipeline.defaultParallelism)

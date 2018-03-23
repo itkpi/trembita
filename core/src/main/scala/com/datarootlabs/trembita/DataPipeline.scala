@@ -1,20 +1,24 @@
 package com.datarootlabs.trembita
 
+import scala.language.higherKinds
 import internal._
 import parallel._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 import scala.util.{Random, Try}
+import cats.effect._
+import cats.implicits._
 
 
 trait DataPipeline[+A] {
   def map[B](f: A => B): DataPipeline[B]
   def flatMap[B](f: A => Iterable[B]): DataPipeline[B]
   def filter(p: A => Boolean): DataPipeline[A]
-
   def collect[B](pf: PartialFunction[A, B]): DataPipeline[B]
+
   def force: Iterable[A]
+  def runM[B >: A, M[_]](implicit M: Sync[M]): M[Iterable[B]] = M.delay(force)
 
   def reduce[B >: A](f: (B, B) => B): B = reduceOpt(f).get
   def reduceOpt[B >: A](f: (B, B) => B): Option[B] = foldLeft(Option.empty[B]) {
