@@ -6,10 +6,10 @@ Project Trembita - Functional Data Pipelining library.
 
 ## Processing modules
 - [core](./core) - lazy (parallel) data pipelines, QL for grouping/aggregations and stateful computations using [Cats](https://github.com/typelevel/cats) and [Shapeless](https://github.com/milessabin/shapeless) 
-- [distributed](./distributed) - define an `ComputationCluster` and use it for your `Big Data` (NOT READY YET)
+- [distributed](./distributed) - use it for your `Big Data` (NOT READY YET)
 
 ## Data sources 
- - Any `Iterable` - just wrap your collection into `LazyCollection`
+ - Any `Iterable` - just wrap your collection into `DataPipeline`
  - [cassandra connector](./cassandra_connector) - fetch rows from your `Cassandra` database with `CassandraSource`
  - [cassandra phantom](./cassandra_connector_phantom) - provides [Phantom](https://github.com/outworkers/phantom) library support
  
