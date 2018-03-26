@@ -1,7 +1,7 @@
 package com.datarootlabs
 
 
-import scala.language.higherKinds
+import scala.language.{higherKinds, implicitConversions}
 import cats._
 import cats.data._
 import cats.implicits._
@@ -38,4 +38,7 @@ package object trembita {
   implicit class RunOps[A](val self: DataPipeline[A]) extends AnyVal {
     def run[M[_] : Sync]: M[Iterable[A]] = self.runM(Sync[M])
   }
+
+  implicit def iterable2DataPipeline[A](iter: Iterable[A]): DataPipeline[A] = DataPipeline.from(iter)
+  implicit def option2DataPipeline[A](opt: Option[A]): DataPipeline[A] = DataPipeline.from(opt)
 }

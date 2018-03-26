@@ -4,3 +4,4 @@ target/
 *.log
 logs/
 sonatype.sbt
+!/trembita_fsm/src/main/scala/com/datarootlabs/trembita/fsm/package.scala

@@ -111,6 +111,7 @@ object DataPipeline {
   def empty[A]: DataPipeline[A] = new StrictSource[A](Nil)
   def repeat[A](times: Int)(fa: => A): DataPipeline[A] = new StrictSource[A]((1 to times).map(_ => fa))
   def randomInts(size: Int): DataPipeline[Int] = repeat(size)(Random.nextInt())
+  def randomInts(size: Int, max: Int): DataPipeline[Int] = repeat(size)(Random.nextInt(max))
   def fromFile(fileName: String): DataPipeline[String] = new StrictSource[String](
     scala.io.Source.fromFile(fileName).getLines().toIterable
   )
