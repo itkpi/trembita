@@ -12,9 +12,10 @@ import scala.util.Try
 
 
 object Main {
-  private val flow = Kleisli[DataPipeline, String, String] { (lines: String) ⇒ DataPipeline.from(lines.split("\n")).par }
+  private val flow = Kleisli[DataPipeline, DataPipeline[String], String](_.par)
     .mapF(_.flatMap(_.split(" ")))
     .mapF(_.flatMap(numStr ⇒ Try(numStr.toInt).toOption))
+    .mapF(_ :+ 2124)
 
   def main(args: Array[String]): Unit = {
     val pipeline: DataPipeline[String] = DataPipeline(
@@ -26,14 +27,14 @@ object Main {
       .par
       .flatMap(numStr ⇒ Try(numStr.toInt).toOption)
 
+    val nums2: DataPipeline[Int] = (DataPipeline("10 11 12", "13 11 15") :+ "48 7987 2")
+      .par.transform(flow)
+      .map(_ * 2)
+
+    val result: IO[String] = (numbers ++ nums2).sorted.run[IO].map(_.mkString(", "))
+    println(s"Result: ${result.unsafeRunSync()}")
+
     val sum: Int = numbers.foldLeft(0)(_ + _)
     println(s"Sum = $sum")
-
-    val numbersIO = numbers.runM(Sync[IO])
-
-    println(s"Nums: ${numbersIO.unsafeRunSync().mkString(", ")}")
-
-    val numbers2 = pipeline.transform(flow).force.mkString(", ")
-    println(s"Nums2: $numbers2")
   }
 }

@@ -17,6 +17,9 @@ class CassandraSource(session: Session, statement: Statement) extends SeqSource[
     val result = session.execute(statement)
     result.iterator().asScala
   }
+
+  override def :+[BB >: Row](elem: BB): DataPipeline[BB] = new StrictSource(this.force ++ Some(elem))
+  override def ++[BB >: Row](that: DataPipeline[BB]): DataPipeline[BB] = new StrictSource(this.force ++ that.force)
 }
 
 object CassandraSource {

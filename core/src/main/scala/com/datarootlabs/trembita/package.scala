@@ -1,9 +1,11 @@
 package com.datarootlabs
 
 
+import scala.language.higherKinds
 import cats._
 import cats.data._
 import cats.implicits._
+import cats.effect.Sync
 import com.datarootlabs.trembita.parallel._
 import com.datarootlabs.trembita.internal._
 
@@ -31,5 +33,9 @@ package object trembita {
       case Left(xa) ⇒ tailRecM(xa)(f).force
       case Right(b) ⇒ Some(b)
     }
+  }
+
+  implicit class RunOps[A](val self: DataPipeline[A]) extends AnyVal {
+    def run[M[_] : Sync]: M[Iterable[A]] = self.runM(Sync[M])
   }
 }
