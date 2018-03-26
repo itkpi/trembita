@@ -5,8 +5,7 @@ Project Trembita - Functional Data Pipelining library.
 
 
 ## Processing modules
-- [core](./core) - lazy (parallel) collections
-- [trembita QL](./trembitaql) - high-level abstractions for easier aggregations using [Cats](https://github.com/typelevel/cats) and [Shapeless](https://github.com/milessabin/shapeless) 
+- [core](./core) - lazy (parallel) data pipelines, QL for grouping/aggregations and stateful computations using [Cats](https://github.com/typelevel/cats) and [Shapeless](https://github.com/milessabin/shapeless) 
 - [distributed](./distributed) - define an `ComputationCluster` and use it for your `Big Data` (NOT READY YET)
 
 ## Data sources 

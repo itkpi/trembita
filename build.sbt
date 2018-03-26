@@ -43,7 +43,8 @@ lazy val core = sonatypeProject(id = "trembita-core", base = file("./core"))
       Seq(
         "org.scalactic" %% "scalactic" % testV,
         "org.scalatest" %% "scalatest" % testV % "test",
-        "org.typelevel" %% "cats-effect" % "0.10"
+        "org.typelevel" %% "cats-effect" % "0.10",
+        "com.chuusai" %% "shapeless" % "2.3.3"
       )
     }
   )
@@ -65,23 +66,6 @@ lazy val cassandra_connector_phantom = sonatypeProject(id = "trembita-cassandra_
       Seq(
         "com.outworkers" %% "phantom-jdk8" % "2.20.0",
         "com.datastax.cassandra" % "cassandra-driver-extras" % "3.4.0"
-      )
-    }
-  )
-
-lazy val trembitaql = sonatypeProject(id = "trembitaql", base = file("./trembitaql"))
-  .dependsOn(core)
-  .settings(
-    name := "trembitaql",
-    isSnapshot := snapshot,
-    version := v,
-    scalaVersion := "2.12.4",
-    scalacOptions += "-Ypartial-unification",
-    libraryDependencies ++= {
-      Seq(
-        "org.typelevel" %% "cats-core" % "1.0.1",
-        "com.chuusai" %% "shapeless" % "2.3.3",
-        scalaReflect.value
       )
     }
   )
@@ -150,7 +134,7 @@ lazy val distributed = sonatypeProject(
   .dependsOn(distributed_internal)
 
 lazy val trembitason = sonatypeProject(id = "trembitason", base = file("./trembitason"))
-  .dependsOn(trembitaql)
+  .dependsOn(core)
   .settings(
     name := "trembitason",
     version := v,
@@ -168,8 +152,7 @@ lazy val trembitason = sonatypeProject(id = "trembitason", base = file("./trembi
 
 lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
   .dependsOn(
-    core, slf4j,
-    trembitaql, trembitason,
+    core, slf4j, trembitason,
     cassandra_connector,
     cassandra_connector_phantom,
     distributed_internal,
@@ -188,7 +171,7 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
 
 lazy val root = Project(id = "trembita", base = file("."))
   .aggregate(
-    core, trembitaql, slf4j,
+    core, slf4j,
     cassandra_connector,
     cassandra_connector_phantom,
     distributed_internal,
