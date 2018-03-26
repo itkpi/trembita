@@ -1,5 +1,10 @@
 package com.datarootlabs.trembita
 
+import scala.language.higherKinds
+import cats._
+import cats.implicits._
+
+
 package object utils {
   implicit class IterableExtended[A](val self: Iterable[A]) extends AnyVal {
     def minMax(implicit cmp: Ordering[A]): (A, A) = {
@@ -55,5 +60,17 @@ package object utils {
     def modify(key: K, default: => V)(f: V => V): Map[K, V] = if (map contains key) {
       map.updated(key, f(map(key)))
     } else map + (key -> default)
+  }
+
+  implicit class SeqOps[A](val self: Iterable[A]) extends AnyVal {
+    def mapM[M[_] : Monad, B](f: A ⇒ M[B]): M[Seq[B]] = self match {
+      case Seq() ⇒ Seq.empty[B].pure[M]
+      case _     ⇒ self.tail.foldLeft(f(self.head).map(Seq(_))) {
+        case (accM, elem) ⇒ for {
+          acc ← accM
+          b ← f(elem)
+        } yield acc :+ b
+      }
+    }
   }
 }

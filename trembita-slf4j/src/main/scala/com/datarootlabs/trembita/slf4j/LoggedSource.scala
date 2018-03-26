@@ -39,6 +39,9 @@ class LoggedSource[+A](logger: Logger, source: DataPipeline[A])
           res
       }.toOption
     }
+
+  override def :+[BB >: A](elem: BB): DataPipeline[BB] = new LoggedSource(logger, source :+ elem)
+  override def ++[BB >: A](that: DataPipeline[BB]): DataPipeline[BB] = new LoggedSource(logger, source ++ that)
 }
 
 object LoggedSource {

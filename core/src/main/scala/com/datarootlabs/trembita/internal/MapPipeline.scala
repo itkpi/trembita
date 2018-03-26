@@ -41,7 +41,13 @@ protected[trembita] class BaseMapPipeline[K, V](source: DataPipeline[(K, V)])
                           (implicit ec: ExecutionContext): DataPipeline[B] =
     new StrictSource[(K, V)](this.force).mapAsync(timeout, parallelism)(f)
 
+  override def :+[B >: (K, V)](elem: B): DataPipeline[B] =
+    new BaseMapPipeline[K, V]((source :+ elem).asInstanceOf[DataPipeline[(K, V)]])
+
+  override def ++[B >: (K, V)](that: DataPipeline[B]): DataPipeline[B] =
+    new BaseMapPipeline[K, V]((source ++ that).asInstanceOf[DataPipeline[(K, V)]])
 }
+
 protected[trembita] class GroupByList[K, V](f: V => K, source: DataPipeline[V])
   extends BaseDataPipeline[(K, Iterable[V])] {
 
@@ -50,7 +56,6 @@ protected[trembita] class GroupByList[K, V](f: V => K, source: DataPipeline[V])
   override def filter(p: ((K, Iterable[V])) => Boolean): DataPipeline[(K, Iterable[V])] = DataPipeline.from(this.force).filter(p)
   override def collect[B](pf: PartialFunction[(K, Iterable[V]), B]): DataPipeline[B] = DataPipeline.from(this.force).collect(pf)
   override def force: Iterable[(K, Iterable[V])] = source.force.groupBy(f)
-  override def par(implicit ec: ExecutionContext): ParDataPipeline[(K, Iterable[V])] = DataPipeline.from(this.force).par
 
   override def iterator: Iterator[(K, Iterable[V])] = this.force.iterator
   override def mapAsync[B](timeout: FiniteDuration,
@@ -58,6 +63,14 @@ protected[trembita] class GroupByList[K, V](f: V => K, source: DataPipeline[V])
                           (f: ((K, Iterable[V])) => Future[B])
                           (implicit ec: ExecutionContext): DataPipeline[B] =
     new StrictSource[(K, Iterable[V])](this.force).mapAsync(timeout, parallelism)(f)
+
+  override def par(implicit ec: ExecutionContext): ParDataPipeline[(K, Iterable[V])] = ???
+
+  override def :+[B >: (K, Iterable[V])](elem: B): DataPipeline[B] =
+    new GroupByList[K, V](f, source ++ DataPipeline.from(elem.asInstanceOf[(K, Iterable[V])]._2))
+
+  override def ++[B >: (K, Iterable[V])](that: DataPipeline[B]): DataPipeline[B] =
+    new GroupByList[K, V](f, source ++ that.flatMap { case (_, vs: Iterable[V]) ⇒ vs })
 }
 
 object MapPipeline {

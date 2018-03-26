@@ -42,7 +42,8 @@ lazy val core = sonatypeProject(id = "trembita-core", base = file("./core"))
       val testV = "3.0.4"
       Seq(
         "org.scalactic" %% "scalactic" % testV,
-        "org.scalatest" %% "scalatest" % testV % "test"
+        "org.scalatest" %% "scalatest" % testV % "test",
+        "org.typelevel" %% "cats-effect" % "0.10"
       )
     }
   )

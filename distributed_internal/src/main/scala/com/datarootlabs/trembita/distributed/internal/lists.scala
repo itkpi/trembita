@@ -38,6 +38,9 @@ class DistributedMapDataPipeline[A, B](@transient val createActor: () => ActorRe
 
     Await.result(futureResult, defaultTimeout.duration)
   }
+
+  override def :+[BB >: B](elem: BB): DataPipeline[BB] = ???
+  override def ++[BB >: B](that: DataPipeline[BB]): DataPipeline[BB] = ???
 }
 
 class DistributedFlatMapDataPipeline[A, B](@transient val createActor: () => ActorRef)
@@ -61,6 +64,9 @@ class DistributedFlatMapDataPipeline[A, B](@transient val createActor: () => Act
       }
     Await.result(futureResult, defaultTimeout.duration)
   }
+
+  override def :+[BB >: B](elem: BB): DataPipeline[BB] = ???
+  override def ++[BB >: B](that: DataPipeline[BB]): DataPipeline[BB] = ???
 }
 
 class DistributedCollectDataPipeline[A, B](@transient val createActor: () => ActorRef)
@@ -91,6 +97,9 @@ class DistributedCollectDataPipeline[A, B](@transient val createActor: () => Act
       }
     Await.result(futureResult, defaultTimeout.duration)
   }
+
+  override def :+[BB >: B](elem: BB): DataPipeline[BB] = ???
+  override def ++[BB >: B](that: DataPipeline[BB]): DataPipeline[BB] = ???
 }
 
 
@@ -113,4 +122,9 @@ class DistributedSource[A](@transient system: ActorSystem,
 
   override def force: Iterable[A] = source().toVector
   override def iterator: Iterator[A] = source()
+
+  override def :+[BB >: A](elem: BB): DataPipeline[BB] =
+    new DistributedSource(system, master, () ⇒ source() ++ Some(elem), parallelism)
+  override def ++[BB >: A](that: DataPipeline[BB]): DataPipeline[BB] =
+    new DistributedSource(system, master, () ⇒ source() ++ that.iterator, parallelism)
 }
