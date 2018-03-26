@@ -1,5 +1,9 @@
 package com.datarootlabs
 
+
+import cats._
+import cats.data._
+import cats.implicits._
 import com.datarootlabs.trembita.parallel._
 import com.datarootlabs.trembita.internal._
 
@@ -18,5 +22,14 @@ package object trembita {
         }.get
       }
     def toMap: MapPipeline[K, V] = new BaseMapPipeline[K, V](self)
+  }
+
+  implicit object DataPipelineMonad extends Monad[DataPipeline] {
+    override def pure[A](x: A): DataPipeline[A] = DataPipeline(x)
+    override def flatMap[A, B](fa: DataPipeline[A])(f: A ⇒ DataPipeline[B]): DataPipeline[B] = fa.flatMap(f(_).force)
+    override def tailRecM[A, B](a: A)(f: A ⇒ DataPipeline[Either[A, B]]): DataPipeline[B] = f(a).flatMap {
+      case Left(xa) ⇒ tailRecM(xa)(f).force
+      case Right(b) ⇒ Some(b)
+    }
   }
 }

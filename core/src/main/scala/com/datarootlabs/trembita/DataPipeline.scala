@@ -1,8 +1,11 @@
 package com.datarootlabs.trembita
 
+import cats.data.Kleisli
+
 import scala.language.higherKinds
 import internal._
 import parallel._
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
@@ -16,6 +19,7 @@ trait DataPipeline[+A] {
   def flatMap[B](f: A => Iterable[B]): DataPipeline[B]
   def filter(p: A => Boolean): DataPipeline[A]
   def collect[B](pf: PartialFunction[A, B]): DataPipeline[B]
+  def transform[B >: A, C](flow: Kleisli[DataPipeline, B, C]): DataPipeline[C] = flatMap(flow.run(_).force)
 
   def force: Iterable[A]
   def runM[B >: A, M[_]](implicit M: Sync[M]): M[Iterable[B]] = M.delay(force)
