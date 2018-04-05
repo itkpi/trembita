@@ -6,17 +6,19 @@ import cats.{Inject, Monoid}
 import cats.implicits._
 import utils._
 import shapeless._
-import shapeless.tag._
+import shapeless.ops.hlist.At
 
 import scala.concurrent.{Await, ExecutionContext, Future}
 import com.datarootlabs.trembita._
 import com.datarootlabs.trembita.parallel._
 import com.datarootlabs.trembita.internal._
 import com.datarootlabs.trembita.ql.instances._
-import shapeless.ops.hlist.At
-import shapeless.tag._
+import algebra.ring._
+import com.datarootlabs.trembita.ql.AggRes.*::
 
 import scala.annotation.implicitNotFound
+import com.datarootlabs.trembita.ql.GroupingCriteria._
+//import ql.{x ⇒ X}
 
 
 package object ql {
@@ -190,51 +192,43 @@ package object ql {
     def as[T]: A ## T = new ##[A, T](self)
   }
 
-  import Aggregation._, GroupingCriteria._
+  import AggDecl._, GroupingCriteria._
 
 
-  @implicitNotFound("Implicit not found: GroupingCriteria At[${L}, ${N}]. You requested to access an element at the position ${N}, but the GroupingCriteria ${L} is too short.")
-  trait At[L <: GroupingCriteria, N <: Nat] extends DepFn1[L] with Serializable
-
-  object At {
-    def apply[L <: GroupingCriteria, N <: Nat](implicit at: At[L, N]): Aux[L, N, at.Out] = at
-
-    type Aux[L <: GroupingCriteria, N <: Nat, Out0] = At[L, N] {type Out = Out0}
-
-    implicit def hlistAtZero[H <: ##[_, _], T <: GroupingCriteria]: Aux[H &:: T, _0, H] =
-      new At[H &:: T, _0] {
-        type Out = H
-        def apply(l: H &:: T): Out = l.first
-      }
-
-    implicit def hlistAtN[H <: ##[_, _], T <: GroupingCriteria, N <: Nat, AtOut]
-    (implicit att: At.Aux[T, N, AtOut]): Aux[H &:: T, Succ[N], AtOut] =
-      new At[H &:: T, Succ[N]] {
-        type Out = AtOut
-        def apply(l: H &:: T): Out = att(l.rest)
-      }
-  }
   implicit class GroupingCriteriaOps[G <: GroupingCriteria](val self: G) extends AnyVal {
     def &::[GH <: ##[_, _]](head: GH): GH &:: G = GroupingCriteria.&::(head, self)
-    def apply(n: Nat)(implicit at: At[G, n.N]): at.Out = at(self)
+    def apply(n: Nat)(implicit at: GroupingCriteria.At[G, n.N]): at.Out = at(self)
   }
 
-  implicit class AggregationNameOps[A <: Aggregation](val self: A) {
-    def %::[GH <: ##[_, _]](head: GH): GH %:: A = Aggregation.%::(head, self)
+  implicit class AggregationNameOps[A <: AggDecl](val self: A) {
+    def %::[GH <: TaggedAgg[_, _, _]](head: GH): GH %:: A = AggDecl.%::(head, self)
+  }
+
+  implicit class AggResOps[A <: AggRes](val self: A) {
+    def *::[H <: ##[_, _]](head: H): H *:: A = AggRes.*::(head, self)
+    def apply[U](implicit get: AggRes.Get[A, U]): get.Out = get(self)
+    def get[U](implicit gget: AggRes.Get[A, U]): gget.Out = gget(self)
   }
 
   import ArbitraryGroupResult._
 
 
-  implicit class ArbitraryGroupResultToMap[A, K <: GroupingCriteria, T <: Aggregation]
-  (val self: ArbitraryGroupResult[A, K, T]) extends AnyVal {
-    def toMap(implicit to: ToMap[A, K, T]): to.Out = to(self)
-  }
+  //  implicit class ArbitraryGroupResultToMap[A, K <: GroupingCriteria, T <: AggDecl]
+  //  (val self: ArbitraryGroupResult[A, K, T]) extends AnyVal {
+  //    def toMap(implicit to: ToMap[A, K, T]): to.Out = to(self)
+  //  }
 
-  implicit class MapToArbitraryGroupResult[KH <: ##[_, _], Value]
-  (val self: Map[KH, Value]) extends AnyVal {
-    def toArbitraryGroupResult[A, K <: GroupingCriteria, T <: Aggregation]
-    (implicit ev: KH <:< K#Key,
-     from: FromMap[A, K, T]): from.Out = from(self.asInstanceOf[ToMap[A, K, T]#Out])
+  //  implicit class MapToArbitraryGroupResult[K <: GroupingCriteria,
+  //  T, R <: AggRes, AggF <: AggFunc[T, R],
+  //  SubMap]
+  //  (self: Map[K#Key, (AggF#Comb, SubMap)])(implicit aggF: AggF) {
+  //    def toArbitraryGroupResult[A](implicit from: FromMap[A, K, T, R, AggF, SubMap])
+  //    : from.Out = from(self.asInstanceOf[Map[K#Key, (AggF#Comb, SubMap)]])
+  //  }
+
+  implicit class TaggingOps[A, U](val self: A ## U) extends AnyVal {
+    def sum: TaggedAgg[A, U, AggFunc.Type.Sum] = TaggedAgg(self)
+    def avg: TaggedAgg[A, U, AggFunc.Type.Avg] = TaggedAgg(self)
+    def count: TaggedAgg[A, U, AggFunc.Type.Count] = TaggedAgg(self)
   }
 }

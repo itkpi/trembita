@@ -5,7 +5,7 @@ import scala.reflect.macros.blackbox
 import cats.Show
 import cats.implicits._
 import GroupingCriteria._
-import Aggregation._
+import AggRes._
 import ArbitraryGroupResult._
 import shapeless.tag._
 
@@ -47,7 +47,7 @@ trait show {
   A: Show,
   KH <: ##[_, _] : Show,
   KT <: GroupingCriteria : Show,
-  T <: Aggregation : Show
+  T: Show
   ](implicit subGrShowPretty: ShowPretty[ArbitraryGroupResult[A, KT, T]]
    ): ShowPretty[~::[A, KH, KT, T]] = new ShowPretty[~::[A, KH, KT, T]] {
     def appendPrint(a: ~::[A, KH, KT, T])(currSpaces: Int, requiredSpaces: Int): String = {
@@ -68,7 +68,7 @@ trait show {
   def `showPretty-~**`[
   A: Show,
   K <: GroupingCriteria : Show,
-  T <: Aggregation : Show
+  T: Show
   ](grShowPretty: ShowPretty[ArbitraryGroupResult[A, K, T]]
    ): ShowPretty[~**[A, K, T]] = new ShowPretty[~**[A, K, T]] {
     def appendPrint(a: ~**[A, K, T])(currSpaces: Int, requiredSpaces: Int): String = {
@@ -78,7 +78,7 @@ trait show {
       val totalSpaces: String = spaces(currSpaces + requiredSpaces)
       val mkStrSpaces: String = spaces(currSpaces + requiredSpaces * 2)
       s"""|~**(
-          |${totalSpaces}totals = ${totals.show}
+          |${totalSpaces}totals = ${a.totals.show}
           |${totalSpaces}records = ${
         records.map(grShowPretty.appendPrint(_)(
           currSpaces + requiredSpaces * 2,
@@ -91,7 +91,7 @@ trait show {
   def showPrettyArbGroupResultImpl[
   A: c.WeakTypeTag,
   K <: GroupingCriteria : c.WeakTypeTag,
-  T <: Aggregation : c.WeakTypeTag
+  T: c.WeakTypeTag
   ](c: blackbox.Context): c.Expr[ShowPretty[ArbitraryGroupResult[A, K, T]]] = {
     import c.universe._
     val A = weakTypeOf[A].dealias
@@ -129,6 +129,10 @@ trait show {
 object show extends show {
   implicit def showTagged[A, U]: Show[A ## U] = macro showTaggedImpl[A, U]
 
+  implicit def showAggFuncResult[A: Show, Comb]: Show[AggFunc.Result[A, Comb]] = new Show[AggFunc.Result[A, Comb]] {
+    override def show(t: AggFunc.Result[A, Comb]): String = t.result.show
+  }
+
   implicit object ShowGNil extends Show[GNil] {
     override def show(t: GNil): String = "∅"
   }
@@ -144,25 +148,25 @@ object show extends show {
       s"${t.first.show}$tailStr"
     }
   }
-  implicit object ShowAgNil extends Show[AgNil] {
-    override def show(t: AgNil): String = "∅"
+  implicit object ShowRNil extends Show[RNil] {
+    override def show(t: RNil): String = "∅"
   }
-  implicit def showAggregationNameCons[
+  implicit def showAggRes[
   AgH <: ##[_, _] : Show,
-  AgT <: Aggregation : Show
-  ]: Show[AgH %:: AgT] = new Show[AgH %:: AgT] {
-    override def show(t: AgH %:: AgT): String = {
-      val tailStr = t.agTail match {
-        case AgNil ⇒ ""
+  AgT <: AggRes : Show
+  ]: Show[AgH *:: AgT] = new Show[AgH *:: AgT] {
+    override def show(t: AgH *:: AgT): String = {
+      val tailStr = t.tail match {
+        case RNil  ⇒ ""
         case other ⇒ s" & ${other.show}"
       }
-      s"${t.agHead.show} $tailStr"
+      s"${t.head.show} $tailStr"
     }
   }
   implicit def showPrettyArbGroupResult[
   A,
   K <: GroupingCriteria,
-  T <: Aggregation]: ShowPretty[ArbitraryGroupResult[A, K, T]] = macro showPrettyArbGroupResultImpl[A, K, T]
+  T]: ShowPretty[ArbitraryGroupResult[A, K, T]] = macro showPrettyArbGroupResultImpl[A, K, T]
 
   implicit def prettySeq[A](implicit S: ShowPretty[A]): ShowPretty[Seq[A]] = new ShowPretty[Seq[A]] {
     override def appendPrint(a: Seq[A])(currSpaces: Int, requiredSpaces: Int): String = {

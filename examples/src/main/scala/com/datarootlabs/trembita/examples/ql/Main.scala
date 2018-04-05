@@ -2,21 +2,23 @@ package com.datarootlabs.trembita.examples.ql
 
 import com.datarootlabs.trembita.ql._
 import ArbitraryGroupResult._
-import Aggregation._
+import AggDecl._
 import GroupingCriteria._
 import instances._
 import cats._
 import cats.implicits._
+import QueryBuilder._
 import show._
+import com.datarootlabs.trembita.ql.AggRes._
 
 
-object Main {
+object Main extends algebra.instances.AllInstances {
   trait `divisible by 2`
   trait `divisible by 3`
   trait `reminder of 4`
 
   trait square
-  trait cube
+  trait count
   trait `^4`
 
   type Criterias =
@@ -25,20 +27,33 @@ object Main {
       (Long ## `reminder of 4`) &::
       GNil
 
-  type DividingAggs =
-    (Long ## square) %::
-      (Long ## cube) %::
-      (Long ## `^4`) %::
-      AgNil
+  type DividingAggDecl =
+    TaggedAgg[Double, square, AggFunc.Type.Avg] %::
+      TaggedAgg[Long, count, AggFunc.Type.Count] %::
+      TaggedAgg[Long, `^4`, AggFunc.Type.Sum] %::
+      DNil
+
+  type DividingAggRes =
+    (Double ## square) *::
+      (Long ## count) *::
+      (Long ## `^4`) *::
+      RNil
 
   def main(args: Array[String]): Unit = {
-    val numbers: Seq[Long] = 1L to 8L
-
-    val result: ArbitraryGroupResult[Long, Criterias, DividingAggs] = arbitraryGroupBy(numbers)(num ⇒
-      (num % 2 == 0).as[`divisible by 2`] &:: (num % 3 == 0).as[`divisible by 3`] &:: (num % 4).as[`reminder of 4`] &:: GNil
-    )(num ⇒
-      (num * num).as[square] %:: (num * num * num).as[cube] %:: (num * num * num * num).as[`^4`] %:: AgNil
-    )
+    val numbers: List[Long] = (1L to 20L).toList
+    val result = query(numbers)(_
+      .filter(_ > 5)
+      .groupBy(num ⇒
+        (num % 2 == 0).as[`divisible by 2`] &::
+          (num % 3 == 0).as[`divisible by 3`] &::
+          (num % 4).as[`reminder of 4`] &:: GNil
+      )
+      .aggregate(num ⇒
+        (num * num).toDouble.as[square].avg %::
+          num.as[count].count %::
+          (num * num * num * num).as[`^4`].sum %:: DNil
+      )
+      .having(_.get[count] >= 5))
 
     println(result.pretty())
   }

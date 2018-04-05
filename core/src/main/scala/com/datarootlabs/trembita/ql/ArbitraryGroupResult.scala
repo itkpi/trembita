@@ -1,23 +1,19 @@
 package com.datarootlabs.trembita.ql
 
 
-import cats.Monoid
-import com.datarootlabs.trembita.ql.Aggregation.AgNil
-import com.datarootlabs.trembita.ql.GroupingCriteria._
-import shapeless._
-import shapeless.tag.@@
-
 import scala.language.higherKinds
+import cats.Monoid
+import com.datarootlabs.trembita.ql.GroupingCriteria._
 
 
-sealed trait ArbitraryGroupResult[-A, K <: GroupingCriteria, +T <: Aggregation] {
+sealed trait ArbitraryGroupResult[-A, K <: GroupingCriteria, +T] {
   type SubGroup <: ArbitraryGroupResult[A, K#Tail, T]
   def subGroup: SubGroup
   def key: K#Key
   def totals: T
   def sameKey[
   AA <: A,
-  TT >: T <: Aggregation
+  TT >: T
   ](that: ArbitraryGroupResult[AA, K, TT]): Boolean = this.key == that.key
 }
 
@@ -33,7 +29,7 @@ object ArbitraryGroupResult {
   A,
   KH <: ##[_, _],
   KT <: GroupingCriteria,
-  T <: Aggregation
+  T
   ](
      key: KH,
      totals: T,
@@ -45,12 +41,10 @@ object ArbitraryGroupResult {
   case class ~**[
   A,
   K <: GroupingCriteria,
-  T <: Aggregation
-  ](records: ArbitraryGroupResult[A, K, T]*)
-   (implicit tMonoid: Monoid[T]) extends ArbitraryGroupResult[A, K, T] {
+  T
+  ](totals: T, records: ArbitraryGroupResult[A, K, T]*) extends ArbitraryGroupResult[A, K, T] {
     type SubGroup = ArbitraryGroupResult[A, K#Tail, T]
-    def subGroup: SubGroup = ~**(records.map(_.subGroup): _*)
-    def key: K#Key = MultiKey[K#Key]()
-    def totals: T = records.foldLeft(tMonoid.empty) { case (acc, r) ⇒ tMonoid.combine(acc, r.totals) }
+    def subGroup: SubGroup = ???
+    def key: K#Key = ???
   }
 }
