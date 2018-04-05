@@ -2,23 +2,25 @@ package com.datarootlabs.trembita
 
 
 import language.{existentials, higherKinds}
-import cats.{Inject, Monoid}
+import language.experimental.macros
+import scala.reflect.macros.blackbox
+import scala.annotation.{implicitNotFound, tailrec}
+import scala.concurrent.{Await, ExecutionContext, Future}
+import cats._
 import cats.implicits._
 import utils._
 import shapeless._
 import shapeless.ops.hlist.At
-
-import scala.concurrent.{Await, ExecutionContext, Future}
+import algebra.ring._
+import ql.instances._
+import ql.AggRes._
+import ql.AggDecl._
+import ql.QueryBuilder._
+import ql.GroupingCriteria._
+import ql.ArbitraryGroupResult._
 import com.datarootlabs.trembita._
 import com.datarootlabs.trembita.parallel._
 import com.datarootlabs.trembita.internal._
-import com.datarootlabs.trembita.ql.instances._
-import algebra.ring._
-import com.datarootlabs.trembita.ql.AggRes.*::
-
-import scala.annotation.implicitNotFound
-import com.datarootlabs.trembita.ql.GroupingCriteria._
-//import ql.{x ⇒ X}
 
 
 package object ql {
@@ -210,25 +212,17 @@ package object ql {
     def get[U](implicit gget: AggRes.Get[A, U]): gget.Out = gget(self)
   }
 
-  import ArbitraryGroupResult._
-
-
-  //  implicit class ArbitraryGroupResultToMap[A, K <: GroupingCriteria, T <: AggDecl]
-  //  (val self: ArbitraryGroupResult[A, K, T]) extends AnyVal {
-  //    def toMap(implicit to: ToMap[A, K, T]): to.Out = to(self)
-  //  }
-
-  //  implicit class MapToArbitraryGroupResult[K <: GroupingCriteria,
-  //  T, R <: AggRes, AggF <: AggFunc[T, R],
-  //  SubMap]
-  //  (self: Map[K#Key, (AggF#Comb, SubMap)])(implicit aggF: AggF) {
-  //    def toArbitraryGroupResult[A](implicit from: FromMap[A, K, T, R, AggF, SubMap])
-  //    : from.Out = from(self.asInstanceOf[Map[K#Key, (AggF#Comb, SubMap)]])
-  //  }
 
   implicit class TaggingOps[A, U](val self: A ## U) extends AnyVal {
     def sum: TaggedAgg[A, U, AggFunc.Type.Sum] = TaggedAgg(self)
     def avg: TaggedAgg[A, U, AggFunc.Type.Avg] = TaggedAgg(self)
     def count: TaggedAgg[A, U, AggFunc.Type.Count] = TaggedAgg(self)
+  }
+
+  implicit class TrembitaQL[A](val self: Seq[A]) extends AnyVal {
+    def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes]
+    (queryF: Empty[A] ⇒ Query[A, G, T, R])
+    (implicit trembitaql: trembitaql[A, G, T, R]): ArbitraryGroupResult[A, G, AggFunc.Result[R, Query[A, G, T, R]#Comb]] =
+      trembitaql(self, queryF)
   }
 }

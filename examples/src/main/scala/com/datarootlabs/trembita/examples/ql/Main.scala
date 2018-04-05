@@ -41,7 +41,7 @@ object Main extends algebra.instances.AllInstances {
 
   def main(args: Array[String]): Unit = {
     val numbers: List[Long] = (1L to 20L).toList
-    val result = query(numbers)(_
+    val result = numbers.query(_
       .filter(_ > 5)
       .groupBy(num ⇒
         (num % 2 == 0).as[`divisible by 2`] &::
@@ -53,7 +53,7 @@ object Main extends algebra.instances.AllInstances {
           num.as[count].count %::
           (num * num * num * num).as[`^4`].sum %:: DNil
       )
-      .having(_.get[count] >= 5))
+      .having(_.get[count] > 7))
 
     println(result.pretty())
   }
