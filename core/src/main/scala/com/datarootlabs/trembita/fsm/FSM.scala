@@ -1,72 +1,84 @@
 package com.datarootlabs.trembita.fsm
 
-sealed trait InitialState[S]
+sealed trait InitialState[N, D]
 object InitialState {
-  case class FromFirstElement[A, S](f: A ⇒ S) extends InitialState[S]
-  case class Pure[S](state: S) extends InitialState[S]
+  case class FromFirstElement[A, N, D](f: A ⇒ FSM.State[N, D]) extends InitialState[N, D]
+  case class Pure[N, D](state: FSM.State[N, D]) extends InitialState[N, D]
 
-  def fromFirstElement[A, S](f: A ⇒ S): InitialState[S] = FromFirstElement(f)
-  def pure[S](state: S): InitialState[S] = Pure(state)
+  def fromFirstElement[A, N, D](f: A ⇒ FSM.State[N, D]): InitialState[N, D] = FromFirstElement(f)
+  def pure[N, D](state: FSM.State[N, D]): InitialState[N, D] = Pure(state)
 }
 
-sealed trait FSM[S, A, B] {
-  def when(state: S)(f: PartialFunction[A, (S, B)]): FSM.Partial[S, A, B]
-  def complete: S ⇒ A ⇒ (S, B)
+sealed trait FSM[N, D, A, B] {
+  def when(state: N)(f: PartialFunction[A, FSM.State[N, D] ⇒ (FSM.State[N, D], B)]): FSM.Partial[N, D, A, B]
+  def complete: FSM.State[N, D] ⇒ A ⇒ (FSM.State[N, D], B)
 }
 
 object FSM {
-  sealed trait Result[A, S] {
+  case class State[+N, +D](name: N, data: D) {
+    def goto[NN >: N](other: NN): State[NN, D] = State(other, data)
+    def stay: State[N, D] = this
+    def change[DD >: D](otherData: DD): State[N, DD] = State(name, otherData)
+    def modify[DD >: D](f: D ⇒ DD): State[N, DD] = State(name, f(data))
+
+    def using[B](f: D ⇒ B): (State[N, D], B) = this → f(data)
+  }
+
+  sealed trait Result[A, S <: FSM.State[_, _]] {
     type Out
     def apply(state: S, value: A): Out
   }
   object Result {
-    case class WithState[A, S]() extends Result[A, S] {
+    case class WithState[A, S <: FSM.State[_, _]]() extends Result[A, S] {
       type Out = (S, A)
       def apply(state: S, value: A): Out = state → value
     }
-    case class IgnoreState[A, S]() extends Result[A, S] {
+    case class IgnoreState[A, S <: FSM.State[_, _]]() extends Result[A, S] {
       type Out = A
       def apply(state: S, value: A): Out = value
     }
 
-    def withState[A, S]: Result[A, S] = WithState()
-    def ignoreState[A, S]: Result[A, S] = IgnoreState()
+    def withState[A, S <: FSM.State[_, _]]: Result[A, S] = WithState()
+    def ignoreState[A, S <: FSM.State[_, _]]: Result[A, S] = IgnoreState()
   }
 
-  class Empty[S, A, B] extends FSM[S, A, B] {
-    def when(state: S)(f: PartialFunction[A, (S, B)]): Partial[S, A, B] = new Partial[S, A, B]({
+  class Empty[N, D, A, B] extends FSM[N, D, A, B] {
+    def when(state: N)(f: PartialFunction[A, FSM.State[N, D] ⇒ (FSM.State[N, D], B)]): FSM.Partial[N, D, A, B] = new Partial[N, D, A, B]({
       case `state` ⇒ f
     })
-    def complete: S ⇒ A ⇒ (S, B) = throw new Exception("Empty FSM")
+    def complete: FSM.State[N, D] ⇒ A ⇒ (FSM.State[N, D], B) = throw new Exception("Empty FSM")
   }
 
-  class Completed[S, A, B](f: S ⇒ A ⇒ (S, B)) extends FSM[S, A, B] {
-    def when(state: S)(f: PartialFunction[A, (S, B)]): Partial[S, A, B] = ???
-    def complete: S ⇒ A ⇒ (S, B) = f
+  class Completed[N, D, A, B](f: FSM.State[N, D] ⇒ A ⇒ (FSM.State[N, D], B)) extends FSM[N, D, A, B] {
+    def when(state: N)(f: PartialFunction[A, FSM.State[N, D] ⇒ (FSM.State[N, D], B)]): FSM.Partial[N, D, A, B] = ???
+    def complete: FSM.State[N, D] ⇒ A ⇒ (FSM.State[N, D], B) = f
   }
 
-  class Partial[S, A, B](stateF: Func[S, A, B]) extends FSM[S, A, B] {
-    def when(state: S)(f: PartialFunction[A, (S, B)]): FSM.Partial[S, A, B] = {
-      val pf: Func[S, A, B] = {case `state` ⇒ f}
+  class Partial[N, D, A, B](stateF: Func[N, D, A, B]) extends FSM[N, D, A, B] {
+    def when(state: N)(f: PartialFunction[A, FSM.State[N, D] ⇒ (FSM.State[N, D], B)]): FSM.Partial[N, D, A, B] = {
+      val pf: Func[N, D, A, B] = {case `state` ⇒ f}
       new Partial(stateF orElse pf)
     }
 
-    def whenUndefined(f: (S, A) ⇒ (S, B)): FSM.Completed[S, A, B] = {
-      val ff: S ⇒ A ⇒ (S, B) = state ⇒ a => f(state, a)
+    def whenUndefined(f: A ⇒ FSM.State[N, D] ⇒ (FSM.State[N, D], B)): FSM.Completed[N, D, A, B] = {
       new Completed({
-        case state if stateF.isDefinedAt(state) ⇒ stateF(state).orElse({ case a ⇒ ff(state)(a) })
-        case state                              ⇒ a => ff(state)(a)
+        case state if stateF.isDefinedAt(state.name) ⇒ a ⇒
+          val nameF = stateF(state.name)
+          if (nameF.isDefinedAt(a)) nameF(a)(state)
+          else f(a)(state)
+
+        case state ⇒ a => f(a)(state)
       })
     }
 
-    def complete: S ⇒ A ⇒ (S, B) = {
-      case state if stateF.isDefinedAt(state) ⇒ a ⇒
-        stateF(state).applyOrElse(a,
-          throw new Exception(s"FSM in state {$state} is not defined at value: $a"))
-      case state                              ⇒ _ => throw new Exception(s"FSM is not defined at state: $state")
+    def complete: FSM.State[N, D] ⇒ A ⇒ (FSM.State[N, D], B) = {
+      case state if stateF.isDefinedAt(state.name) ⇒ a ⇒
+        stateF(state.name).applyOrElse(a,
+          throw new Exception(s"FSM in state {$state} is not defined at value: $a"))(state)
+      case state                                   ⇒ _ => throw new Exception(s"FSM is not defined at state: $state")
     }
   }
 
-  type Func[S, A, B] = PartialFunction[S, PartialFunction[A, (S, B)]]
-  def apply[S, A, B]: FSM[S, A, B] = new Empty
+  type Func[N, D, A, B] = PartialFunction[N, PartialFunction[A, FSM.State[N, D] ⇒ (FSM.State[N, D], B)]]
+  def apply[N, D, A, B]: FSM[N, D, A, B] = new Empty
 }

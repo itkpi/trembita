@@ -5,18 +5,18 @@ import com.datarootlabs.trembita.internal.StrictSource
 
 package object fsm {
   implicit class StatefulOps[A](val self: DataPipeline[A]) extends AnyVal {
-    def mapWithState[S, B](initial: InitialState[S],
-                           result: FSM.Result[B, S])
-                          (fsmF: FSM.Empty[S, A, B] ⇒ FSM.Completed[S, A, B]): DataPipeline[result.Out] =
+    def mapWithState[N, D, B](initial: InitialState[N, D],
+                              result: FSM.Result[B, FSM.State[N, D]])
+                             (fsmF: FSM.Empty[N, D, A, B] ⇒ FSM.Completed[N, D, A, B]): DataPipeline[result.Out] =
       new StrictSource({
         val iter = self.iterator
         if (!iter.hasNext) Vector.empty
         else {
           val stateF = fsmF(new FSM.Empty).complete
           val builder = Vector.newBuilder[result.Out]
-          var state: S = initial match {
-            case InitialState.Pure(s)                      ⇒ s
-            case InitialState.FromFirstElement(f: (A ⇒ S)) ⇒ f(iter.next())
+          var state: FSM.State[N, D] = initial match {
+            case InitialState.Pure(s)                                    ⇒ s
+            case InitialState.FromFirstElement(f: (A ⇒ FSM.State[N, D])) ⇒ f(iter.next())
           }
           while (iter.hasNext) {
             val elem = iter.next()
@@ -27,18 +27,19 @@ package object fsm {
           builder.result()
         }
       })
-    def flatMapWithState[S, B](initial: InitialState[S],
-                               result: FSM.Result[B, S])
-                              (fsmF: FSM.Empty[S, A, Iterable[B]] ⇒ FSM.Completed[S, A, Iterable[B]]): DataPipeline[result.Out] =
+    def flatMapWithState[N, D, B](initial: InitialState[N, D],
+                                  result: FSM.Result[B, FSM.State[N, D]])
+                                 (fsmF: FSM.Empty[N, D, A, Iterable[B]] ⇒ FSM.Completed[N, D, A, Iterable[B]])
+    : DataPipeline[result.Out] =
       new StrictSource({
         val iter = self.iterator
         if (!iter.hasNext) Vector.empty
         else {
           val stateF = fsmF(new FSM.Empty).complete
           val builder = Vector.newBuilder[result.Out]
-          var state: S = initial match {
-            case InitialState.Pure(s)                      ⇒ s
-            case InitialState.FromFirstElement(f: (A ⇒ S)) ⇒ f(iter.next())
+          var state: FSM.State[N, D] = initial match {
+            case InitialState.Pure(s)                                    ⇒ s
+            case InitialState.FromFirstElement(f: (A ⇒ FSM.State[N, D])) ⇒ f(iter.next())
           }
           while (iter.hasNext) {
             val elem = iter.next()

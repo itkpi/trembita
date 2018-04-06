@@ -2,6 +2,7 @@ package com.datarootlabs.trembita.examples.fsm
 
 import com.datarootlabs.trembita._
 import com.datarootlabs.trembita.fsm._
+import com.datarootlabs.trembita.utils._
 import InitialState._
 import FSM._
 import scala.util.Random
@@ -14,39 +15,23 @@ object Main {
 
   def main(args: Array[String]): Unit = {
     val pipeline: DataPipeline[Int] = DataPipeline.from(5 to 10)
-    val withDoorState = pipeline.mapWithState[DoorState, Int](initial = Pure(Opened), result = Result.withState)(_
-      .when(Opened) {
-        case i if i % 2 == 0 ⇒ (Closed, i + 1)
-        case i               ⇒ (Opened, i * 2 + 30)
-      }
-      .when(Closed) {
-        case i if i % 3 == 0 ⇒ (Opened, i * 2 + 100)
-      }
-      .whenUndefined { (_, i) ⇒ (Closed, i + 1050) }
-    )
-
-    val result: String = withDoorState.force.mkString("; ")
-    println("Map with state:")
-    println(result)
-    println("--------------------------------------")
-
-    val withState2 = pipeline.flatMapWithState[DoorState, Int](
-      initial = FromFirstElement((i: Int) ⇒ if (i == 1) Closed else Opened),
-      result = Result.ignoreState
+    val withDoorState = pipeline.mapWithState[DoorState, Map[DoorState, Int], Int](
+      initial = Pure(FSM.State(Opened, Map.empty)),
+      result = Result.withState
     )(_
       .when(Opened) {
-        case i if i % 2 == 0 ⇒ (Closed, 1 to (i + 1) map (_ + 100))
-        case i               ⇒ (Opened, Random.shuffle(1 to i).map(i ⇒ i * i + 2000))
+        case i if i % 2 == 0 ⇒ _.goto(Closed).modify(_.modify(Opened, default = 1)(_ + 1)).using(_ (Opened) + i)
+        case i               ⇒ _.stay → (i * 2)
       }
       .when(Closed) {
-        case i if i % 5 == 0 ⇒ (Opened, List(i - 50))
+        case i if i % 3 == 0 ⇒ _.goto(Opened).modify(_.modify(Closed, default = 1)(_ + 1)) → (i * 2)
       }
-      .whenUndefined { (s, i) ⇒ (s, List(i + 1997)) }
+      .whenUndefined { i ⇒ _.goto(Closed).change(Map.empty) → (i * 2) }
     )
 
-    val result2: String = withState2.force.mkString(";\n")
-    println("Flat map with state:")
-    println(result2)
+    val result: String = withDoorState.force.mkString(" ~>\n")
+    println("Map with state:")
+    println(result)
     println("--------------------------------------")
   }
 }
