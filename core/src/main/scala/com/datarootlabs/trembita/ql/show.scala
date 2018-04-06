@@ -129,8 +129,8 @@ trait show {
 object show extends show {
   implicit def showTagged[A, U]: Show[A ## U] = macro showTaggedImpl[A, U]
 
-  implicit def showAggFuncResult[A: Show, Comb]: Show[AggFunc.Result[A, Comb]] = new Show[AggFunc.Result[A, Comb]] {
-    override def show(t: AggFunc.Result[A, Comb]): String = t.result.show
+  implicit def showAggFuncResult[In, A: Show, Comb]: Show[AggFunc.Result[In, A, Comb]] = new Show[AggFunc.Result[In, A, Comb]] {
+    override def show(t: AggFunc.Result[In, A, Comb]): String = t.result.show
   }
 
   implicit object ShowGNil extends Show[GNil] {

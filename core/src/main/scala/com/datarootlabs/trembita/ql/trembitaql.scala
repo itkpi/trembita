@@ -19,7 +19,7 @@ import QueryBuilder._
 protected[trembita]
 trait trembitaql[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes] {
   def apply(records: Seq[A], queryF: Empty[A] ⇒ Query[A, G, T, R])
-  : ArbitraryGroupResult[A, G, AggFunc.Result[R, Query[A, G, T, R]#Comb]]
+  : ArbitraryGroupResult[A, G, AggFunc.Result[T, R, Query[A, G, T, R]#Comb]]
 
   //
   //  def pipelineImpl[
@@ -118,7 +118,7 @@ object trembitaql {
         c.Expr[trembitaql[A, G, T, R]](q"""
           new trembitaql[$A, $G, $T, $R] {
             def apply(records: Seq[$A], qb: Empty[$A] ⇒ Query[$A, $G, $T, $R])
-            : ArbitraryGroupResult[$A, $G, AggFunc.Result[$R, Query[$A, $G, $T, $R]#Comb]] = {
+            : ArbitraryGroupResult[$A, $G, AggFunc.Result[$T, $R, Query[$A, $G, $T, $R]#Comb]] = {
                val query: Query[$A, $G, $T,$R] = qb(new Empty[$A])
                import query._
                (records.filter(filterF).map(a ⇒ getG(a) → a).groupBy(_._1(0)).flatMap { case (key, group_0) ⇒
@@ -133,7 +133,7 @@ object trembitaql {
                    ),
                    multiple:_*
                  )
-               }).asInstanceOf[ArbitraryGroupResult[$A, $G, AggFunc.Result[$R, Query[$A, $G, $T, $R]#Comb]]]
+               }).asInstanceOf[ArbitraryGroupResult[$A, $G, AggFunc.Result[$T, $R, Query[$A, $G, $T, $R]#Comb]]]
             }
           }""")
     }

@@ -6,15 +6,9 @@ import cats.Monoid
 import com.datarootlabs.trembita.ql.GroupingCriteria._
 
 
-sealed trait ArbitraryGroupResult[-A, K <: GroupingCriteria, +T] {
-  type SubGroup <: ArbitraryGroupResult[A, K#Tail, T]
-  def subGroup: SubGroup
+sealed trait ArbitraryGroupResult[-A, +K <: GroupingCriteria, +T] {
   def key: K#Key
   def totals: T
-  def sameKey[
-  AA <: A,
-  TT >: T
-  ](that: ArbitraryGroupResult[AA, K, TT]): Boolean = this.key == that.key
 }
 
 object ArbitraryGroupResult {
@@ -42,9 +36,8 @@ object ArbitraryGroupResult {
   A,
   K <: GroupingCriteria,
   T
-  ](totals: T, records: ArbitraryGroupResult[A, K, T]*) extends ArbitraryGroupResult[A, K, T] {
+  ](totals: T, records: ArbitraryGroupResult[A, K, T]*) extends ArbitraryGroupResult[A, GNil, T] {
     type SubGroup = ArbitraryGroupResult[A, K#Tail, T]
-    def subGroup: SubGroup = ???
-    def key: K#Key = ???
+    def key: GNil#Key = GNil
   }
 }

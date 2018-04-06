@@ -5,7 +5,9 @@ import cats._
 import cats.implicits._
 import algebra.ring._
 import shapeless._
+
 import scala.annotation.implicitNotFound
+import scala.reflect.macros.blackbox
 
 
 case class ##[A, U](value: A) {
@@ -25,6 +27,10 @@ sealed trait GroupingCriteria extends Product with Serializable {
 }
 
 object GroupingCriteria {
+  implicit object GNilEq extends Eq[GNil] {
+    override def eqv(x: GNil, y: GNil): Boolean = true
+  }
+
   sealed trait GNil extends GroupingCriteria {
     type Key = GNil
     type Tail = GNil
@@ -33,13 +39,6 @@ object GroupingCriteria {
     def &::[GH <: ##[_, _]](head: GH): GH &:: GNil = GroupingCriteria.&::(head, this)
   }
   case object GNil extends GNil
-
-  //  case class MultipleKeys[K <: GroupingCriteria](keys: Seq[K]) extends GroupingCriteria {
-  //    type Key = Seq[K#Key]
-  //    type Tail = MultipleKeys[K#Tail]
-  //    val key: Key = keys.map(_.key)
-  //    def tail: Tail = MultipleKeys(keys.map(_.tail))
-  //  }
 
   case class &::[GH <: ##[_, _], GT <: GroupingCriteria](first: GH, rest: GT) extends GroupingCriteria {
     type Key = GH
@@ -78,12 +77,12 @@ protected[trembita] trait AggFunc[-A, +Out] {
   def empty: Comb
   def add(comb: Comb, value: A): Comb
   def combine(comb1: Comb, comb2: Comb): Comb
-  def extract[O >: Out](comb: Comb): AggFunc.Result[O, Comb]
+  def extract[AA <: A, O >: Out](comb: Comb): AggFunc.Result[AA, O, Comb]
 
-  def foldLeft[O >: Out](vs: Seq[A]): AggFunc.Result[O, Comb] = extract(vs.foldLeft(empty)(add))
+  def foldLeft[AA <: A, O >: Out](vs: Seq[A]): AggFunc.Result[AA, O, Comb] = extract(vs.foldLeft(empty)(add))
 }
 object AggFunc {
-  case class Result[A, +Comb](result: A, combiner: Comb)
+  case class Result[-In, Out, +Comb](result: Out, combiner: Comb)
   def apply[A, Out](implicit F: AggFunc[A, Out]): AggFunc[A, Out] = F
 
   sealed trait Type

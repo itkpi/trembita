@@ -1,5 +1,6 @@
 package com.datarootlabs.trembita
 
+import cats.Monoid
 import cats.data.Kleisli
 
 import scala.language.higherKinds
@@ -24,6 +25,7 @@ trait DataPipeline[+A] {
   def force: Iterable[A]
   protected[trembita] def runM[B >: A, M[_]](implicit M: Sync[M]): M[Iterable[B]] = M.delay(force)
 
+  def reduce[B >: A](implicit M: Monoid[B]):B = M.combineAll(this.force)
   def reduce[B >: A](f: (B, B) => B): B = reduceOpt(f).get
   def reduceOpt[B >: A](f: (B, B) => B): Option[B] = foldLeft(Option.empty[B]) {
     case (None, b) => Some(b)

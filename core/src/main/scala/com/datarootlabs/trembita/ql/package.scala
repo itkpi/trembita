@@ -23,7 +23,7 @@ import com.datarootlabs.trembita.parallel._
 import com.datarootlabs.trembita.internal._
 
 
-package object ql {
+package object ql extends aggregationInstances {
   type GroupedLazyListWithTotals[A, K, T <: HList, LzyImpl[_] <: DataPipeline[_]] =
     LzyImpl[GroupWithTotalResult[K, T, A]]
 
@@ -194,8 +194,6 @@ package object ql {
     def as[T]: A ## T = new ##[A, T](self)
   }
 
-  import AggDecl._, GroupingCriteria._
-
 
   implicit class GroupingCriteriaOps[G <: GroupingCriteria](val self: G) extends AnyVal {
     def &::[GH <: ##[_, _]](head: GH): GH &:: G = GroupingCriteria.&::(head, self)
@@ -222,7 +220,20 @@ package object ql {
   implicit class TrembitaQL[A](val self: Seq[A]) extends AnyVal {
     def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes]
     (queryF: Empty[A] ⇒ Query[A, G, T, R])
-    (implicit trembitaql: trembitaql[A, G, T, R]): ArbitraryGroupResult[A, G, AggFunc.Result[R, Query[A, G, T, R]#Comb]] =
+    (implicit trembitaql: trembitaql[A, G, T, R]): ArbitraryGroupResult[A, G, AggFunc.Result[T, R, Query[A, G, T, R]#Comb]] =
       trembitaql(self, queryF)
   }
+
+  implicit class TrembitaQLForPipeline[A](val self: DataPipeline[A]) extends AnyVal {
+    def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes]
+    (queryF: Empty[A] ⇒ Query[A, G, T, R])(implicit trembitaql: trembitaql[A, G, T, R])
+    : DataPipeline[ArbitraryGroupResult[A, G, AggFunc.Result[T, R, Query[A, G, T, R]#Comb]]] = DataPipeline.from({
+      val forced = self.force
+      val result = trembitaql(forced.toSeq, queryF)
+      Seq(result)
+    })
+  }
+
+  implicit def hListMonoid[K <: HList]: Monoid[K] = macro hListMonoidImpl[K]
+  implicit def arbitraryGroupResultMonoid[A, K <: GroupingCriteria, T]: Monoid[ArbitraryGroupResult[A, K, T]] = macro arbitraryGroupResultMonoidImpl[A, K, T]
 }
