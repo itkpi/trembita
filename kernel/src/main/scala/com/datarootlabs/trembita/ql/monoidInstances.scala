@@ -3,13 +3,19 @@ package com.datarootlabs.trembita.ql
 import scala.language.higherKinds
 import cats._
 import cats.implicits._
-import ArbitraryGroupResult._
+import QueryResult._
 import GroupingCriteria._
 import cats.data.NonEmptyList
 import com.datarootlabs.trembita.utils._
 
 
 trait monoidInstances {
+  /**
+    * [[Monoid]] for some [[AggFunc.Result]] of [[A]]
+    * producing [[R]] with combiner [[Comb]]
+    *
+    * @param AggF - aggregation function for the following types
+    **/
   implicit def aggResMonoid[A, R, Comb](implicit AggF: AggFunc[A, R, Comb]): Monoid[AggFunc.Result[A, R, Comb]] =
     new Monoid[AggFunc.Result[A, R, Comb]] {
       def empty: AggFunc.Result[A, R, Comb] = AggF.extract(AggF.empty)
@@ -21,8 +27,15 @@ trait monoidInstances {
         ))
     }
 
+  /**
+    * A [[Semigroup]] for [[~**]]
+    * that merges QueryResults with the same key
+    *
+    * @param grSemi  - a semigroup for QueryResult [[A]], [[G]], [[T]]
+    * @param tMonoid - [[Monoid]] for [[T]]
+    **/
   implicit def `~**-Semi`[A, G <: GroupingCriteria, T]
-  (implicit grSemi: Semigroup[ArbitraryGroupResult[A, G, T]], tMonoid: Monoid[T]): Semigroup[~**[A, G, T]] =
+  (implicit grSemi: Semigroup[QueryResult[A, G, T]], tMonoid: Monoid[T]): Semigroup[~**[A, G, T]] =
     new Semigroup[~**[A, G, T]] {
       def combine(
                    x: ~**[A, G, T],
@@ -39,20 +52,31 @@ trait monoidInstances {
       }
     }
 
+  /** Same to [[List]] [[Monoid]] */
   implicit def `##@-Monoid`[A]: Monoid[##@[A]] = new Monoid[##@[A]] {
     override def empty: ##@[A] = ##@(Nil)
     override def combine(x: ##@[A], y: ##@[A]): ##@[A] = ##@(x.records ++ y.records)
   }
 
-  implicit def `##@-Monoid2`[A, T]: Monoid[ArbitraryGroupResult[A, GNil, T]] =
-    `##@-Monoid`[A].asInstanceOf[Monoid[ArbitraryGroupResult[A, GNil, T]]]
+  /** A workaround for [[Monoid]] invariance */
+  implicit def `##@-Monoid2`[A, T]: Monoid[QueryResult[A, GNil, T]] =
+    `##@-Monoid`[A].asInstanceOf[Monoid[QueryResult[A, GNil, T]]]
 
-  implicit def ArbGroupResultMonoid[
+  /**
+    * Monoid for some [[QueryResult]]
+    * with records [[A]]
+    * grouped by [[GH]] & [[GT]]
+    * with aggregations [[T]]
+    *
+    * @param subResMonoid - monoid for sub query result
+    * @param tMonoid      - [[Monoid]] for [[T]]
+    **/
+  implicit def QueryResultMonoid[
   A,
-  GH <: ##[_, _],
+  GH <: :@[_, _],
   GT <: GroupingCriteria,
-  T](implicit subGroupMonoid: Monoid[ArbitraryGroupResult[A, GT, T]],
-     tMonoid: Monoid[T]): Monoid[ArbitraryGroupResult[A, GH &:: GT, T]] = new Monoid[ArbitraryGroupResult[A, GH &:: GT, T]] {
+  T](implicit subResMonoid: Monoid[QueryResult[A, GT, T]],
+     tMonoid: Monoid[T]): Monoid[QueryResult[A, GH &:: GT, T]] = new Monoid[QueryResult[A, GH &:: GT, T]] {
 
     private val mulSemi: Semigroup[~**[A, GH &:: GT, T]] = `~**-Semi`[A, GH &:: GT, T](this, tMonoid)
 
@@ -66,14 +90,14 @@ trait monoidInstances {
       ~**(newTotals, merged.head, NonEmptyList.fromListUnsafe(merged.tail))
     }
 
-    def empty: ArbitraryGroupResult[A, GH &:: GT, T] = Empty[A, GH &:: GT, T](tMonoid.empty)
-    def combine(x: ArbitraryGroupResult[A, GH &:: GT, T],
-                y: ArbitraryGroupResult[A, GH &:: GT, T]): ArbitraryGroupResult[A, GH &:: GT, T] =
+    def empty: QueryResult[A, GH &:: GT, T] = Empty[A, GH &:: GT, T](tMonoid.empty)
+    def combine(x: QueryResult[A, GH &:: GT, T],
+                y: QueryResult[A, GH &:: GT, T]): QueryResult[A, GH &:: GT, T] =
       (x, y) match {
         case (Empty(_), _)                                                                  ⇒ y
         case (_, Empty(_))                                                                  ⇒ x
         case (xcons: ~::[A, GH, GT, T], ycons: ~::[A, GH, GT, T]) if xcons.key == ycons.key ⇒
-          ~::(xcons.key, tMonoid.combine(x.totals, y.totals), subGroupMonoid.combine(xcons.subGroup, ycons.subGroup))
+          ~::(xcons.key, tMonoid.combine(x.totals, y.totals), subResMonoid.combine(xcons.subResult, ycons.subResult))
 
         case (xmul: ~**[A, GH &:: GT, T], ycons: ~::[A, GH, GT, T])   ⇒ add(xmul, ycons)
         case (xcons: ~::[A, GH, GT, T], ymul: ~**[A, GH &:: GT, T])   ⇒ add(ymul, xcons)

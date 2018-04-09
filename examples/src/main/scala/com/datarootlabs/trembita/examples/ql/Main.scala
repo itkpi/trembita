@@ -36,6 +36,8 @@ object Main extends algebra.instances.AllInstances {
       )
       .having(_.get[count] > 7))
 
+    showGroupCriteriaCons[(Boolean :@ `divisible by 2`), GNil]
+
     println("First one:")
     println(result.map(_.pretty()).eval.mkString("\n---\n"))
     println("-------------------------")

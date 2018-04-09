@@ -6,9 +6,13 @@ import cats.Show
 import cats.implicits._
 import GroupingCriteria._
 import AggRes._
-import ArbitraryGroupResult._
+import QueryResult._
 
 
+/**
+  * Like [[Show]] for complicated data types
+  * like [[QueryResult]] or Json
+  * */
 trait ShowPretty[A] {
   def spaces(count: Int): String = Seq.fill(count)(" ").mkString
   def appendPrint(a: A)(currSpaces: Int, requiredSpaces: Int): String
@@ -19,15 +23,15 @@ object ShowPretty {
 }
 
 trait show {
-  def showTaggedImpl[A: c.WeakTypeTag, U: c.WeakTypeTag](c: blackbox.Context): c.Expr[Show[A ## U]] = {
+  def showTaggedImpl[A: c.WeakTypeTag, U: c.WeakTypeTag](c: blackbox.Context): c.Expr[Show[A :@ U]] = {
     import c.universe._
     val A = weakTypeOf[A].dealias
     val u = weakTypeOf[U]
     val U = u.dealias
     val uName = u.typeSymbol.toString.dropWhile(_ != ' ').tail
-    c.Expr[Show[A ## U]](q"""
-      new cats.Show[$A ## $U]{
-        def show(v: $A ## $U): String = $uName + ": " + v.value
+    c.Expr[Show[A :@ U]](q"""
+      new cats.Show[$A :@ $U]{
+        def show(v: $A :@ $U): String = $uName + ": " + v.value
       }
     """)
   }
@@ -44,11 +48,11 @@ trait show {
   }
   def `showPretty-~::`[
   A: Show,
-  KH <: ##[_, _],
+  KH <: :@[_, _],
   KT <: GroupingCriteria : Show,
   T: Show
   ](
-     implicit subGrShowPretty: ShowPretty[ArbitraryGroupResult[A, KT, T]],
+     implicit subGrShowPretty: ShowPretty[QueryResult[A, KT, T]],
      keyShow: Show[Key[KH]]
    ): ShowPretty[~::[A, KH, KT, T]] = new ShowPretty[~::[A, KH, KT, T]] {
     def appendPrint(a: ~::[A, KH, KT, T])(currSpaces: Int, requiredSpaces: Int): String = {
@@ -59,8 +63,8 @@ trait show {
       s"""|~::(
           |${totalSpaces}key = ${key.show},
           |${totalSpaces}totals = ${totals.show}
-          |${totalSpaces}subGroup = ${
-        subGrShowPretty.appendPrint(subGroup)(
+          |${totalSpaces}subResult = ${
+        subGrShowPretty.appendPrint(subResult)(
           currSpaces + requiredSpaces,
           requiredSpaces)
       }\n$defaultSpace)""".stripMargin
@@ -70,7 +74,7 @@ trait show {
   A: Show,
   K <: GroupingCriteria,
   T: Show
-  ](grShowPretty: ShowPretty[ArbitraryGroupResult[A, K, T]]
+  ](grShowPretty: ShowPretty[QueryResult[A, K, T]]
    ): ShowPretty[~**[A, K, T]] = new ShowPretty[~**[A, K, T]] {
     def appendPrint(a: ~**[A, K, T])(currSpaces: Int, requiredSpaces: Int): String = {
       import a._
@@ -93,7 +97,7 @@ trait show {
   A: c.WeakTypeTag,
   K <: GroupingCriteria : c.WeakTypeTag,
   T: c.WeakTypeTag
-  ](c: blackbox.Context): c.Expr[ShowPretty[ArbitraryGroupResult[A, K, T]]] = {
+  ](c: blackbox.Context): c.Expr[ShowPretty[QueryResult[A, K, T]]] = {
     import c.universe._
     val A = weakTypeOf[A].dealias
     val K = weakTypeOf[K].dealias
@@ -106,11 +110,11 @@ trait show {
         val KH = kHx.dealias
         val KT = kTx.dealias
         q"""
-          import ArbitraryGroupResult._
-          new ShowPretty[ArbitraryGroupResult[$A, $K, $T]] {
+          import QueryResult._
+          new ShowPretty[QueryResult[$A, $K, $T]] {
             private val prettyCons   = `showPretty-~::`[$A, $KH, $KT, $T]
             private val prettyMul    = `showPretty-~**`[$A, $K, $T](this)
-            override def appendPrint(a: ArbitraryGroupResult[$A, $K, $T])(currSpaces: Int, requiredSpaces: Int): String = {
+            override def appendPrint(a: QueryResult[$A, $K, $T])(currSpaces: Int, requiredSpaces: Int): String = {
               a match {
                  case _: Empty[_, _, _]  => "∅"
                  case cons: ~::[_,_,_,_] => prettyCons.appendPrint(cons.asInstanceOf[~::[$A, $KH, $KT, $T]])(
@@ -124,12 +128,12 @@ trait show {
           }
         """
     }
-    c.Expr[ShowPretty[ArbitraryGroupResult[A, K, T]]](q"$expr.asInstanceOf[ShowPretty[ArbitraryGroupResult[$A, $K, $T]]]")
+    c.Expr[ShowPretty[QueryResult[A, K, T]]](q"$expr.asInstanceOf[ShowPretty[QueryResult[$A, $K, $T]]]")
   }
 }
 
 object show extends show {
-  implicit def showTagged[A, U]: Show[A ## U] = macro showTaggedImpl[A, U]
+  implicit def showTagged[A, U]: Show[A :@ U] = macro showTaggedImpl[A, U]
 
   implicit def showAggFuncResult[In, A: Show, Comb]: Show[AggFunc.Result[In, A, Comb]] = new Show[AggFunc.Result[In, A, Comb]] {
     override def show(t: AggFunc.Result[In, A, Comb]): String = t.result.show
@@ -147,22 +151,22 @@ object show extends show {
     def show(t: GNil): String = "∅"
   }
   implicit def showGroupCriteriaCons[
-  GH <: ##[_, _] : Show,
+  GH <: :@[_, _] : Show,
   GT <: GroupingCriteria : Show
   ]: Show[GH &:: GT] = new Show[GH &:: GT] {
     override def show(t: GH &:: GT): String = {
-      val tailStr = t.rest match {
+      val tailStr = t.tail match {
         case GNil  ⇒ ""
         case other ⇒ s" & ${other.show}"
       }
-      s"${t.first.show}$tailStr"
+      s"${t.head.show}$tailStr"
     }
   }
   implicit object ShowRNil extends Show[RNil] {
     override def show(t: RNil): String = "∅"
   }
   implicit def showAggRes[
-  AgH <: ##[_, _] : Show,
+  AgH <: :@[_, _] : Show,
   AgT <: AggRes : Show
   ]: Show[AgH *:: AgT] = new Show[AgH *:: AgT] {
     override def show(t: AgH *:: AgT): String = {
@@ -176,7 +180,7 @@ object show extends show {
   implicit def showPrettyArbGroupResult[
   A,
   K <: GroupingCriteria,
-  T]: ShowPretty[ArbitraryGroupResult[A, K, T]] = macro showPrettyArbGroupResultImpl[A, K, T]
+  T]: ShowPretty[QueryResult[A, K, T]] = macro showPrettyArbGroupResultImpl[A, K, T]
 
   implicit def prettySeq[A](implicit S: ShowPretty[A]): ShowPretty[Seq[A]] = new ShowPretty[Seq[A]] {
     override def appendPrint(a: Seq[A])(currSpaces: Int, requiredSpaces: Int): String = {

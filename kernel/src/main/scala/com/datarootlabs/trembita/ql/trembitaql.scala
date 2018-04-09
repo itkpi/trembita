@@ -5,7 +5,7 @@ import scala.annotation.tailrec
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox
 import com.datarootlabs.trembita._
-import ArbitraryGroupResult._
+import QueryResult._
 import GroupingCriteria._
 import AggDecl._
 import cats.implicits._
@@ -13,13 +13,30 @@ import cats.data.NonEmptyList
 import QueryBuilder._
 
 
+/**
+  * Trembita QL itself.
+  * Produces a [[QueryResult]]
+  * from records of type [[A]]
+  * using provided query
+  **/
 protected[trembita]
 trait trembitaql[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb] {
   def apply(records: Seq[A], queryF: QueryBuilder.Empty[A] ⇒ Query[A, G, T, R, Comb])
-  : ArbitraryGroupResult[A, G, AggFunc.Result[T, R, Comb]]
+  : QueryResult[A, G, AggFunc.Result[T, R, Comb]]
 }
 
+/**
+  * Macro implementation
+  **/
 object trembitaql {
+  /**
+    * @tparam A    - type of the record
+    * @tparam G    - grouping criteria type
+    * @tparam T    - aggregation declaration type
+    * @tparam R    - aggregation result type
+    * @tparam Comb - type of the combiner
+    * @return - generated code for query execution
+    **/
   def impl[
   A: c.WeakTypeTag,
   G <: GroupingCriteria : c.WeakTypeTag,
@@ -46,36 +63,59 @@ object trembitaql {
     val allCriterias = criteriasTypes(Nil, G)
     val offset = allCriterias.size - 1
 
-    val Result = tq"ArbitraryGroupResult[$A, $G, AggFunc.Result[$T, $R, $Comb]]"
+    val Result = tq"QueryResult[$A, $G, AggFunc.Result[$T, $R, $Comb]]"
 
+    /**
+      * Recursively generates code
+      * that groups some records of [[A]]
+      * doing defined aggregations
+      **/
     def groupByRec(step: Int, criteriasLeft: List[(Type, Type)]): c.Tree = {
       val idx: Int = step - 1
       val grCurr = TermName(s"group_$idx")
       val resCurr = TermName(s"res_$idx")
       val totalsCurr = TermName(s"totals_$idx")
       criteriasLeft match {
+        case Nil                           ⇒ throw new Exception(s"""
+          |Unexpected end of criterias at step $step in trembitaql macro implementation
+          |{
+          |  A                := $A
+          |  GroupingCriteria := $G
+          |  AggDecl          := $T
+          |  AggRes           := $R
+          |  Comb             := $Comb
+          |}
+          |If you're sure that you're doing everything right
+          |please open an issue here: https://github.com/dataroot/trembita
+        """.stripMargin)
         case (currCriteria, `gnil`) :: Nil ⇒ q"""
          val $resCurr = $grCurr.groupBy(_._1($idx)).mapValues { vs ⇒
            val totals = vs.foldLeft(aggF.empty) { case (acc, (_, a)) => aggF.add(acc, getT(a)) }
-           (totals, vs.map(_._2))
+           (totals, sortedVs(vs.map(_._2).toList))
          }.toList match {
            case Nil => Empty[$A, $currCriteria &:: $gnil, AggFunc.Result[$T, $R, $Comb]](aggF.extract(aggF.empty))
            case Seq((key, (totals, vs))) => ~::[$A, $currCriteria, $gnil, AggFunc.Result[$T, $R, $Comb]](
              Key.Single(key),
              aggF.extract(totals),
-             ##@(vs.toList)
+             ##@(vs)
            )
            case multiple@((key1, (totals1, vs1)) :: (key2, (totals2, vs2)) :: rest) =>
+             var sortedMultiple = (
+               ~::[$A, $currCriteria, $gnil, AggFunc.Result[$T, $R, $Comb]](
+                 Key.Single(key1), aggF.extract(totals1), ##@(vs1.toList)
+               ) :: NonEmptyList(
+                 ~::[$A, $currCriteria, $gnil, AggFunc.Result[$T, $R, $Comb]](
+                   Key.Single(key2), aggF.extract(totals2), ##@(vs2.toList)
+                 ), rest.map { case (key, (totals, vs)) =>
+                     ~::[$A, $currCriteria, $gnil, AggFunc.Result[$T, $R, $Comb]](Key.Single(key), aggF.extract(totals), ##@(vs.toList))
+                 }).toList
+             )
              ~**[$A, $currCriteria &:: $gnil, AggFunc.Result[$T, $R, $Comb]](
                aggF.extract(
                  multiple.foldLeft(aggF.empty) { case (acc, gr) => aggF.combine(acc, gr._2._1) }
                ),
-               ~::[$A, $currCriteria, $gnil, AggFunc.Result[$T, $R, $Comb]](Key.Single(key1), aggF.extract(totals1), ##@(vs1.toList)),
-               NonEmptyList(
-                 ~::[$A, $currCriteria, $gnil, AggFunc.Result[$T, $R, $Comb]](Key.Single(key2), aggF.extract(totals2), ##@(vs2.toList)),
-                 rest.map { case (key, (totals, vs)) =>
-                   ~::[$A, $currCriteria, $gnil, AggFunc.Result[$T, $R, $Comb]](Key.Single(key), aggF.extract(totals), ##@(vs.toList))
-                 })
+               sortedMultiple.head,
+               NonEmptyList.fromListUnsafe(sortedMultiple.tail)
              )
          }
          """
@@ -94,8 +134,13 @@ object trembitaql {
              case Nil => Empty[$A, $currGH &:: $currGT, AggFunc.Result[$T, $R, $Comb]](aggF.extract(aggF.empty))
              case single :: Nil => single
              case multiple@(gr1 :: gr2 :: rest) =>
+               val sortedMultiple = orderCons(gr1 :: NonEmptyList(gr2, rest).toList)
                val totals = multiple.foldLeft(aggF.empty) { case (acc, gr) => aggF.combine(acc, gr.totals.combiner) }
-               ~**[$A, $currGH &:: $currGT, AggFunc.Result[$T, $R, $Comb]]( aggF.extract(totals), gr1, NonEmptyList(gr2, rest))
+               ~**[$A, $currGH &:: $currGT, AggFunc.Result[$T, $R, $Comb]](
+                 aggF.extract(totals),
+                 sortedMultiple.head,
+                 NonEmptyList.fromListUnsafe(sortedMultiple.tail)
+               )
            }
          """
       }
@@ -104,13 +149,30 @@ object trembitaql {
     G.typeArgs match {
       case List(gHx, gTx) ⇒
         c.Expr[trembitaql[A, G, T, R, Comb]](q"""
-          import QueryBuilder._, ArbitraryGroupResult._, cats.data.NonEmptyList
+          import QueryBuilder._, QueryResult._, cats.data.NonEmptyList
           new trembitaql[$A, $G, $T, $R, $Comb] {
             def apply(records: Seq[$A], qb: QueryBuilder.Empty[$A] ⇒ Query[$A, $G, $T, $R, $Comb])
-            : ArbitraryGroupResult[$A, $G, AggFunc.Result[$T, $R, $Comb]] = {
+            : QueryResult[$A, $G, AggFunc.Result[$T, $R, $Comb]] = {
                val query: Query[$A, $G, $T, $R, $Comb] = qb(new QueryBuilder.Empty[$A])
                import query._
-               val group_0 = records.filter(filterF).map(a ⇒ getG(a) → a)
+
+               def sortedVs(vs: List[$A]): List[$A] = orderRecords match {
+                 case None => vs
+                 case Some(orderRecF) => vs.sorted(orderRecF)
+               }
+
+               def orderCons[GH <: :@[_, _], GT <: GroupingCriteria]
+               (grs: List[~::[$A, GH, GT, AggFunc.Result[$T, $R, $Comb]]])
+               : List[~::[$A, GH, GT, AggFunc.Result[$T, $R, $Comb]]] = orderResults match {
+                 case None => grs
+                 case Some(orderResF) => grs.sortBy(_.totals.result)(orderResF)
+               }
+
+               val group_0 = orderCriterias match {
+                 case None => records.filter(filterF).map(a ⇒ getG(a) → a)
+                 case Some(orderCrF) => records.filter(filterF).map(a ⇒ getG(a) → a).sortBy(_._1)(orderCrF)
+               }
+
                ${groupByRec(1, allCriterias)}
                Some(res_0)
                  .filter(gr => havingF(gr.totals.result))
