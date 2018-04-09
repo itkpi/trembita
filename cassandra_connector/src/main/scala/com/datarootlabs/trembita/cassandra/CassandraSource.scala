@@ -11,15 +11,15 @@ import scala.concurrent.ExecutionContext
 
 protected[trembita]
 class CassandraSource(session: Session, statement: Statement) extends SeqSource[Row] {
-  override def force: Iterable[Row] = this.iterator.toIterable
-  override def par(implicit ec: ExecutionContext): ParDataPipeline[Row] = new ParSource[Row](this.force)
+  override def eval: Iterable[Row] = this.iterator.toIterable
+  override def par(implicit ec: ExecutionContext): ParDataPipeline[Row] = new ParSource[Row](this.eval)
   override def iterator: Iterator[Row] = {
     val result = session.execute(statement)
     result.iterator().asScala
   }
 
-  override def :+[BB >: Row](elem: BB): DataPipeline[BB] = new StrictSource(this.force ++ Some(elem))
-  override def ++[BB >: Row](that: DataPipeline[BB]): DataPipeline[BB] = new StrictSource(this.force ++ that.force)
+  override def :+[BB >: Row](elem: BB): DataPipeline[BB] = new StrictSource(this.eval ++ Some(elem))
+  override def ++[BB >: Row](that: DataPipeline[BB]): DataPipeline[BB] = new StrictSource(this.eval ++ that.eval)
 }
 
 object CassandraSource {

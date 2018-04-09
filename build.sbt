@@ -36,7 +36,7 @@ def sonatypeProject(id: String, base: File) = Project(id, base)
     run in Jmh := (run in Jmh).dependsOn(Keys.compile in Jmh).evaluated
   )
 
-lazy val core = sonatypeProject(id = "trembita-core", base = file("./core"))
+lazy val kernel = sonatypeProject(id = "trembita-kernel", base = file("./kernel"))
   .settings(
     libraryDependencies ++= {
       val testV = "3.0.4"
@@ -51,7 +51,7 @@ lazy val core = sonatypeProject(id = "trembita-core", base = file("./core"))
   )
 
 lazy val cassandra_connector = sonatypeProject(id = "trembita-cassandra_connector", base = file("./cassandra_connector"))
-  .dependsOn(core)
+  .dependsOn(kernel)
   .settings(
     libraryDependencies ++= {
       Seq(
@@ -72,7 +72,7 @@ lazy val cassandra_connector_phantom = sonatypeProject(id = "trembita-cassandra_
   )
 
 lazy val slf4j = sonatypeProject(id = "trembita-slf4j", base = file("./trembita-slf4j"))
-  .dependsOn(core)
+  .dependsOn(kernel)
   .settings(
     libraryDependencies ++= {
       Seq(
@@ -84,7 +84,7 @@ lazy val slf4j = sonatypeProject(id = "trembita-slf4j", base = file("./trembita-
 lazy val distributed_internal = sonatypeProject(
   id = "trembita-distributed_internal",
   base = file("./distributed_internal"))
-  .dependsOn(core, slf4j)
+  .dependsOn(kernel, slf4j)
   .settings(
     libraryDependencies ++= {
       Seq(
@@ -135,7 +135,7 @@ lazy val distributed = sonatypeProject(
   .dependsOn(distributed_internal)
 
 lazy val trembitason = sonatypeProject(id = "trembitason", base = file("./trembitason"))
-  .dependsOn(core)
+  .dependsOn(kernel)
   .settings(
     name := "trembitason",
     version := v,
@@ -153,7 +153,7 @@ lazy val trembitason = sonatypeProject(id = "trembitason", base = file("./trembi
 
 lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
   .dependsOn(
-    core, slf4j, trembitason,
+    kernel, slf4j, trembitason,
     cassandra_connector,
     cassandra_connector_phantom,
     distributed_internal,
@@ -172,7 +172,7 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
 
 lazy val root = Project(id = "trembita", base = file("."))
   .aggregate(
-    core, slf4j,
+    kernel, slf4j,
     cassandra_connector,
     cassandra_connector_phantom,
     distributed_internal,

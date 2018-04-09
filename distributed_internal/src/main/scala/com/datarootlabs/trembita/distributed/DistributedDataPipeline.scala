@@ -11,7 +11,7 @@ import com.datarootlabs.trembita.parallel._
 import com.datarootlabs.trembita.internal._
 
 
-trait DistributedDataPipeline[A] extends BaseDataPipeline[A] with ParDataPipeline[A] with Serializable {
+trait DistributedDataPipeline[A] extends BaseDataPipeline[A] with Serializable {
   def createActor: () => ActorRef
 
   //todo: improve
@@ -24,8 +24,8 @@ trait DistributedDataPipeline[A] extends BaseDataPipeline[A] with ParDataPipelin
     })
 
   //todo: improve
-  override def iterator: Iterator[A] = this.force.iterator
-
+  override def iterator: Iterator[A] = this.eval.iterator
+  override def par(implicit ec: ExecutionContext): ParDataPipeline[A] = new ParSource[A](this.eval)
   override def map[B](f: A => B): DistributedDataPipeline[B]
   override def flatMap[B](f: A => Iterable[B]): DistributedDataPipeline[B]
   override def filter(p: A => Boolean): DistributedDataPipeline[A]

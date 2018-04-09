@@ -17,9 +17,9 @@ class LoggedSource[+A](logger: Logger, source: DataPipeline[A])
   def flatMap[B](f: A => Iterable[B]): DataPipeline[B] = new LoggedSource[B](logger, source.flatMap(f))
   def filter(p: A => Boolean): DataPipeline[A] = new LoggedSource[A](logger, source.filter(p))
   def collect[B](pf: PartialFunction[A, B]): DataPipeline[B] = new LoggedSource[B](logger, source.collect(pf))
-  def force: Iterable[A] = source.force
+  def eval: Iterable[A] = source.eval
   def iterator: Iterator[A] = source.iterator
-  override def par(implicit ec: ExecutionContext): ParDataPipeline[A] = new ParSource[A](this.force)
+  override def par(implicit ec: ExecutionContext): ParDataPipeline[A] = new ParSource[A](this.eval)
   override def mapAsync[B](timeout: FiniteDuration,
                            parallelism: Int = Runtime.getRuntime.availableProcessors())
                           (f: A => Future[B])(implicit ec: ExecutionContext): DataPipeline[B] = {

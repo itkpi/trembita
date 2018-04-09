@@ -25,7 +25,7 @@ object Main extends LazyLogging {
   }
 
   private def tryToCalculcate(list: DistributedDataPipeline[Int]): Unit = try {
-    val result: Iterable[Int] = list.force
+    val result: Iterable[Int] = list.eval
     logger.info(s"Result: ${result.mkString(", ")}")
     StdIn.readLine("Repeat? (press Q for exit)") match {
       case "Q" => sys.exit(1)

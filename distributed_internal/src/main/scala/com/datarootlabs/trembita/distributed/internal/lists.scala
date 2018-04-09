@@ -28,7 +28,7 @@ class DistributedMapDataPipeline[A, B](@transient val createActor: () => ActorRe
   override def collect[C](pf: PartialFunction[B, C]): DistributedDataPipeline[C] =
     new DistributedFlatMapDataPipeline[A, C](createActor)(a => Some(f(a)).collect(pf))
 
-  override def force: Iterable[B] = {
+  override def eval: Iterable[B] = {
     val taskActor: ActorRef = createActor()
     val futureResult: Future[Iterable[B]] = (taskActor ? TransformSource[A, B](_.map(f)))
       .flatMap {
@@ -55,7 +55,7 @@ class DistributedFlatMapDataPipeline[A, B](@transient val createActor: () => Act
   override def filter(p: B => Boolean): DistributedDataPipeline[B] = newFlatMapList(f(_).filter(p))
   override def collect[C](pf: PartialFunction[B, C]): DistributedDataPipeline[C] = newFlatMapList(f(_).collect(pf))
 
-  override def force: Iterable[B] = {
+  override def eval: Iterable[B] = {
     val taskActor: ActorRef = createActor()
     val futureResult: Future[Iterable[B]] = (taskActor ? TransformSource[A, B](_.flatMap(f)))
       .flatMap {
@@ -88,7 +88,7 @@ class DistributedCollectDataPipeline[A, B](@transient val createActor: () => Act
 
   override def collect[C](pf2: PartialFunction[B, C]): DistributedDataPipeline[C] = newCollectList(pf.andThen(pf2))
 
-  override def force: Iterable[B] = {
+  override def eval: Iterable[B] = {
     val taskActor: ActorRef = createActor()
     val futureResult: Future[Iterable[B]] = (taskActor ? TransformSource[A, B](_.collect(pf)))
       .flatMap {
@@ -120,7 +120,7 @@ class DistributedSource[A](@transient system: ActorSystem,
 
   override def collect[B](pf: PartialFunction[A, B]): DistributedDataPipeline[B] = new DistributedCollectDataPipeline[A, B](createActor)(pf)
 
-  override def force: Iterable[A] = source().toVector
+  override def eval: Iterable[A] = source().toVector
   override def iterator: Iterator[A] = source()
 
   override def :+[BB >: A](elem: BB): DataPipeline[BB] =
