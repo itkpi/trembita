@@ -337,7 +337,6 @@ sealed trait circe {
     }
   }
 
-
   def circeEncoderImpl[A: c.WeakTypeTag, K <: GroupingCriteria : c.WeakTypeTag, T: c.WeakTypeTag]
   (c: blackbox.Context): c.Expr[Encoder[QueryResult[A, K, T]]] = {
     import c.universe._
@@ -399,7 +398,7 @@ sealed trait circe {
             import com.datarootlabs.trembita.ql.QueryResult._
 
             new Decoder[QueryResult[$A, $K, $T]] {
-              def apply(c: HCursor): Decoder.Result[QueryResult[$A, $K, $T]] = {
+              private def decodeImpl(c: HCursor): Decoder.Result[QueryResult[$A, $K, $T]] = {
                 val emptyF: Decoder.Result[Empty[$A, $K, $T]] = for {
                   _ <- c.downField("Empty").focus.toRight(
                     DecodingFailure("Looks like QueryResult.Empty but missing 'Empty' field", c.history)
@@ -409,9 +408,17 @@ sealed trait circe {
 
                 val mulF: Decoder.Result[~**[$A, $K, $T]] = for {
                   totals <- c.get[$T]("totals")
-                  NonEmptyList(head, scala.::(h2, tail)) <- c.get[NonEmptyList[QueryResult[$A, $K, $T]]]("records")
-                } yield ~**(totals, head, h2 :: tail)
-
+                  values <- c.downField("records").values.map(_.toList).collect {
+                    case scala.::(head, scala.::(next, tail)) ⇒ (head :: next :: tail).map(json => decodeImpl(json.hcursor))
+                      .foldLeft[Decoder.Result[List[QueryResult[$A, $K, $T]]]](Right(Nil)) {
+                        case (Right(acc), Right(v)) ⇒ Right(v :: acc)
+                        case (err@Left(_), _)       ⇒ err
+                        case (_, err@Left(_))       ⇒ err.asInstanceOf[Decoder.Result[List[QueryResult[$A, $K, $T]]]]
+                      }
+                  }.getOrElse(Left(DecodingFailure("Not a NonEmptyList with at least 2 query results", c.history)))
+                } yield {
+                  ~**(totals, values.head, NonEmptyList.fromListUnsafe(values.tail))
+                }
                 val consF: Decoder.Result[~::[$A, $kH, $kT, $T]] = for {
                   key ← c.get[Key[$kH]]("key")
                   totals ← c.get[$T]("totals")
@@ -429,6 +436,7 @@ sealed trait circe {
                   }
                 }
               }
+              def apply(c: HCursor): Decoder.Result[QueryResult[$A, $K, $T]] = decodeImpl(c)
             }
             """
 
@@ -446,10 +454,6 @@ object circe extends circe {
   : Encoder[TaggedAgg[A, U, AggT]] = macro encodeTaggedAggImpl[A, U, AggT]
   implicit def decodeTaggedAgg[A, U, AggT <: AggFunc.Type]
   : Decoder[TaggedAgg[A, U, AggT]] = macro decodeTaggedAggImpl[A, U, AggT]
-
-  //  implicit def aggregationEncoder[K <: Aggregation]: Encoder[K] = macro AggEncoderImpl[K]
-  //  implicit def groupingCriteriaDecoder[K <: GroupingCriteria]: Decoder[K] = macro grCrDecoderImpl[K]
-  //  implicit def groupingCriteriaEncoder[K <: GroupingCriteria]: Encoder[K] = macro grCrEncoderImpl[K]
 
   implicit def arbitraryGroupResultEncoder[A, K <: GroupingCriteria, T]
   : Encoder[QueryResult[A, K, T]] = macro circeEncoderImpl[A, K, T]

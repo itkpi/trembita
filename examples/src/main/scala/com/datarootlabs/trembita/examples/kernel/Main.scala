@@ -12,7 +12,7 @@ import scala.util.Try
 object Main {
   private val flow = Kleisli[DataPipeline, DataPipeline[String], String](_.par)
     .mapF(_.flatMap(_.split(" ")))
-    .mapF(_.flatMap(numStr ⇒ Try(numStr.toInt).toOption))
+    .map(_.toInt)
     .mapF(_ :+ 2124)
 
   def main(args: Array[String]): Unit = {
@@ -32,7 +32,7 @@ object Main {
     val result: IO[String] = (numbers ++ nums2).sorted.run[IO].map(_.mkString(", "))
     println(s"Result: ${result.unsafeRunSync()}")
 
-    val sum: Int = numbers.foldLeft(0)(_ + _)
+    val sum: Int = numbers.reduce
     println(s"Sum = $sum")
   }
 }
