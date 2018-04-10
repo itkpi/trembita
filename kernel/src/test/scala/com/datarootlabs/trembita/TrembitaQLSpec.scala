@@ -8,6 +8,7 @@ import AggDecl._
 import AggRes._
 import GroupingCriteria._
 import QueryResult._
+import shapeless._
 
 
 class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
@@ -26,18 +27,18 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
     val a: QueryResult[
       Int,
       (Boolean :@ `divisible by 2`) &:: GNil,
-      AggFunc.Result[TaggedAgg[Int, sum, AggFunc.Type.Sum] %:: DNil, (Int :@ sum) *:: RNil, (Int, RNil)]
+      AggFunc.Result[TaggedAgg[Int, sum, AggFunc.Type.Sum] %:: DNil, (Int :@ sum) *:: RNil, Int :: RNil :: HNil]
       ] = ~**(
-      AggFunc.Result(6.as[sum] *:: RNil, (6, RNil)),
+      AggFunc.Result(6.as[sum] *:: RNil, 6 :: RNil :: HNil),
       ~::(
         Key.Single(true.as[`divisible by 2`]),
-        AggFunc.Result(2.as[sum] *:: RNil, (2, RNil)),
+        AggFunc.Result(2.as[sum] *:: RNil, 2 :: RNil :: HNil),
         ##@(List(2))
       ),
       NonEmptyList(
         ~::(
           Key.Single(false.as[`divisible by 2`]),
-          AggFunc.Result(4.as[sum] *:: RNil, (4, RNil)),
+          AggFunc.Result(4.as[sum] *:: RNil, 4 :: RNil :: HNil),
           ##@(List(1, 3))
         ),
         Nil
@@ -45,16 +46,16 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
     )
     val b = a |+| a
     assert(b == ~**(
-      AggFunc.Result(12.as[sum] *:: RNil, (12, RNil)),
+      AggFunc.Result(12.as[sum] *:: RNil, 12 :: RNil :: HNil),
       ~::(
         Key.Single(true.as[`divisible by 2`]),
-        AggFunc.Result(4.as[sum] *:: RNil, (4, RNil)),
+        AggFunc.Result(4.as[sum] *:: RNil, 4 :: RNil :: HNil),
         ##@(List(2, 2))
       ),
       NonEmptyList(
         ~::(
           Key.Single(false.as[`divisible by 2`]),
-          AggFunc.Result(8.as[sum] *:: RNil, (8, RNil)),
+          AggFunc.Result(8.as[sum] *:: RNil, 8 :: RNil :: HNil),
           ##@(List(1, 3, 1, 3))
         ),
         Nil
@@ -64,8 +65,8 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
     val zero: QueryResult[
       Int,
       (Boolean :@ `divisible by 2`) &:: GNil,
-      AggFunc.Result[TaggedAgg[Int, sum, AggFunc.Type.Sum] %:: DNil, (Int :@ sum) *:: RNil, (Int, RNil)]
-      ] = QueryResult.Empty(AggFunc.Result(0.as[sum] *:: RNil, (0, RNil)))
+      AggFunc.Result[TaggedAgg[Int, sum, AggFunc.Type.Sum] %:: DNil, (Int :@ sum) *:: RNil, Int :: RNil :: HNil]
+      ] = QueryResult.Empty(AggFunc.Result(0.as[sum] *:: RNil, 0 :: RNil :: HNil))
 
     val c = a |+| zero
     assert(c == a)
@@ -80,16 +81,16 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
       )
 
     assert(result == ~**(
-      AggFunc.Result(6.as[sum] *:: RNil, (6, RNil)),
+      AggFunc.Result(6.as[sum] *:: RNil, 6 :: RNil :: HNil),
       ~::(
         Key.Single(true.as[`divisible by 2`]),
-        AggFunc.Result(2.as[sum] *:: RNil, (2, RNil)),
+        AggFunc.Result(2.as[sum] *:: RNil, 2 :: RNil :: HNil),
         ##@(List(2))
       ),
       NonEmptyList(
         ~::(
           Key.Single(false.as[`divisible by 2`]),
-          AggFunc.Result(4.as[sum] *:: RNil, (4, RNil)),
+          AggFunc.Result(4.as[sum] *:: RNil, 4 :: RNil :: HNil),
           ##@(List(3, 1))
         ),
         Nil
@@ -107,16 +108,16 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
       )
 
     assert(result == ~**(
-      AggFunc.Result(6.as[sum] *:: RNil, (6, RNil)),
+      AggFunc.Result(6.as[sum] *:: RNil, 6 :: RNil :: HNil),
       ~::(
         Key.Single(true.as[`divisible by 2`]),
-        AggFunc.Result(2.as[sum] *:: RNil, (2, RNil)),
+        AggFunc.Result(2.as[sum] *:: RNil, 2 :: RNil :: HNil),
         ##@(List(2))
       ),
       NonEmptyList(
         ~::(
           Key.Single(false.as[`divisible by 2`]),
-          AggFunc.Result(4.as[sum] *:: RNil, (4, RNil)),
+          AggFunc.Result(4.as[sum] *:: RNil, 4 :: RNil :: HNil),
           ##@(List(1, 3))
         ),
         Nil
@@ -144,30 +145,30 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
     assert(result == ~**(
       AggFunc.Result(
         "8213".as[`all digits`] *:: 3.5.as[`avg number`] *:: 8.as[`max integer`] *:: RNil,
-        (new StringBuilder("8213"), ((14.0, 4), (8, RNil)))
+        new StringBuilder("8213") :: ((14.0 :: 4 :: HNil) :: (8 :: RNil :: HNil) :: HNil) :: HNil
       ),
       ~::(
         Key.Single(false.as[`divisible by 2`]),
         AggFunc.Result(
           "13".as[`all digits`] *:: 2.0.as[`avg number`] *:: 3.as[`max integer`] *:: RNil,
-          (new StringBuilder("13"), ((4.0, 2), (3, RNil)))
+          new StringBuilder("13") :: ((4.0 :: 2 :: HNil) :: (3 :: RNil :: HNil) :: HNil) :: HNil
         ),
         ~**(
           AggFunc.Result(
             "13".as[`all digits`] *:: 2.0.as[`avg number`] *:: 3.as[`max integer`] *:: RNil,
-            (new StringBuilder("13"), ((4.0, 2), (3, RNil)))
+            new StringBuilder("13") :: ((4.0 :: 2 :: HNil) :: (3 :: RNil :: HNil) :: HNil) :: HNil
           ),
           ~::(
             Key.Single(1.as[`reminder of 3`]),
             AggFunc.Result(
               "1".as[`all digits`] *:: 1.0.as[`avg number`] *:: 1.as[`max integer`] *:: RNil,
-              (new StringBuilder("1"), ((1.0, 1), (1, RNil)))
+              new StringBuilder("1") :: ((1.0 :: 1 :: HNil) :: (1 :: RNil :: HNil) :: HNil) :: HNil
             ),
             ~::(
               Key.Single(true.as[positive]),
               AggFunc.Result(
                 "1".as[`all digits`] *:: 1.0.as[`avg number`] *:: 1.as[`max integer`] *:: RNil,
-                (new StringBuilder("1"), ((1.0, 1), (1, RNil)))
+                new StringBuilder("1") :: ((1.0 :: 1 :: HNil) :: (1 :: RNil :: HNil) :: HNil) :: HNil
               ),
               ##@(List(1))
             )
@@ -177,13 +178,13 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
               Key.Single(0.as[`reminder of 3`]),
               AggFunc.Result(
                 "3".as[`all digits`] *:: 3.0.as[`avg number`] *:: 3.as[`max integer`] *:: RNil,
-                (new StringBuilder("3"), ((3.0, 1), (3, RNil)))
+                new StringBuilder("3") :: ((3.0 :: 1 :: HNil) :: (3 :: RNil :: HNil) :: HNil) :: HNil
               ),
               ~::(
                 Key.Single(true.as[positive]),
                 AggFunc.Result(
                   "3".as[`all digits`] *:: 3.0.as[`avg number`] *:: 3.as[`max integer`] *:: RNil,
-                  (new StringBuilder("3"), ((3.0, 1), (3, RNil)))
+                  new StringBuilder("3") :: ((3.0 :: 1 :: HNil) :: (3 :: RNil :: HNil) :: HNil) :: HNil
                 ),
                 ##@(List(3))
               )
@@ -197,19 +198,19 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
           Key.Single(true.as[`divisible by 2`]),
           AggFunc.Result(
             "82".as[`all digits`] *:: 5.0.as[`avg number`] *:: 8.as[`max integer`] *:: RNil,
-            (new StringBuilder("82"), ((10.0, 2), (8, RNil)))
+            new StringBuilder("82") :: ((10.0 :: 2 :: HNil) :: (8 :: RNil :: HNil) :: HNil) :: HNil
           ),
           ~::(
             Key.Single(2.as[`reminder of 3`]),
             AggFunc.Result(
               "82".as[`all digits`] *:: 5.0.as[`avg number`] *:: 8.as[`max integer`] *:: RNil,
-              (new StringBuilder("82"), ((10.0, 2), (8, RNil)))
+              new StringBuilder("82") :: ((10.0 :: 2 :: HNil) :: (8 :: RNil :: HNil) :: HNil) :: HNil
             ),
             ~::(
               Key.Single(true.as[positive]),
               AggFunc.Result(
                 "82".as[`all digits`] *:: 5.0.as[`avg number`] *:: 8.as[`max integer`] *:: RNil,
-                (new StringBuilder("82"), ((10.0, 2), (8, RNil)))
+                new StringBuilder("82") :: ((10.0 :: 2 :: HNil) :: (8 :: RNil :: HNil) :: HNil) :: HNil
               ),
               ##@(List(2, 8))
             )

@@ -10,6 +10,7 @@ import cats.implicits._
 import algebra.ring._
 import com.datarootlabs.trembita.ql.AggFunc.Type
 import spire.algebra.NRoot
+import shapeless._
 
 
 trait aggregationInstances {
@@ -53,17 +54,27 @@ trait aggregationInstances {
     * @param FA - Field[A]
     * @return - avg function
     **/
-  implicit def taggedAggAvg[A, U](implicit FA: Field[A]): AggFunc[TaggedAgg[A, U, AggFunc.Type.Avg], A :@ U, (A, BigInt)] =
-    new AggFunc[TaggedAgg[A, U, AggFunc.Type.Avg], A :@ U, (A, BigInt)] {
+  implicit def taggedAggAvg[A, U](implicit FA: Field[A]): AggFunc[TaggedAgg[A, U, AggFunc.Type.Avg], A :@ U, A :: BigInt :: HNil] =
+    new AggFunc[TaggedAgg[A, U, AggFunc.Type.Avg], A :@ U, A :: BigInt :: HNil] {
       private def b2a(b: BigInt): A = FA.fromBigInt(b)
 
-      def empty: (A, BigInt) = FA.zero → BigInt(0)
-      def add(comb: (A, BigInt), value: TaggedAgg[A, U, AggFunc.Type.Avg]): (A, BigInt) =
-        (FA.plus(comb._1, value.tagged.value), comb._2 + 1)
+      def empty: A :: BigInt :: HNil = FA.zero :: BigInt(0) :: HNil
+      def add(comb: A :: BigInt :: HNil, value: TaggedAgg[A, U, AggFunc.Type.Avg]): A :: BigInt :: HNil = {
+        val combValue :: counter :: HNil = comb
+        FA.plus(combValue, value.tagged.value) :: (counter + 1) :: HNil
+      }
 
-      def combine(comb1: (A, BigInt), comb2: (A, BigInt)): (A, BigInt) = (FA.plus(comb1._1, comb2._1), comb1._2 + comb2._2)
-      def extract[AA <: TaggedAgg[A, U, AggFunc.Type.Avg], O >: A :@ U](comb: (A, BigInt)): AggFunc.Result[AA, O, (A, BigInt)] =
-        AggFunc.Result(FA.div(comb._1, FA.fromBigInt(comb._2)).as[U], comb)
+      def combine(comb1: A :: BigInt :: HNil, comb2: A :: BigInt :: HNil): A :: BigInt :: HNil = {
+        val combValue1 :: counter1 :: HNil = comb1
+        val combValue2 :: counter2 :: HNil = comb2
+        FA.plus(combValue1, combValue2) :: (counter1 + counter2) :: HNil
+      }
+
+      def extract[AA <: TaggedAgg[A, U, AggFunc.Type.Avg], O >: A :@ U]
+      (comb: A :: BigInt :: HNil): AggFunc.Result[AA, O, A :: BigInt :: HNil] = {
+        val combValue :: counter :: HNil = comb
+        AggFunc.Result(FA.div(combValue, FA.fromBigInt(counter)).as[U], comb)
+      }
     }
 
   /**
@@ -172,19 +183,26 @@ trait aggregationInstances {
     * @return - STDEV function
     **/
   implicit def taggedAggStandardDeviation[A, U](implicit FA: Field[A], NRoot: NRoot[A])
-  : AggFunc[TaggedAgg[A, U, AggFunc.Type.STDEV], A :@ U, (A, Vector[A], BigInt)] =
-    new AggFunc[TaggedAgg[A, U, AggFunc.Type.STDEV], A :@ U, (A, Vector[A], BigInt)] {
+  : AggFunc[TaggedAgg[A, U, AggFunc.Type.STDEV], A :@ U, A :: Vector[A] :: BigInt :: HNil] =
+    new AggFunc[TaggedAgg[A, U, AggFunc.Type.STDEV], A :@ U, A :: Vector[A] :: BigInt :: HNil] {
 
-      def empty: (A, Vector[A], BigInt) = (FA.zero, Vector.empty, 0)
-      def add(comb: (A, Vector[A], BigInt), value: TaggedAgg[A, U, AggFunc.Type.STDEV]): (A, Vector[A], BigInt) =
-        (FA.plus(comb._1, value.tagged.value), comb._2 :+ value.tagged.value, comb._3 + 1)
+      def empty: A :: Vector[A] :: BigInt :: HNil = FA.zero :: Vector.empty[A] :: BigInt(0) :: HNil
+      def add(comb: A :: Vector[A] :: BigInt :: HNil,
+              value: TaggedAgg[A, U, AggFunc.Type.STDEV]): A :: Vector[A] :: BigInt :: HNil = {
+        val combValue :: vs :: counter :: HNil = comb
+        FA.plus(combValue, value.tagged.value) :: (vs :+ value.tagged.value) :: (counter + 1) :: HNil
+      }
 
-      def combine(comb1: (A, Vector[A], BigInt), comb2: (A, Vector[A], BigInt)): (A, Vector[A], BigInt) =
-        (FA.plus(comb1._1, comb2._1), comb1._2 ++ comb2._2, comb1._3 + comb2._3)
+      def combine(comb1: A :: Vector[A] :: BigInt :: HNil,
+                  comb2: A :: Vector[A] :: BigInt :: HNil): A :: Vector[A] :: BigInt :: HNil = {
+        val combValue1 :: vs1 :: counter1 :: HNil = comb1
+        val combValue2 :: vs2 :: counter2 :: HNil = comb2
+        FA.plus(combValue1, combValue2) :: (vs1 ++ vs2) :: (counter1 + counter2) :: HNil
+      }
 
       def extract[AA <: TaggedAgg[A, U, Type.STDEV], O >: A :@ U]
-      (comb: (A, Vector[A], BigInt)): AggFunc.Result[AA, O, (A, Vector[A], BigInt)] = {
-        val (sum, xs, count) = comb
+      (comb: A :: Vector[A] :: BigInt :: HNil): AggFunc.Result[AA, O, A :: Vector[A] :: BigInt :: HNil] = {
+        val sum :: xs :: count :: HNil = comb
         val countA = FA.fromBigInt(count)
         val avgX = FA.div(sum, countA)
         val σ = NRoot.sqrt(
@@ -207,19 +225,24 @@ trait aggregationInstances {
     * @return - STDEV function
     **/
   implicit def taggedAggRootMeanSquare[A, U](implicit FA: Field[A], NRoot: NRoot[A])
-  : AggFunc[TaggedAgg[A, U, AggFunc.Type.RMS], A :@ U, (A, BigInt)] =
-    new AggFunc[TaggedAgg[A, U, AggFunc.Type.RMS], A :@ U, (A, BigInt)] {
+  : AggFunc[TaggedAgg[A, U, AggFunc.Type.RMS], A :@ U, A :: BigInt :: HNil] =
+    new AggFunc[TaggedAgg[A, U, AggFunc.Type.RMS], A :@ U, A :: BigInt :: HNil] {
 
-      def empty: (A, BigInt) = (FA.zero, 0)
-      def add(comb: (A, BigInt), value: TaggedAgg[A, U, AggFunc.Type.RMS]): (A, BigInt) =
-        (FA.plus(comb._1, FA.pow(value.tagged.value, 2)), comb._2 + 1)
+      def empty: A :: BigInt :: HNil = FA.zero :: BigInt(0) :: HNil
+      def add(comb: A :: BigInt :: HNil, value: TaggedAgg[A, U, AggFunc.Type.RMS]): A :: BigInt :: HNil = {
+        val sum :: counter :: HNil = comb
+        FA.plus(sum, FA.pow(value.tagged.value, 2)) :: (counter + 1) :: HNil
+      }
 
-      def combine(comb1: (A, BigInt), comb2: (A, BigInt)): (A, BigInt) =
-        (FA.plus(comb1._1, comb2._1), comb1._2 + comb2._2)
+      def combine(comb1: A :: BigInt :: HNil, comb2: A :: BigInt :: HNil): A :: BigInt :: HNil = {
+        val sum1 :: counter1 :: HNil = comb1
+        val sum2 :: counter2 :: HNil = comb2
+        FA.plus(sum1, sum2) :: (counter1 + counter2) :: HNil
+      }
 
       def extract[AA <: TaggedAgg[A, U, Type.RMS], O >: A :@ U]
-      (comb: (A, BigInt)): AggFunc.Result[AA, O, (A, BigInt)] = {
-        val (sumOfSquares, count) = comb
+      (comb: A :: BigInt :: HNil): AggFunc.Result[AA, O, A :: BigInt :: HNil] = {
+        val sumOfSquares :: count :: HNil = comb
         val countA = FA.fromBigInt(count)
         AggFunc.Result(NRoot.sqrt(FA.div(sumOfSquares, countA)).:@[U], comb)
       }
@@ -265,23 +288,23 @@ trait aggregationInstances {
   T <: AggDecl, AggTComb, TOut <: AggRes]
   (implicit AggH: AggFunc[TaggedAgg[A, U, AggF], HOut, AggHComb],
    AggT: AggFunc[T, TOut, AggTComb]
-  ): AggFunc[TaggedAgg[A, U, AggF] %:: T, HOut *:: TOut, (AggHComb, AggTComb)] =
-    new AggFunc[TaggedAgg[A, U, AggF] %:: T, HOut *:: TOut, (AggHComb, AggTComb)] {
+  ): AggFunc[TaggedAgg[A, U, AggF] %:: T, HOut *:: TOut, AggHComb :: AggTComb :: HNil] =
+    new AggFunc[TaggedAgg[A, U, AggF] %:: T, HOut *:: TOut, AggHComb :: AggTComb :: HNil] {
 
       type H = TaggedAgg[A, U, AggF]
 
-      def empty: (AggHComb, AggTComb) = AggH.empty → AggT.empty
+      def empty: AggHComb :: AggTComb :: HNil = AggH.empty :: AggT.empty :: HNil
 
-      def add(comb: (AggHComb, AggTComb), value: H %:: T): (AggHComb, AggTComb) =
-        (AggH.add(comb._1, value.head), AggT.add(comb._2, value.tail))
+      def add(comb: AggHComb :: AggTComb :: HNil, value: H %:: T): AggHComb :: AggTComb :: HNil =
+        AggH.add(comb(0), value.head) :: AggT.add(comb(1), value.tail) :: HNil
 
-      def combine(comb1: (AggHComb, AggTComb), comb2: (AggHComb, AggTComb)): (AggHComb, AggTComb) =
-        (AggH.combine(comb1._1, comb2._1), AggT.combine(comb1._2, comb2._2))
+      def combine(comb1: AggHComb :: AggTComb :: HNil, comb2: AggHComb :: AggTComb :: HNil): AggHComb :: AggTComb :: HNil =
+        AggH.combine(comb1(0), comb2(0)) :: AggT.combine(comb1(1), comb2(1)) :: HNil
 
       def extract[AA <: TaggedAgg[A, U, AggF] %:: T, O >: *::[HOut, TOut]]
-      (comb: (AggHComb, AggTComb)): AggFunc.Result[AA, O, (AggHComb, AggTComb)] = {
-        val headRes = AggH.extract(comb._1)
-        val tailRes = AggT.extract(comb._2)
+      (comb: AggHComb :: AggTComb :: HNil): AggFunc.Result[AA, O, AggHComb :: AggTComb :: HNil] = {
+        val headRes = AggH.extract(comb(0))
+        val tailRes = AggT.extract(comb(1))
         AggFunc.Result(headRes.result *:: tailRes.result, comb)
       }
     }

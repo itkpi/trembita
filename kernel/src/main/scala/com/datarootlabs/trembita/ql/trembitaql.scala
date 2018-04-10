@@ -99,16 +99,21 @@ object trembitaql {
              aggF.extract(totals),
              ##@(vs)
            )
-           case multiple@((key1, (totals1, vs1)) :: (key2, (totals2, vs2)) :: rest) =>
-             var sortedMultiple = (
-               ~::[$A, $currCriteria, $gnil, AggFunc.Result[$T, $R, $Comb]](
-                 Key.Single(key1), aggF.extract(totals1), ##@(vs1.toList)
-               ) :: NonEmptyList(
+           case multiple@scala.::( (key1, (totals1, vs1)), scala.::( (key2, (totals2, vs2)), rest ) ) =>
+             val sortedMultiple = orderCons(
+               NonEmptyList(
                  ~::[$A, $currCriteria, $gnil, AggFunc.Result[$T, $R, $Comb]](
-                   Key.Single(key2), aggF.extract(totals2), ##@(vs2.toList)
-                 ), rest.map { case (key, (totals, vs)) =>
-                     ~::[$A, $currCriteria, $gnil, AggFunc.Result[$T, $R, $Comb]](Key.Single(key), aggF.extract(totals), ##@(vs.toList))
-                 }).toList
+                   Key.Single(key1), aggF.extract(totals1), ##@(vs1.toList)
+                 ),
+                 NonEmptyList(
+                   ~::[$A, $currCriteria, $gnil, AggFunc.Result[$T, $R, $Comb]](
+                     Key.Single(key2), aggF.extract(totals2), ##@(vs2.toList)
+                   ),
+                   rest.map { case (key, (totals, vs)) =>
+                    ~::[$A, $currCriteria, $gnil, AggFunc.Result[$T, $R, $Comb]](Key.Single(key), aggF.extract(totals), ##@(vs.toList))
+                   }
+                 ).toList
+               ).toList
              )
              ~**[$A, $currCriteria &:: $gnil, AggFunc.Result[$T, $R, $Comb]](
                aggF.extract(
@@ -132,9 +137,9 @@ object trembitaql {
              )
            }.toList match {
              case Nil => Empty[$A, $currGH &:: $currGT, AggFunc.Result[$T, $R, $Comb]](aggF.extract(aggF.empty))
-             case single :: Nil => single
-             case multiple@(gr1 :: gr2 :: rest) =>
-               val sortedMultiple = orderCons(gr1 :: NonEmptyList(gr2, rest).toList)
+             case List(single) => single
+             case multiple@scala.::( gr1, scala.::( gr2, rest ) ) =>
+               val sortedMultiple = orderCons( NonEmptyList( gr1, NonEmptyList(gr2, rest).toList ).toList )
                val totals = multiple.foldLeft(aggF.empty) { case (acc, gr) => aggF.combine(acc, gr.totals.combiner) }
                ~**[$A, $currGH &:: $currGT, AggFunc.Result[$T, $R, $Comb]](
                  aggF.extract(totals),
@@ -149,7 +154,7 @@ object trembitaql {
     G.typeArgs match {
       case List(gHx, gTx) ⇒
         c.Expr[trembitaql[A, G, T, R, Comb]](q"""
-          import QueryBuilder._, QueryResult._, cats.data.NonEmptyList
+          import QueryBuilder._, QueryResult._, cats.data.NonEmptyList, shapeless._
           new trembitaql[$A, $G, $T, $R, $Comb] {
             def apply(records: Seq[$A], qb: QueryBuilder.Empty[$A] ⇒ Query[$A, $G, $T, $R, $Comb])
             : QueryResult[$A, $G, AggFunc.Result[$T, $R, $Comb]] = {

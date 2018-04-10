@@ -134,10 +134,10 @@ lazy val distributed = sonatypeProject(
   base = file("./distributed"))
   .dependsOn(distributed_internal)
 
-lazy val trembitason = sonatypeProject(id = "trembitason", base = file("./trembitason"))
+lazy val trembita_circe = sonatypeProject(id = "trembita_circe", base = file("./trembitazation/circe"))
   .dependsOn(kernel)
   .settings(
-    name := "trembitason",
+    name := "trembita_circe",
     version := v,
     scalaVersion := "2.12.4",
     scalacOptions += "-Ypartial-unification",
@@ -153,7 +153,7 @@ lazy val trembitason = sonatypeProject(id = "trembitason", base = file("./trembi
 
 lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
   .dependsOn(
-    kernel, slf4j, trembitason,
+    kernel, slf4j, trembita_circe,
     cassandra_connector,
     cassandra_connector_phantom,
     distributed_internal,

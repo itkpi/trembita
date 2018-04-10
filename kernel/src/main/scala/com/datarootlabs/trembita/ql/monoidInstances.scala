@@ -7,6 +7,9 @@ import QueryResult._
 import GroupingCriteria._
 import cats.data.NonEmptyList
 import com.datarootlabs.trembita.utils._
+import shapeless._
+import shapeless.nat._
+import shapeless.ops.nat
 
 
 trait monoidInstances {
@@ -25,31 +28,6 @@ trait monoidInstances {
           x.combiner,
           y.combiner
         ))
-    }
-
-  /**
-    * A [[Semigroup]] for [[~**]]
-    * that merges QueryResults with the same key
-    *
-    * @param grSemi  - a semigroup for QueryResult [[A]], [[G]], [[T]]
-    * @param tMonoid - [[Monoid]] for [[T]]
-    **/
-  implicit def `~**-Semi`[A, G <: GroupingCriteria, T]
-  (implicit grSemi: Semigroup[QueryResult[A, G, T]], tMonoid: Monoid[T]): Semigroup[~**[A, G, T]] =
-    new Semigroup[~**[A, G, T]] {
-      def combine(
-                   x: ~**[A, G, T],
-                   y: ~**[A, G, T]
-                 ): ~**[A, G, T] = {
-        val xValues = x.records.toList.groupBy(_.key)
-        val yValues = y.records.toList.groupBy(_.key)
-        val merged = NonEmptyList.fromListUnsafe(
-          xValues.mergeConcat(yValues)(_ ::: _)
-            .mapValues(_.reduce(grSemi.combine))
-            .values.toList)
-
-        ~**(tMonoid.combine(x.totals, y.totals), merged.head, NonEmptyList.fromListUnsafe(merged.tail))
-      }
     }
 
   /** Same to [[List]] [[Monoid]] */
@@ -78,16 +56,35 @@ trait monoidInstances {
   T](implicit subResMonoid: Monoid[QueryResult[A, GT, T]],
      tMonoid: Monoid[T]): Monoid[QueryResult[A, GH &:: GT, T]] = new Monoid[QueryResult[A, GH &:: GT, T]] {
 
-    private val mulSemi: Semigroup[~**[A, GH &:: GT, T]] = `~**-Semi`[A, GH &:: GT, T](this, tMonoid)
+    def combineMuls
+    (x: ~**[A, GH &:: GT, T], y: ~**[A, GH &:: GT, T])
+    : QueryResult[A, GH &:: GT, T] = {
+      val xValues = x.records.toList.groupBy(_.key)
+      val yValues = y.records.toList.groupBy(_.key)
+      val merged = xValues.mergeConcat(yValues)(_ ::: _)
+        .mapValues(_.reduce(this.combine))
+        .values.toList
 
-    private def add(xmul: ~**[A, GH &:: GT, T], ycons: ~::[A, GH, GT, T]): ~**[A, GH &:: GT, T] = {
+      merged match {
+        case Nil                                  ⇒ Empty[A, GH &:: GT, T](tMonoid.empty)
+        case List(single)                         ⇒ single
+        case scala.::(head, scala.::(next, rest)) ⇒ ~**(x.totals |+| y.totals, head, NonEmptyList(next, rest))
+      }
+    }
+    private def add[N <: Nat]
+    (xmul: ~**[A, GH &:: GT, T], ycons: ~::[A, GH, GT, T])
+    : QueryResult[A, GH &:: GT, T] = {
       val newTotals = tMonoid.combine(xmul.totals, ycons.totals)
-      val merged = NonEmptyList.fromListUnsafe(
+      val merged =
         (ycons :: xmul.records).toList.groupBy(_.key)
-          .mapValues(_.reduce(combine))
-          .values.toList)
+          .mapValues(_.reduce(this.combine))
+          .values.toList
 
-      ~**(newTotals, merged.head, NonEmptyList.fromListUnsafe(merged.tail))
+      merged match {
+        case Nil                                  ⇒ Empty[A, GH &:: GT, T](tMonoid.empty)
+        case List(single)                         ⇒ single
+        case scala.::(head, scala.::(next, rest)) ⇒ ~**(xmul.totals |+| ycons.totals, head, NonEmptyList(next, rest))
+      }
     }
 
     def empty: QueryResult[A, GH &:: GT, T] = Empty[A, GH &:: GT, T](tMonoid.empty)
@@ -101,8 +98,9 @@ trait monoidInstances {
 
         case (xmul: ~**[A, GH &:: GT, T], ycons: ~::[A, GH, GT, T])   ⇒ add(xmul, ycons)
         case (xcons: ~::[A, GH, GT, T], ymul: ~**[A, GH &:: GT, T])   ⇒ add(ymul, xcons)
-        case (xmul: ~**[A, GH &:: GT, T], ymul: ~**[A, GH &:: GT, T]) ⇒ mulSemi.combine(xmul, ymul)
-        case _                                                        ⇒ ~**(tMonoid.combine(x.totals, y.totals), x, NonEmptyList(y, Nil))
+        case (xmul: ~**[A, GH &:: GT, T], ymul: ~**[A, GH &:: GT, T]) ⇒ combine(xmul, ymul)
+        case _                                                        ⇒
+          ~**(tMonoid.combine(x.totals, y.totals), x, NonEmptyList(y, Nil))
       }
   }
 }
