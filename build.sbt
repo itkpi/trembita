@@ -14,6 +14,19 @@ lazy val scalaReflect = Def.setting {
 
 organization in ThisBuild := "com.datarootlabs.trembita"
 
+val testV = "3.0.4"
+val catsEffectsV = "0.10"
+val shapelessV = "2.3.3"
+val spireV = "0.15.0"
+
+val commonDeps = Seq(
+  "org.scalactic" %% "scalactic" % testV,
+  "org.scalatest" %% "scalatest" % testV % "test",
+  "org.typelevel" %% "cats-effect" % catsEffectsV,
+  "com.chuusai" %% "shapeless" % shapelessV,
+  "org.typelevel" %% "spire" % spireV
+)
+
 def sonatypeProject(id: String, base: File) = Project(id, base)
   .enablePlugins(JmhPlugin)
   .settings(
@@ -33,19 +46,20 @@ def sonatypeProject(id: String, base: File) = Project(id, base)
     classDirectory in Jmh := (classDirectory in Test).value,
     dependencyClasspath in Jmh := (dependencyClasspath in Test).value,
     compile in Jmh := (compile in Jmh).dependsOn(compile in Test).value,
-    run in Jmh := (run in Jmh).dependsOn(Keys.compile in Jmh).evaluated
+    run in Jmh := (run in Jmh).dependsOn(Keys.compile in Jmh).evaluated,
+    resolvers += Resolver.sonatypeRepo("releases"),
+    addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.6"),
+    libraryDependencies ++= commonDeps
   )
 
+lazy val collection_extentions = sonatypeProject(id = "collection_extentions", base = file("./collection_extentions"))
+
 lazy val kernel = sonatypeProject(id = "trembita-kernel", base = file("./kernel"))
+  .dependsOn(collection_extentions)
   .settings(
     libraryDependencies ++= {
-      val testV = "3.0.4"
       Seq(
-        "org.scalactic" %% "scalactic" % testV,
-        "org.scalatest" %% "scalatest" % testV % "test",
-        "org.typelevel" %% "cats-effect" % "0.10",
-        "com.chuusai" %% "shapeless" % "2.3.3",
-        "org.typelevel" %% "spire" % "0.15.0"
+        "org.scalatest" %% "scalatest" % testV % "test"
       )
     }
   )

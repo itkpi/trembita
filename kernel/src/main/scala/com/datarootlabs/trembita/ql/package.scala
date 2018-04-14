@@ -58,16 +58,16 @@ package object ql
       trembitaql(self, queryF)
   }
 
-  /** Trembita QL for [[DataPipeline]] */
-  implicit class TrembitaQLForPipeline[A](val self: DataPipeline[A]) extends AnyVal {
-    def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb]
-    (queryF: Empty[A] ⇒ Query[A, G, T, R, Comb])(implicit trembitaql: trembitaql[A, G, T, R, Comb])
-    : DataPipeline[QueryResult[A, G, AggFunc.Result[T, R, Comb]]] = DataPipeline.from({
-      val forced = self.eval
-      val result = trembitaql(forced.toSeq, queryF)
-      Seq(result)
-    })
-  }
+//  /** Trembita QL for [[DataPipeline]] */
+//  implicit class TrembitaQLForPipeline[A](val self: DataPipeline[A]) extends AnyVal {
+//    def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb]
+//    (queryF: Empty[A] ⇒ Query[A, G, T, R, Comb])(implicit trembitaql: trembitaql[A, G, T, R, Comb])
+//    : DataPipeline[QueryResult[A, G, AggFunc.Result[T, R, Comb]]] = DataPipeline.from({
+//      val forced = self.eval
+//      val result = trembitaql(forced.toSeq, queryF)
+//      Seq(result)
+//    })
+//  }
 
   /**
     *

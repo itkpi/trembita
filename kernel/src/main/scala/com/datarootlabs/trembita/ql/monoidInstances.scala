@@ -6,10 +6,8 @@ import cats.implicits._
 import QueryResult._
 import GroupingCriteria._
 import cats.data.NonEmptyList
-import com.datarootlabs.trembita.utils._
+import com.datarootlabs.trembita.collections._
 import shapeless._
-import shapeless.nat._
-import shapeless.ops.nat
 
 
 trait monoidInstances {
@@ -77,13 +75,13 @@ trait monoidInstances {
       case (Empty(_), _)                                                                  ⇒ y
       case (_, Empty(_))                                                                  ⇒ x
       case (xcons: ~::[A, GH, GT, T], ycons: ~::[A, GH, GT, T]) if xcons.key == ycons.key ⇒
-        ~::(xcons.key, tMonoid.combine(x.totals, y.totals), subResMonoid.combine(xcons.subResult, ycons.subResult))
+        ~::(xcons.key, x.totals |+| y.totals, xcons.subResult |+| ycons.subResult)
 
       case (xmul: ~**[A, GH &:: GT, T], ycons: ~::[A, GH, GT, T])   ⇒ add(xmul, ycons)
       case (xcons: ~::[A, GH, GT, T], ymul: ~**[A, GH &:: GT, T])   ⇒ add(ymul, xcons)
       case (xmul: ~**[A, GH &:: GT, T], ymul: ~**[A, GH &:: GT, T]) ⇒ combineMuls(xmul, ymul)
       case _                                                        ⇒
-        ~**(tMonoid.combine(x.totals, y.totals), x, NonEmptyList(y, Nil))
+        ~**(x.totals |+| y.totals, x, NonEmptyList(y, Nil))
     }
 
     def empty: QueryResult[A, GH &:: GT, T] = Empty[A, GH &:: GT, T](tMonoid.empty)

@@ -13,7 +13,7 @@ import cats.implicits._
   * @tparam N - named state
   * @tparam D - state data
   **/
-sealed trait InitialState[N, D]
+sealed trait InitialState[N, D, F[_]]
 object InitialState {
   /**
     * [[InitialState]] from first element of the pipeline
@@ -23,7 +23,7 @@ object InitialState {
     * @tparam D - state data
     * @param f - function to extract the initial state
     **/
-  case class FromFirstElement[A, N, D](f: A ⇒ FSM.State[N, D]) extends InitialState[N, D]
+  case class FromFirstElement[A, N, D, F[_]](f: A ⇒ FSM.State[N, D, F]) extends InitialState[N, D, F]
 
   /**
     * Pure [[InitialState]]
@@ -32,7 +32,7 @@ object InitialState {
     * @tparam D - state data
     * @param state - the initial state itself
     **/
-  case class Pure[N, D](state: FSM.State[N, D]) extends InitialState[N, D]
+  case class Pure[N, D, F[_]](state: FSM.State[N, D, F]) extends InitialState[N, D, F]
 
   /**
     * Get the initial state for first element
@@ -43,7 +43,7 @@ object InitialState {
     * @param f - function to extract the initial state
     * @return - initial state
     **/
-  def fromFirstElement[A, N, D](f: A ⇒ FSM.State[N, D]): InitialState[N, D] = FromFirstElement(f)
+  def fromFirstElement[A, N, D, F[_]](f: A ⇒ FSM.State[N, D, F]): InitialState[N, D, F] = FromFirstElement(f)
 
   /**
     * Get pure initial state
@@ -53,7 +53,7 @@ object InitialState {
     * @param state - the initial state itself
     * @return - initial state of the FSM
     **/
-  def pure[N, D](state: FSM.State[N, D]): InitialState[N, D] = Pure(state)
+  def pure[N, D, F[_]](state: FSM.State[N, D, F]): InitialState[N, D, F] = Pure(state)
 }
 
 /**
@@ -74,8 +74,8 @@ sealed trait FSM[F[_], N, D, A, B] {
     * @param f     - function that may change [[FSM]] behavior
     * @return - partially completed FSM
     **/
-  def when(state: N)(f: PartialFunction[A, FSM.State[N, D] ⇒ (FSM.State[N, D], B)]): FSM.Partial[F, N, D, A, B]
-  def whenF(state: N)(f: PartialFunction[A, FSM.State[N, D] ⇒ F[(FSM.State[N, D], B)]]): FSM.Partial[F, N, D, A, B]
+  def when(state: N)(f: PartialFunction[A, FSM.State[N, D, F] ⇒ F[(FSM.State[N, D, F], Iterable[B])]])
+  : FSM.Partial[F, N, D, A, B]
 }
 
 object FSM {
@@ -88,21 +88,21 @@ object FSM {
     * @param name - state name
     * @param data - state's data
     **/
-  case class State[+N, +D](name: N, data: D) {
+  case class State[N, D, F[_]](name: N, data: D)(implicit F: Applicative[F]) {
     /**
       * Goto other state
       *
       * @param other - other state name
       * @return - other state with the same data
       **/
-    def goto[NN >: N](other: NN): State[NN, D] = State(other, data)
+    def goto(other: N): State[N, D, F] = State(other, data)
 
     /**
       * Stay in the same state
       *
       * @return - this
       **/
-    def stay: State[N, D] = this
+    def stay: State[N, D, F] = this
 
     /**
       * Change state's data
@@ -110,7 +110,7 @@ object FSM {
       * @param otherData - new data for the state
       * @return - the same state with other data
       **/
-    def change[DD >: D](otherData: DD): State[N, DD] = State(name, otherData)
+    def change(otherData: D): State[N, D, F] = State(name, otherData)
 
     /**
       * Modify state's data using some function
@@ -118,7 +118,7 @@ object FSM {
       * @param f - transformation function
       * @return - the same state with modified data
       **/
-    def modify[DD >: D](f: D ⇒ DD): State[N, DD] = State(name, f(data))
+    def modify(f: D ⇒ D): State[N, D, F] = State(name, f(data))
 
     /**
       * Produce an output value
@@ -127,8 +127,10 @@ object FSM {
       * @param f - produce a value from state's data
       * @return - the same state with output value
       **/
-    def produce[B](f: D ⇒ B): (State[N, D], B) = this → f(data)
+    def push[B](f: D ⇒ B): F[(State[N, D, F], Iterable[B])] = F.pure(this → List(f(data)))
 
+    def pushF[B](f: D ⇒ F[B]): F[(State[N, D, F], Iterable[B])] =
+      F.map(f(data))(b ⇒ this → List(b))
     /**
       * Produces the same value
       * ignoring state data
@@ -136,7 +138,22 @@ object FSM {
       * @param value - value to produce
       * @return - the same state with output value
       **/
-    def produce[B](value: B): (State[N, D], B) = this → value
+    def push[B](value: B): F[(State[N, D, F], Iterable[B])] = F.pure(this → List(value))
+
+    def pushF[B](valueF: F[B]): F[(State[N, D, F], Iterable[B])] =
+      F.map(valueF)(v ⇒ this → List(v))
+
+    def await[B]: F[(State[N, D, F], Iterable[B])] = F.pure(this → Nil)
+
+    def spam[B](f: D ⇒ Iterable[B]): F[(State[N, D, F], Iterable[B])] = F.pure(this → f(data))
+
+    def spamF[B](f: D ⇒ F[Iterable[B]]): F[(State[N, D, F], Iterable[B])] =
+      F.map(f(data))(this → _)
+
+    def spam[B](values: Iterable[B]): F[(State[N, D, F], Iterable[B])] = F.pure(this → values)
+
+    def spamF[B](valuesF: F[Iterable[B]]): F[(State[N, D, F], Iterable[B])] =
+      F.map(valuesF)(this → _)
   }
 
   /**
@@ -145,7 +162,7 @@ object FSM {
     * @tparam A - input data type
     * @tparam S - some [[FSM.State]]
     **/
-  sealed trait Result[A, S <: FSM.State[_, _]] {
+  sealed trait Result[A, S] {
     /** Output type of the FSM */
     type Out
 
@@ -168,7 +185,7 @@ object FSM {
       * @tparam S - some [[FSM.State]]
       **/
     protected[trembita]
-    case class WithState[A, S <: FSM.State[_, _]]() extends Result[A, S] {
+    case class WithState[A, S]() extends Result[A, S] {
       type Out = (S, A)
       def apply(state: S, value: A): Out = state → value
     }
@@ -181,14 +198,14 @@ object FSM {
       * @tparam S - some [[FSM.State]]
       **/
     protected[trembita]
-    case class IgnoreState[A, S <: FSM.State[_, _]]() extends Result[A, S] {
+    case class IgnoreState[A, S]() extends Result[A, S] {
       type Out = A
       def apply(state: S, value: A): Out = value
     }
 
 
-    def withState[A, S <: FSM.State[_, _]]: Result[A, S] = WithState()
-    def ignoreState[A, S <: FSM.State[_, _]]: Result[A, S] = IgnoreState()
+    def withState[A, S]: Result[A, S] = WithState()
+    def ignoreState[A, S]: Result[A, S] = IgnoreState()
   }
 
   /**
@@ -201,14 +218,8 @@ object FSM {
     **/
   protected[trembita]
   class Empty[F[_] : Applicative, N, D, A, B] extends FSM[F, N, D, A, B] {
-    def when(state: N)(f: PartialFunction[A, FSM.State[N, D] ⇒ (FSM.State[N, D], B)]): FSM.Partial[F, N, D, A, B] =
-      new Partial[F, N, D, A, B]({
-        case `state` ⇒ {
-          case a if f.isDefinedAt(a) ⇒ s ⇒ f(a)(s).pure[F]
-        }
-      })
-
-    def whenF(state: N)(f: PartialFunction[A, FSM.State[N, D] ⇒ F[(FSM.State[N, D], B)]]): FSM.Partial[F, N, D, A, B] =
+    def when(state: N)(f: PartialFunction[A, FSM.State[N, D, F] ⇒ F[(FSM.State[N, D, F], Iterable[B])]])
+    : FSM.Partial[F, N, D, A, B] =
       new Partial[F, N, D, A, B]({
         case `state` ⇒ {
           case a if f.isDefinedAt(a) ⇒ s ⇒ f(a)(s)
@@ -228,16 +239,8 @@ object FSM {
     **/
   protected[trembita]
   class Partial[F[_] : Applicative, N, D, A, B](stateF: PartialFunc[F, N, D, A, B]) extends FSM[F, N, D, A, B] {
-    def when(state: N)(f: PartialFunction[A, FSM.State[N, D] ⇒ (FSM.State[N, D], B)]): FSM.Partial[F, N, D, A, B] = {
-      val pf: PartialFunc[F, N, D, A, B] = {
-        case `state` ⇒ {
-          case a if f.isDefinedAt(a) ⇒ d ⇒ f(a)(d).pure[F]
-        }
-      }
-      new Partial(stateF orElse pf)
-    }
-
-    def whenF(state: N)(f: PartialFunction[A, FSM.State[N, D] ⇒ F[(FSM.State[N, D], B)]]): FSM.Partial[F, N, D, A, B] = {
+    def when(state: N)(f: PartialFunction[A, FSM.State[N, D, F] ⇒ F[(FSM.State[N, D, F], Iterable[B])]])
+    : FSM.Partial[F, N, D, A, B] = {
       val pf: PartialFunc[F, N, D, A, B] = {
         case `state` ⇒ {
           case a if f.isDefinedAt(a) ⇒ d ⇒ f(a)(d)
@@ -246,16 +249,8 @@ object FSM {
       new Partial(stateF orElse pf)
     }
 
-    def whenUndefined(f: A ⇒ FSM.State[N, D] ⇒ (FSM.State[N, D], B)): FSM.State[N, D] ⇒ A ⇒ F[(FSM.State[N, D], B)] = {
-      case state if stateF.isDefinedAt(state.name) ⇒ a ⇒
-        val nameF = stateF(state.name)
-        if (nameF.isDefinedAt(a)) nameF(a)(state)
-        else f(a)(state).pure[F]
-
-      case state ⇒ a ⇒ f(a)(state).pure[F]
-    }
-
-    def whenUndefinedF(f: A ⇒ FSM.State[N, D] ⇒ F[(FSM.State[N, D], B)]): FSM.State[N, D] ⇒ A ⇒ F[(FSM.State[N, D], B)] = {
+    def whenUndefined(f: A ⇒ FSM.State[N, D, F] ⇒ F[(FSM.State[N, D, F], Iterable[B])])
+    : FSM.State[N, D,F] ⇒ A ⇒ F[(FSM.State[N, D,F], Iterable[B])] = {
       case state if stateF.isDefinedAt(state.name) ⇒ a ⇒
         val nameF = stateF(state.name)
         if (nameF.isDefinedAt(a)) nameF(a)(state)
@@ -266,8 +261,8 @@ object FSM {
   }
 
 
-  type PartialFunc[F[_], N, D, A, B] = PartialFunction[N, PartialFunction[A, FSM.State[N, D] ⇒ F[(FSM.State[N, D], B)]]]
-  type Func[F[_], N, D, A, B] = FSM.State[N, D] ⇒ A ⇒ F[(FSM.State[N, D], B)]
+  type PartialFunc[F[_], N, D, A, B] = PartialFunction[N, PartialFunction[A, FSM.State[N, D, F] ⇒ F[(FSM.State[N, D, F], Iterable[B])]]]
+  type Func[F[_], N, D, A, B] = FSM.State[N, D, F] ⇒ A ⇒ F[(FSM.State[N, D, F], Iterable[B])]
   /**
     * @tparam N - named state
     * @tparam D - state data type

@@ -5,7 +5,7 @@ import cats._
 import cats.implicits._
 
 
-package object utils {
+package object collections {
   implicit class IterableExtended[A](val self: Iterable[A]) extends AnyVal {
     def minMax(implicit cmp: Ordering[A]): (A, A) = {
       if (self.isEmpty)
@@ -45,6 +45,14 @@ package object utils {
         case (acc, (k, v)) if acc contains k => acc.updated(k, v :: acc(k))
         case (acc, (k, v))                   => acc + (k -> (v :: Nil))
       }.mapValues(_.reduce[V](concatOp))
+    }
+
+    def merge[K, V: Monoid](rhs: Map[K, V])(implicit ev: A <:< (K, V)): Map[K, V] = {
+      val lfs = self.toMap[K, V]
+      lfs.foldLeft(rhs.map { case (k, v) => k -> (v :: Nil) }) {
+        case (acc, (k, v)) if acc contains k => acc.updated(k, v :: acc(k))
+        case (acc, (k, v))                   => acc + (k -> (v :: Nil))
+      }.mapValues(_.reduce[V](_ |+| _))
     }
 
     def minOptBy[U: Ordering](f: A => U): Option[A] =
