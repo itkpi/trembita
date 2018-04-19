@@ -8,7 +8,8 @@ import com.datarootlabs.trembita.mutable.StateEff
 
 
 package object fsm {
-  implicit class StatefulOps[A, F[_], T <: PipelineType](val self: DataPipeline[A, F, T]) extends AnyVal {
+
+  implicit class StatefulOps[A, F[_], T <: Finiteness, Ex <: Execution](val self: DataPipeline[A, F, T, Ex]) extends AnyVal {
 
     /**
       * Map [[DataPipeline]] elements
@@ -26,15 +27,15 @@ package object fsm {
     def fsm[N, D, B](initial: InitialState[N, D, F],
                      result: FSM.Result[B, FSM.State[N, D, F]])
                     (fsmF: FSM.Empty[F, N, D, A, B] ⇒ FSM.Func[F, N, D, A, B])
-                    (implicit F: MonadError[F, Throwable]): DataPipeline[result.Out, F, T] = {
+                    (implicit F: MonadError[F, Throwable]): DataPipeline[result.Out, F, T, Ex] = {
       val stateF = fsmF(new FSM.Empty)
       val stateOptF: StateEff[F, Option[FSM.State[N, D, F]]] = StateEff(None)
       self mapM { elem ⇒
         val elemF: F[Either[Throwable, Iterable[result.Out]]] =
-          stateOptF.mutateFlatMap { stateOpt ⇒
+          stateOptF.mutateFlatMapSync { stateOpt ⇒
             val currState = stateOpt match {
               case None    ⇒ initial match {
-                case InitialState.Pure(s)                                    ⇒ s
+                case InitialState.Pure(s)                                       ⇒ s
                 case InitialState.FromFirstElement(f: (A ⇒ FSM.State[N, D, F])) ⇒ f(elem)
               }
               case Some(s) ⇒ s
@@ -52,4 +53,5 @@ package object fsm {
       }
     }
   }
+
 }

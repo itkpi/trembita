@@ -4,8 +4,9 @@ import com.datarootlabs.trembita._
 import com.datarootlabs.trembita.fsm._
 import com.datarootlabs.trembita.collections._
 import scala.util.Try
-import PipelineType._
+import Finiteness._
 import InitialState._
+import Execution._
 import FSM._
 import scala.util.Random
 import cats.implicits._
@@ -20,7 +21,7 @@ object Main {
   case object Closed extends DoorState
 
   def main(args: Array[String]): Unit = {
-    val pipeline: DataPipeline[Int, Future, Infinite] = DataPipeline.infinite(Random.nextInt(100))
+    val pipeline: DataPipeline[Int, Future, Infinite, Sequential] = DataPipeline.infinite(Random.nextInt(100))
 
     val withDoorState = pipeline.fsm[DoorState, Map[DoorState, Int], Int](
       initial = Pure(FSM.State(Opened, Map.empty)),

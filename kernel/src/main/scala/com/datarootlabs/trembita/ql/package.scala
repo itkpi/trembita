@@ -1,6 +1,8 @@
 package com.datarootlabs.trembita
 
 
+import cats._
+import cats.implicits._
 import language.{higherKinds, implicitConversions}
 import language.experimental.macros
 import shapeless._
@@ -17,11 +19,13 @@ package object ql
 
   implicit class TaggingSyntax[A](val self: A) extends AnyVal {
     def as[T]: A :@ T = new :@[A, T](self)
+
     def :@[T]: A :@ T = new :@[A, T](self)
   }
 
   implicit class GroupingCriteriaOps[G <: GroupingCriteria](val self: G) extends AnyVal {
     def &::[GH <: :@[_, _]](head: GH): GH &:: G = GroupingCriteria.&::(head, self)
+
     def apply(n: Nat)(implicit at: GroupingCriteria.At[G, n.N]): at.Out = at(self)
   }
 
@@ -31,7 +35,9 @@ package object ql
 
   implicit class AggResOps[A <: AggRes](val self: A) {
     def *::[H <: :@[_, _]](head: H): H *:: A = AggRes.*::(head, self)
+
     def apply[U](implicit get: AggRes.Get[A, U]): get.Out = get(self)
+
     def get[U](implicit gget: AggRes.Get[A, U]): gget.Out = gget(self)
   }
 
@@ -58,16 +64,14 @@ package object ql
       trembitaql(self, queryF)
   }
 
-//  /** Trembita QL for [[DataPipeline]] */
-//  implicit class TrembitaQLForPipeline[A](val self: DataPipeline[A]) extends AnyVal {
-//    def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb]
-//    (queryF: Empty[A] ⇒ Query[A, G, T, R, Comb])(implicit trembitaql: trembitaql[A, G, T, R, Comb])
-//    : DataPipeline[QueryResult[A, G, AggFunc.Result[T, R, Comb]]] = DataPipeline.from({
-//      val forced = self.eval
-//      val result = trembitaql(forced.toSeq, queryF)
-//      Seq(result)
-//    })
-//  }
+  /** Trembita QL for [[DataPipeline]] */
+  implicit class TrembitaQLForPipeline[A, F[_], Ex <: Execution](val self: DataPipeline[A, F, Finiteness.Finite, Ex]) extends AnyVal {
+    def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb]
+    (queryF: Empty[A] ⇒ Query[A, G, T, R, Comb])
+    (implicit trembitaql: trembitaqlForPipeline[A, G, T, R, Comb], ex: Ex,
+     F: MonadError[F, Throwable])
+    : F[QueryResult[A, G, AggFunc.Result[T, R, Comb]]] = trembitaql(self, queryF)
+  }
 
   /**
     *

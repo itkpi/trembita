@@ -2,47 +2,35 @@ package com.datarootlabs.trembita.examples.kernel
 
 
 import java.time.LocalDateTime
-
-import cats.data._
 import cats.effect._
 import cats.implicits._
 import com.datarootlabs.trembita._
-import PipelineType._
-
+import Finiteness._
+import Execution._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Random, Success, Try}
 import scala.util.control.NonFatal
 import scala.concurrent.{Await, Future}
-import scala.io.StdIn
 import scala.concurrent.duration._
 
 
 object Main {
-  //  private val flow: Flow[String, Int, IO, Finite] =
-  //    Flow[String, String, IO, Finite](_.flatMap(_.split(" ")))
-  //      .map(_.toInt)
-  //      .mapF(_.handleError { case NonFatal(_) ⇒ -48 })
-
   def main(args: Array[String]): Unit = {
-    val pipeline: DataPipeline[String, Try, Finite] = DataPipeline.applyF(
+    val pipeline: DataPipeline[String, Try, Finite, Sequential] = DataPipeline.applyF(
       "1 2 3", "4 5 6", "7 8 9", "xyz"
     )
 
-    val numbers: DataPipeline[Int, Try, Finite] = pipeline
+    val numbers: DataPipeline[Int, Try, Finite, Parallel] = pipeline.to[Parallel]
       .flatMap(_.split(" "))
       .map(_.toInt)
       .handleError { case NonFatal(_) ⇒ -100 }
 
-    //    val nums2: DataPipeline[Int, IO, Finite] = DataPipeline.applyF[String, IO]("10 11 12", "13 11 15")
-    //      .transform(flow)
-    //      .map(_ * 2)
-
     val result1: Try[String] = numbers.eval.map(_.mkString(", "))
     println(result1)
 
-    val infinite: DataPipeline[Int, Future, Infinite] = DataPipeline.infinite { Random.nextInt() }
+    val infinite: DataPipeline[Int, Future, Infinite, Sequential] = DataPipeline.infinite { Random.nextInt() }
 
-    val strings: DataPipeline[String, Future, Infinite] = infinite.map(_ + 1)
+    val strings: DataPipeline[String, Future, Infinite, Parallel] = infinite.map(_ + 1).to[Parallel]
       .flatMap(i ⇒ i :: (48 + i) :: Nil)
       .mapM { i ⇒
         Future {

@@ -14,7 +14,7 @@ import scala.util.Try
 
 object PhantomSource {
   def apply[R, T <: Table[T, R]](connection: CassandraConnection)
-                                (query: SelectQuery[T, R, _, _, _, _, _]): DataPipeline[R, Try, PipelineType.Finite] = {
+                                (query: SelectQuery[T, R, _, _, _, _, _]): DataPipeline[R, Try, Finiteness.Finite, Execution.Sequential] = {
     implicit val session: Session = connection.session
     CassandraSource.rows(connection.session, query.executableQuery.statement())
       .map(row => query.fromRow(new PhantomRow(row, ProtocolVersion.V5)))

@@ -1,5 +1,7 @@
 package com.datarootlabs.trembita.internal
 
+import scala.collection.generic.CanBuildFrom
+
 
 /**
   * Used in [[com.datarootlabs.trembita.parallel]]

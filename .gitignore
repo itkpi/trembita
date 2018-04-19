@@ -4,3 +4,4 @@ target/
 *.log
 logs/
 sonatype.sbt
+.DS_STORE
