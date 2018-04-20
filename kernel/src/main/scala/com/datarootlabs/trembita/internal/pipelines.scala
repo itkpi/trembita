@@ -72,8 +72,8 @@ class MappingPipeline[+A, B, F[_], T <: Finiteness, Ex <: Execution]
   protected[trembita] def evalFunc[C >: B](implicit ev: T <:< Finiteness.Finite, Ex: Ex): F[Ex.Repr[C]] =
     source.evalFunc[A](ev, Ex).map(vs ⇒ Ex.Monad.map(vs)(f))
 
-  protected[trembita] def bindFunc[C >: B](f2: Either[Throwable, C] ⇒ F[Unit]): F[Unit] =
-    source.bindFunc[A] {
+  protected[trembita] def consumeFunc[C >: B](f2: Either[Throwable, C] ⇒ F[Unit]): F[Unit] =
+    source.consumeFunc[A] {
       case Right(a) ⇒ f2(try Right(f(a)) catch {
         case e: Throwable ⇒ Left(e)
       })
@@ -136,9 +136,9 @@ class FlatMapPipeline[+A, B, F[_], T <: Finiteness, Ex <: Execution]
       res.asInstanceOf[F[Ex.Repr[C]]]
     }
 
-  protected[trembita] def bindFunc[C >: B](f2: Either[Throwable, C] ⇒ F[Unit]): F[Unit] =
-    source.bindFunc[A] {
-      case Right(a) ⇒ f(a).bindFunc(f2)
+  protected[trembita] def consumeFunc[C >: B](f2: Either[Throwable, C] ⇒ F[Unit]): F[Unit] =
+    source.consumeFunc[A] {
+      case Right(a) ⇒ f(a).consumeFunc(f2)
       case Left(e)  ⇒ f2(Left(e))
     }
 }
@@ -202,8 +202,8 @@ class CollectPipeline[+A, B, F[_], T <: Finiteness, Ex <: Execution]
   protected[trembita] def evalFunc[C >: B](implicit ev: T <:< Finiteness.Finite, Ex: Ex): F[Ex.Repr[C]] =
     source.evalFunc[A](ev, Ex).map(Ex.collect(_)(pf))
 
-  protected[trembita] def bindFunc[C >: B](f2: Either[Throwable, C] ⇒ F[Unit]): F[Unit] =
-    source.bindFunc[A]({
+  protected[trembita] def consumeFunc[C >: B](f2: Either[Throwable, C] ⇒ F[Unit]): F[Unit] =
+    source.consumeFunc[A]({
       case Right(a) if pf.isDefinedAt(a) ⇒ f2({
         try Right(pf(a)) catch {
           case e: Throwable ⇒ Left(e)
@@ -267,8 +267,8 @@ class HandleErrorPipeline[+A, B, F[_], T <: Finiteness, Ex <: Execution]
       }
     })
 
-  protected[trembita] def bindFunc[C >: B](f2: Either[Throwable, C] ⇒ F[Unit]): F[Unit] =
-    source.bindFunc[A] {
+  protected[trembita] def consumeFunc[C >: B](f2: Either[Throwable, C] ⇒ F[Unit]): F[Unit] =
+    source.consumeFunc[A] {
       case Right(a) ⇒ f2(try {
         Right(try f(a) catch {
           case e: Throwable ⇒ fallback(e)
@@ -324,8 +324,8 @@ class MapMonadicPipeline[+A, B, F[_], T <: Finiteness, Ex <: Execution]
       resultF
     }
 
-  protected[trembita] def bindFunc[C >: B](f2: Either[Throwable, C] ⇒ F[Unit]): F[Unit] =
-    source.bindFunc[A] {
+  protected[trembita] def consumeFunc[C >: B](f2: Either[Throwable, C] ⇒ F[Unit]): F[Unit] =
+    source.consumeFunc[A] {
       case Right(a) ⇒ f(a).map(Right(_): Either[Throwable, C]).handleError { e ⇒ Left(e) }.flatMap(f2)
       case Left(e)  ⇒ f2(Left(e))
     }
@@ -346,7 +346,7 @@ class BridgePipeline[+A, F[_], T <: Finiteness, Ex1 <: Execution, Ex2 <: Executi
   protected[trembita] def evalFunc[B >: A](implicit ev: <:<[T, Finiteness.Finite], Ex: Ex2): F[Ex.Repr[B]] =
     source.evalFunc[A](ev, Ex1).map(vs => Ex.fromVector(Ex1.toVector(vs.asInstanceOf[Ex1.Repr[A]])))
 
-  protected[trembita] def bindFunc[B >: A](f: Either[Throwable, B] => F[Unit]): F[Unit] = source.bindFunc(f)
+  protected[trembita] def consumeFunc[B >: A](f: Either[Throwable, B] => F[Unit]): F[Unit] = source.consumeFunc(f)
 }
 
 /**
@@ -426,7 +426,7 @@ class StrictSource[+A, F[_], T <: Finiteness, Ex <: Execution]
   protected[trembita] def evalFunc[B >: A](implicit ev: T <:< Finiteness.Finite, Ex: Ex): F[Ex.Repr[B]] =
     iterF.map(iter => Ex.fromVector(iter.toVector))
 
-  protected[trembita] def bindFunc[B >: A](f: Either[Throwable, B] ⇒ F[Unit]): F[Unit] =
+  protected[trembita] def consumeFunc[B >: A](f: Either[Throwable, B] ⇒ F[Unit]): F[Unit] =
     iterF.map(Right(_): Either[Throwable, Iterator[B]])
       .handleError(e ⇒ Left(e))
       .map {
@@ -456,7 +456,7 @@ class MemoizedPipeline[+A, F[_], Ex <: Execution]
   protected[trembita] def evalFunc[B >: A](implicit ev: <:<[Finiteness.Finite, Finiteness.Finite], Ex: Ex): F[Ex.Repr[B]] =
     vsF.map(Ex.fromVector(_))
 
-  protected[trembita] def bindFunc[B >: A](f: Either[Throwable, B] => F[Unit]): F[Unit] = vsF.map(vs =>
+  protected[trembita] def consumeFunc[B >: A](f: Either[Throwable, B] => F[Unit]): F[Unit] = vsF.map(vs =>
     Traverse[Vector].traverse[F, B, Unit](vs)(b => f(Right(b)))
   )
 }
@@ -480,7 +480,7 @@ class SortedPipeline[+A: Ordering, F[_], Ex <: Execution](source: DataPipeline[A
       Ex.sorted(vs).asInstanceOf[Ex.Repr[B]]
     }
 
-  protected[trembita] def bindFunc[B >: A](f: Either[Throwable, B] => F[Unit]): F[Unit] =
+  protected[trembita] def consumeFunc[B >: A](f: Either[Throwable, B] => F[Unit]): F[Unit] =
     evalFunc[A]($conforms, ex).map { vs =>
       ex.Traverse.traverse(vs.asInstanceOf[ex.Repr[B]])(b => f(Right(b)))
     }

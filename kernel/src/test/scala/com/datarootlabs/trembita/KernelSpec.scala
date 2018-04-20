@@ -165,9 +165,6 @@ class KernelSpec extends FlatSpec {
 
     val result3 = pipeline.values.eval.get
     assert(result3 == Vector(1, 2, 3))
-
-    //    val result4 = (pipeline :+ ("a" → 2)).toMap.keys.eval.get.sorted
-    //    assert(result4 == Vector("a", "b", "c"))
   }
 
   "PairPipeline.reduceByKey" should "produce correct result" in {
@@ -177,6 +174,20 @@ class KernelSpec extends FlatSpec {
 
     val result2 = pipeline.reduceByKey.eval.get.sortBy(_._1) // uses Monoid
     assert(result1 == Vector("a" → 4, "b" → 2, "c" → 13))
+  }
+
+  "DataPipeline.zip" should "work correctly for finite pipelines" in {
+    val p1 = DataPipeline(1, 2, 3, 4)
+    val p2 = DataPipeline("a", "b", "c")
+    val result = p1.zip(p2).eval.get
+    assert(result == Vector(1 -> "a", 2 -> "b", 3 -> "c"))
+  }
+
+  "DataPipeline.++" should "work correctly for finite pipelines" in {
+    val p1 = DataPipeline(1, 2, 3, 4)
+    val p2 = DataPipeline(5, 6, 7)
+    val result = (p1 ++ p2).eval.get.sorted
+    assert(result == Vector(1, 2, 3, 4, 5, 6, 7))
   }
 
   "DataPipeline[IO]" should "produce the result wrapped in IO monad" in {

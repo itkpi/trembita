@@ -5,16 +5,18 @@ import scala.language.higherKinds
 import cats._
 import cats.implicits._
 import com.datarootlabs.trembita.internal._
-import scala.collection.generic.CanBuildFrom
 
 
 trait Ops[A, F[_], T <: Finiteness, Ex <: Execution] extends Any {
   def self: DataPipeline[A, F, T, Ex]
 
-  def bind(f: Either[Throwable, A] ⇒ F[Unit]): F[Unit] = self.bindFunc[A](f)
+  def consume(f: Either[Throwable, A] ⇒ F[Unit]): F[Unit] = self.consumeFunc[A](f)
 
   def to[Ex2 <: Execution](implicit ex1: Ex, ex2: Ex2, monadError: MonadError[F, Throwable]): DataPipeline[A, F, T, Ex2] = new BridgePipeline[A, F, T, Ex, Ex2](self, ex2)
 
+  def sideEffect(f: A => Unit): DataPipeline[A, F, T, Ex] = self.map { a => f(a); a }
+
+  def sideEffectM(f: A => F[Unit])(implicit F: Functor[F]): DataPipeline[A, F, T, Ex] = self.mapM { a => f(a).map(_ => a) }
   /**
     * Prints each element of the pipeline
     * as a side effect
@@ -23,16 +25,17 @@ trait Ops[A, F[_], T <: Finiteness, Ex <: Execution] extends Any {
     **/
   def log(toString: A ⇒ String = (b: A) ⇒ b.toString): DataPipeline[A, F, T, Ex] = self.map { a ⇒ println(toString(a)); a }
 
-  //
-  //  /**
-  //    * Splits a DataPipeline into N parts
-  //    *
-  //    * @param parts - N
-  //    * @return - a pipeline of batches
-  //    **/
-  //  def batch(parts: Int)(implicit ev: T <:< PipelineType.Finite, F: Functor[F])
-  //  : DataPipeline[Iterable[A], F, T] = new StrictSource[Iterable[A], F, T](evalFunc.map { vs ⇒
-  //    ListUtils.batch(parts)(vs).toIterator
-  //  })
-  //
+  def zip[B, T2 <: Finiteness]
+  (that: DataPipeline[B, F, T2, Ex])
+  (implicit zp: Finiteness.Zip[T, T2],
+   F: MonadError[F, Throwable],
+   ex: Ex)
+  : DataPipeline[(A, B), F, zp.Out, Ex] = zp(self, that)
+
+  def ++[T2 <: Finiteness]
+  (that: DataPipeline[A, F, T2, Ex])
+  (implicit concat: Finiteness.Concat[T, T2],
+   F: MonadError[F, Throwable],
+   ex: Ex)
+  : DataPipeline[A, F, concat.Out, Ex] = concat(self, that)
 }
