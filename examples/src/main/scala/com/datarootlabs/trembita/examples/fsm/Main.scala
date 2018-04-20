@@ -23,21 +23,18 @@ object Main {
   def main(args: Array[String]): Unit = {
     val pipeline: DataPipeline[Int, Future, Infinite, Sequential] = DataPipeline.infinite(Random.nextInt(100))
 
-    val withDoorState = pipeline.fsm[DoorState, Map[DoorState, Int], Int](
-      initial = Pure(FSM.State(Opened, Map.empty)),
-      result = Result.withState
-    )(_
+    val withDoorState = pipeline.fsm[DoorState, Map[DoorState, Int], Int](initial = Pure(FSM.State(Opened, Map.empty)))(_
       .when(Opened) {
         case i if i % 2 == 0 ⇒ _.goto(Closed).modify(_.modify(Opened, default = 1)(_ + 1)).push(_ (Opened) + i)
         case i if i % 4 == 0 ⇒ _.stay push (i * 2)
       }
       .when(Closed) {
         case i if i % 3 == 0 ⇒ _.goto(Opened).modify(_.modify(Closed, default = 1)(_ + 1)) spam (_ (Closed) to 10)
-        case i if i % 2 == 0 ⇒ _.stay.pushF { data ⇒ Future { data.values.sum } }
+        case i if i % 2 == 0 ⇒ _.stay.pushF { data ⇒ Future {data.values.sum} }
       }
       .whenUndefined { i ⇒ {
         println(s"Producing nothing..! [#$i]")
-        _.goto(Closed).change(Map.empty).await
+        _.goto(Closed).change(Map.empty).dontPush
       }
       }
     )

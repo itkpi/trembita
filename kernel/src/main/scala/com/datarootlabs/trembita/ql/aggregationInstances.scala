@@ -11,6 +11,7 @@ import algebra.ring._
 import com.datarootlabs.trembita.ql.AggFunc.Type
 import spire.algebra.NRoot
 import shapeless._
+import scala.concurrent.duration._
 
 
 trait aggregationInstances {
@@ -308,4 +309,13 @@ trait aggregationInstances {
         AggFunc.Result(headRes.result *:: tailRes.result, comb)
       }
     }
+
+  implicit object FiniteDurationAlgrebra extends Field[FiniteDuration] {
+    def negate(x: FiniteDuration): FiniteDuration = -x
+    def zero: FiniteDuration = Duration.Zero
+    def plus(x: FiniteDuration, y: FiniteDuration): FiniteDuration = x + y
+    def div(x: FiniteDuration, y: FiniteDuration): FiniteDuration = (x.toNanos / y.toNanos).nanos
+    def one: FiniteDuration = 1.nano
+    def times(x: FiniteDuration, y: FiniteDuration): FiniteDuration = (x.toNanos * y.toNanos).nanos
+  }
 }
