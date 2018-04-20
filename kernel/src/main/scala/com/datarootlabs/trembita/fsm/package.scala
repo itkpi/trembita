@@ -20,18 +20,16 @@ package object fsm {
       * @tparam D - state data type
       * @tparam B - resulting type
       * @param initial - initial state
-      * @param result  - what to produce as a result of transformations
       * @param fsmF    - see DSL for providing a FSM
       * @return - mapped pipeline
       **/
-    def fsm[N, D, B](initial: InitialState[N, D, F],
-                     result: FSM.Result[B, FSM.State[N, D, F]])
+    def fsm[N, D, B](initial: InitialState[N, D, F])
                     (fsmF: FSM.Empty[F, N, D, A, B] ⇒ FSM.Func[F, N, D, A, B])
-                    (implicit F: MonadError[F, Throwable]): DataPipeline[result.Out, F, T, Ex] = {
+                    (implicit F: MonadError[F, Throwable]): DataPipeline[B, F, T, Ex] = {
       val stateF = fsmF(new FSM.Empty)
       val stateOptF: StateEff[F, Option[FSM.State[N, D, F]]] = StateEff(None)
       self mapM { elem ⇒
-        val elemF: F[Either[Throwable, Iterable[result.Out]]] =
+        val elemF: F[Either[Throwable, Iterable[B]]] =
           stateOptF.mutateFlatMapSync { stateOpt ⇒
             val currState = stateOpt match {
               case None    ⇒ initial match {
@@ -41,10 +39,7 @@ package object fsm {
               case Some(s) ⇒ s
             }
             stateF(currState)(elem).map { case (newState, b) ⇒
-              val results: Iterable[result.Out] = b.map { bx ⇒
-                result(newState, bx)
-              }
-              Some(newState) → results
+              Some(newState) → b
             }
           }
         elemF
@@ -53,5 +48,4 @@ package object fsm {
       }
     }
   }
-
 }

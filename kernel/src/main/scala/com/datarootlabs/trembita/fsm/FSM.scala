@@ -129,6 +129,11 @@ object FSM {
       **/
     def push[B](f: D ⇒ B): F[(State[N, D, F], Iterable[B])] = F.pure(this → List(f(data)))
 
+    def modPush[B](f: D => (D, Option[B])): F[(State[N, D, F], Iterable[B])] = {
+      val (newData, result) = f(data)
+      (State[N, D, F](name, newData), result.toList: Iterable[B]).pure[F]
+    }
+
     def pushF[B](f: D ⇒ F[B]): F[(State[N, D, F], Iterable[B])] =
       F.map(f(data))(b ⇒ this → List(b))
     /**
@@ -143,7 +148,7 @@ object FSM {
     def pushF[B](valueF: F[B]): F[(State[N, D, F], Iterable[B])] =
       F.map(valueF)(v ⇒ this → List(v))
 
-    def await[B]: F[(State[N, D, F], Iterable[B])] = F.pure(this → Nil)
+    def dontPush[B]: F[(State[N, D, F], Iterable[B])] = F.pure(this → Nil)
 
     def spam[B](f: D ⇒ Iterable[B]): F[(State[N, D, F], Iterable[B])] = F.pure(this → f(data))
 
@@ -250,7 +255,7 @@ object FSM {
     }
 
     def whenUndefined(f: A ⇒ FSM.State[N, D, F] ⇒ F[(FSM.State[N, D, F], Iterable[B])])
-    : FSM.State[N, D,F] ⇒ A ⇒ F[(FSM.State[N, D,F], Iterable[B])] = {
+    : FSM.State[N, D, F] ⇒ A ⇒ F[(FSM.State[N, D, F], Iterable[B])] = {
       case state if stateF.isDefinedAt(state.name) ⇒ a ⇒
         val nameF = stateF(state.name)
         if (nameF.isDefinedAt(a)) nameF(a)(state)

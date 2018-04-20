@@ -79,7 +79,7 @@ lazy val cassandra_connector_phantom = sonatypeProject(id = "trembita-cassandra_
   .settings(
     libraryDependencies ++= {
       Seq(
-        "com.outworkers" %% "phantom-jdk8" % "2.20.0",
+        "com.outworkers" %% "phantom-jdk8" % "2.24.2",
         "com.datastax.cassandra" % "cassandra-driver-extras" % "3.4.0"
       )
     }
@@ -181,7 +181,11 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     isSnapshot := snapshot,
     skip in publish := true,
     publish := {},
-    publishLocal := {}
+    publishLocal := {},
+    addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),
+    libraryDependencies ++= Seq(
+      "io.circe" %% "circe-java8" % "0.9.3"
+    )
   )
 
 lazy val root = Project(id = "trembita", base = file("."))

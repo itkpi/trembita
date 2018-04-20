@@ -12,7 +12,7 @@ import QueryResult._
 /**
   * Like [[Show]] for complicated data types
   * like [[QueryResult]] or Json
-  * */
+  **/
 trait ShowPretty[A] {
   def spaces(count: Int): String = Seq.fill(count)(" ").mkString
   def appendPrint(a: A)(currSpaces: Int, requiredSpaces: Int): String
@@ -29,7 +29,8 @@ trait show {
     val u = weakTypeOf[U]
     val U = u.dealias
     val uName = u.typeSymbol.toString.dropWhile(_ != ' ').tail
-    c.Expr[Show[A :@ U]](q"""
+    c.Expr[Show[A :@ U]](
+      q"""
       new cats.Show[$A :@ $U]{
         def show(v: $A :@ $U): String = $uName + ": " + v.value
       }
@@ -53,7 +54,7 @@ trait show {
   T: Show
   ](
      implicit subGrShowPretty: ShowPretty[QueryResult[A, KT, T]],
-     keyShow: Show[Key[KH]]
+     keyShow                 : Show[Key[KH]]
    ): ShowPretty[~::[A, KH, KT, T]] = new ShowPretty[~::[A, KH, KT, T]] {
     def appendPrint(a: ~::[A, KH, KT, T])(currSpaces: Int, requiredSpaces: Int): String = {
       import a._
@@ -110,8 +111,9 @@ trait show {
         val KH = kHx.dealias
         val KT = kTx.dealias
         q"""
+          import com.datarootlabs.trembita.ql._
           import QueryResult._
-          new ShowPretty[QueryResult[$A, $K, $T]] {
+          new com.datarootlabs.trembita.ql.ShowPretty[QueryResult[$A, $K, $T]] {
             private val prettyCons   = `showPretty-~::`[$A, $KH, $KT, $T]
             private val prettyMul    = `showPretty-~**`[$A, $K, $T](this)
             override def appendPrint(a: QueryResult[$A, $K, $T])(currSpaces: Int, requiredSpaces: Int): String = {
@@ -128,7 +130,9 @@ trait show {
           }
         """
     }
-    c.Expr[ShowPretty[QueryResult[A, K, T]]](q"$expr.asInstanceOf[ShowPretty[QueryResult[$A, $K, $T]]]")
+    c.Expr[ShowPretty[QueryResult[A, K, T]]](
+      q"$expr.asInstanceOf[com.datarootlabs.trembita.ql.ShowPretty[com.datarootlabs.trembita.ql.QueryResult[$A, $K, $T]]]"
+    )
   }
 }
 

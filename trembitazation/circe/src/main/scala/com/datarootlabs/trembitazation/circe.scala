@@ -13,9 +13,9 @@ import cats.data.NonEmptyList
 import io.circe.Decoder.Result
 import io.circe._
 import io.circe.syntax._
-
 import scala.reflect.macros.blackbox
 import shapeless._
+import scala.concurrent.duration._
 
 
 sealed trait circe {
@@ -23,7 +23,7 @@ sealed trait circe {
     override def apply(a: ##@[A]): Json = a.records.asJson
   }
 
-  def `##@-decode`[A: Decoder]: Decoder[##@[A]] = Decoder.instance { c ⇒
+  def `##@-decode`[A: Decoder]: Decoder[##@[A]] = Decoder.instance { c =>
     c.as[List[A]].right.map(##@(_))
   }
 
@@ -34,8 +34,9 @@ sealed trait circe {
     val u = weakTypeOf[U]
     val U = u.dealias
 
-    c.Expr[Encoder[A :@ U]](q"""
-      new Encoder[$A :@ $U] {
+    c.Expr[Encoder[A :@ U]](
+      q"""
+      new io.circe.Encoder[$A :@ $U] {
         private val valueEncoder = Encoder[$A]
         override def apply(a: $A :@ $U): Json = Json.obj(
           "value" -> valueEncoder(a.value),
@@ -52,8 +53,9 @@ sealed trait circe {
     val u = weakTypeOf[U]
     val U = u.dealias
 
-    c.Expr[Decoder[A :@ U]](q"""
-      Decoder.instance { c ⇒
+    c.Expr[Decoder[A :@ U]](
+      q"""
+      io.circe.Decoder.instance { c =>
         val valueF = c.get[$A]("value")
         val tagF = c.get[String]("tag")
         val result: Decoder.Result[$A :@ $U] = tagF match {
@@ -79,8 +81,9 @@ sealed trait circe {
     val U = u.dealias
     val AggT = weakTypeOf[AggT].dealias
 
-    c.Expr[Encoder[TaggedAgg[A, U, AggT]]](q"""
-      new Encoder[TaggedAgg[$A, $U, $AggT]] {
+    c.Expr[Encoder[TaggedAgg[A, U, AggT]]](
+      q"""
+      new io.circe.Encoder[TaggedAgg[$A, $U, $AggT]] {
         private val valueEncoder = Encoder[$A]
         override def apply(a: $A :@ $U): Json = Json.obj(
           "value" -> valueEncoder(a.value),
@@ -103,8 +106,9 @@ sealed trait circe {
     val U = u.dealias
     val AggT = weakTypeOf[AggT].dealias
 
-    c.Expr[Decoder[TaggedAgg[A, U, AggT]]](q"""
-      Decoder.instance { c ⇒
+    c.Expr[Decoder[TaggedAgg[A, U, AggT]]](
+      q"""
+      io.circe.Decoder.instance { c =>
         val valueF = c.get[$A]("value")
         val tagF = c.get[String]("tag")
         val aggregationFunctionF = c.get[String]("aggregation_function")
@@ -130,9 +134,9 @@ sealed trait circe {
 
   implicit object HNilDecoder extends Decoder[HNil] {
     override def apply(c: HCursor): Decoder.Result[HNil] = c.value.asString match {
-      case Some("HNil") ⇒ Right(HNil)
-      case Some(other)  ⇒ Left(DecodingFailure(s"$other is not a HNil", c.history))
-      case _            ⇒ Left(DecodingFailure("Not a HNil", c.history))
+      case Some("HNil") => Right(HNil)
+      case Some(other)  => Left(DecodingFailure(s"$other is not a HNil", c.history))
+      case _            => Left(DecodingFailure("Not a HNil", c.history))
     }
   }
 
@@ -142,16 +146,16 @@ sealed trait circe {
         val headEncoded = headEncoder(a.head)
         val tailEncoded = tailEncoder(a.tail)
         tailEncoded.asArray match {
-          case Some(arr) ⇒ Json.arr(headEncoded +: arr: _*)
-          case _         ⇒ Json.arr(headEncoded, tailEncoded)
+          case Some(arr) => Json.arr(headEncoded +: arr: _*)
+          case _         => Json.arr(headEncoded, tailEncoded)
         }
       }
     }
   implicit def hlistDecoder[H, T <: HList]
   (implicit headDecoder: Decoder[H],
-   tailDecoder: Decoder[T]): Decoder[H :: T] = new Decoder[H :: T] {
+   tailDecoder         : Decoder[T]): Decoder[H :: T] = new Decoder[H :: T] {
     override def apply(c: HCursor): Decoder.Result[H :: T] = c.value.asArray match {
-      case Some(values) if values.lengthCompare(2) >= 0 ⇒
+      case Some(values) if values.lengthCompare(2) >= 0 =>
         val head = values.head
         val tail = values.tail
         for {
@@ -161,7 +165,7 @@ sealed trait circe {
             else Json.arr(tail: _*).hcursor
           ).right
         } yield kh :: kt
-      case _                                            ⇒ Left(DecodingFailure("not a HList", c.history))
+      case _                                            => Left(DecodingFailure("not a HList", c.history))
     }
   }
 
@@ -171,9 +175,9 @@ sealed trait circe {
 
   implicit object DNilDecoder extends Decoder[DNil] {
     override def apply(c: HCursor): Decoder.Result[DNil] = c.value.asString match {
-      case Some("DNil") ⇒ Right(DNil)
-      case Some(other)  ⇒ Left(DecodingFailure(s"$other is not a DNil", c.history))
-      case _            ⇒ Left(DecodingFailure("Not a DNil", c.history))
+      case Some("DNil") => Right(DNil)
+      case Some(other)  => Left(DecodingFailure(s"$other is not a DNil", c.history))
+      case _            => Left(DecodingFailure("Not a DNil", c.history))
     }
   }
 
@@ -184,17 +188,17 @@ sealed trait circe {
         val headEncoded = headEncoder(a.head)
         val tailEncoded = tailEncoder(a.tail)
         tailEncoded.asArray match {
-          case Some(arr) ⇒ Json.arr(headEncoded +: arr: _*)
-          case _         ⇒ Json.arr(headEncoded, tailEncoded)
+          case Some(arr) => Json.arr(headEncoded +: arr: _*)
+          case _         => Json.arr(headEncoded, tailEncoded)
         }
       }
     }
 
   implicit def aggDeclDecoder[H <: TaggedAgg[_, _, _], T <: AggDecl]
   (implicit headDecoder: Decoder[H],
-   tailDecoder: Decoder[T]): Decoder[H %:: T] = new Decoder[H %:: T] {
+   tailDecoder         : Decoder[T]): Decoder[H %:: T] = new Decoder[H %:: T] {
     override def apply(c: HCursor): Decoder.Result[H %:: T] = c.value.asArray match {
-      case Some(values) if values.lengthCompare(2) >= 0 ⇒
+      case Some(values) if values.lengthCompare(2) >= 0 =>
         val head = values.head
         val tail = values.tail
         for {
@@ -204,7 +208,7 @@ sealed trait circe {
             else Json.arr(tail: _*).hcursor
           ).right
         } yield kh %:: kt
-      case _                                            ⇒ Left(DecodingFailure("not a HList", c.history))
+      case _                                            => Left(DecodingFailure("not a HList", c.history))
     }
   }
 
@@ -214,30 +218,30 @@ sealed trait circe {
 
   implicit object RNilDecoder extends Decoder[RNil] {
     override def apply(c: HCursor): Decoder.Result[RNil] = c.value.asString match {
-      case Some("RNil") ⇒ Right(RNil)
-      case Some(other)  ⇒ Left(DecodingFailure(s"$other is not a RNil", c.history))
-      case _            ⇒ Left(DecodingFailure("Not a RNil", c.history))
+      case Some("RNil") => Right(RNil)
+      case Some(other)  => Left(DecodingFailure(s"$other is not a RNil", c.history))
+      case _            => Left(DecodingFailure("Not a RNil", c.history))
     }
   }
 
   implicit def AggResEncoder[KH <: :@[_, _], KT <: AggRes]
   (implicit headEncoder: Encoder[KH],
-   tailEncoder: Encoder[KT]): Encoder[KH *:: KT] = new Encoder[KH *:: KT] {
+   tailEncoder         : Encoder[KT]): Encoder[KH *:: KT] = new Encoder[KH *:: KT] {
     override def apply(a: KH *:: KT): Json = {
       val headEncoded = headEncoder(a.head)
       val tailEncoded = tailEncoder(a.tail)
       tailEncoded.asArray match {
-        case Some(arr) ⇒ Json.arr(headEncoded +: arr: _*)
-        case _         ⇒ Json.arr(headEncoded, tailEncoded)
+        case Some(arr) => Json.arr(headEncoded +: arr: _*)
+        case _         => Json.arr(headEncoded, tailEncoded)
       }
     }
   }
 
   implicit def AggResDecoder[KH <: :@[_, _], KT <: AggRes]
   (implicit headDecoder: Decoder[KH],
-   tailDecoder: Decoder[KT]): Decoder[KH *:: KT] = new Decoder[KH *:: KT] {
+   tailDecoder         : Decoder[KT]): Decoder[KH *:: KT] = new Decoder[KH *:: KT] {
     override def apply(c: HCursor): Decoder.Result[KH *:: KT] = c.value.asArray match {
-      case Some(values) if values.lengthCompare(2) >= 0 ⇒
+      case Some(values) if values.lengthCompare(2) >= 0 =>
         val head = values.head
         val tail = values.tail
         for {
@@ -247,7 +251,7 @@ sealed trait circe {
             else Json.arr(tail: _*).hcursor
           ).right
         } yield kh *:: kt
-      case _                                            ⇒ Left(DecodingFailure("not an AggRes", c.history))
+      case _                                            => Left(DecodingFailure("not an AggRes", c.history))
     }
   }
 
@@ -257,30 +261,30 @@ sealed trait circe {
 
   implicit object GNilDecoder extends Decoder[GNil] {
     override def apply(c: HCursor): Decoder.Result[GNil] = c.value.asString match {
-      case Some("GNil") ⇒ Right(GNil)
-      case Some(other)  ⇒ Left(DecodingFailure(s"$other is not a GNil", c.history))
-      case _            ⇒ Left(DecodingFailure("Not a GNil", c.history))
+      case Some("GNil") => Right(GNil)
+      case Some(other)  => Left(DecodingFailure(s"$other is not a GNil", c.history))
+      case _            => Left(DecodingFailure("Not a GNil", c.history))
     }
   }
 
   implicit def GroupingCriteriaEncoder[KH <: :@[_, _], KT <: GroupingCriteria]
   (implicit headEncoder: Encoder[KH],
-   tailEncoder: Encoder[KT]): Encoder[KH &:: KT] = new Encoder[KH &:: KT] {
+   tailEncoder         : Encoder[KT]): Encoder[KH &:: KT] = new Encoder[KH &:: KT] {
     override def apply(a: KH &:: KT): Json = {
       val headEncoded = headEncoder(a.head)
       val tailEncoded = tailEncoder(a.tail)
       tailEncoded.asArray match {
-        case Some(arr) ⇒ Json.arr(headEncoded +: arr: _*)
-        case _         ⇒ Json.arr(headEncoded, tailEncoded)
+        case Some(arr) => Json.arr(headEncoded +: arr: _*)
+        case _         => Json.arr(headEncoded, tailEncoded)
       }
     }
   }
 
   implicit def GroupingCriteriaDecoder[KH <: :@[_, _], KT <: GroupingCriteria]
   (implicit headDecoder: Decoder[KH],
-   tailDecoder: Decoder[KT]): Decoder[KH &:: KT] = new Decoder[KH &:: KT] {
+   tailDecoder         : Decoder[KT]): Decoder[KH &:: KT] = new Decoder[KH &:: KT] {
     override def apply(c: HCursor): Decoder.Result[KH &:: KT] = c.value.asArray match {
-      case Some(values) if values.lengthCompare(2) >= 0 ⇒
+      case Some(values) if values.lengthCompare(2) >= 0 =>
         val head = values.head
         val tail = values.tail
         for {
@@ -290,13 +294,13 @@ sealed trait circe {
             else Json.arr(tail: _*).hcursor
           ).right
         } yield kh &:: kt
-      case _                                            ⇒ Left(DecodingFailure("not a GroupingCriteria", c.history))
+      case _                                            => Left(DecodingFailure("not a GroupingCriteria", c.history))
     }
   }
 
   implicit def aggFuncResEncoder[A, Out: Encoder, Comb: Encoder]: Encoder[AggFunc.Result[A, Out, Comb]] =
     Encoder.instance {
-      case AggFunc.Result(out, comb) ⇒
+      case AggFunc.Result(out, comb) =>
         Json.obj(
           "out" → out.asJson,
           "combiner" → comb.asJson
@@ -304,7 +308,7 @@ sealed trait circe {
     }
 
   implicit def aggFuncResDecoder[A, Out: Decoder, Comb: Decoder]: Decoder[AggFunc.Result[A, Out, Comb]] =
-    Decoder.instance { c ⇒
+    Decoder.instance { c =>
       for {
         out ← c.get[Out]("out")
         comb ← c.get[Comb]("combiner")
@@ -319,19 +323,19 @@ sealed trait circe {
   }
 
   implicit def keyEncoder[K: Encoder]: Encoder[Key[K]] = Encoder.instance {
-    case Key.NoKey                ⇒ Json.fromString("NoKey")
-    case Key.Single(value)        ⇒ Json.obj("key" → value.asJson)
-    case Key.Multiple(head, tail) ⇒ Json.obj("keys" → Json.arr((head :: tail).asJson))
+    case Key.NoKey                => Json.fromString("NoKey")
+    case Key.Single(value)        => Json.obj("key" → value.asJson)
+    case Key.Multiple(head, tail) => Json.obj("keys" → Json.arr((head :: tail).asJson))
   }
-  implicit def keyDecoder[K: Decoder]: Decoder[Key[K]] = Decoder.instance { c ⇒
+  implicit def keyDecoder[K: Decoder]: Decoder[Key[K]] = Decoder.instance { c =>
     c.value.asString match {
-      case Some("NoKey") ⇒ Right(Key.NoKey)
-      case _             ⇒ c.get[K]("key") match {
-        case Right(value) ⇒ Right(Key.Single(value))
-        case Left(_)      ⇒ c.get[NonEmptyList[K]]("keys") match {
-          case Right(NonEmptyList(head, scala.::(h2, tail))) ⇒ Right(Key.Multiple(head, NonEmptyList(h2, tail)))
-          case Right(_)                                      ⇒ Left(DecodingFailure("Not enough keys for Key.Multiple", c.history))
-          case Left(err)                                     ⇒ Left(err)
+      case Some("NoKey") => Right(Key.NoKey)
+      case _             => c.get[K]("key") match {
+        case Right(value) => Right(Key.Single(value))
+        case Left(_)      => c.get[NonEmptyList[K]]("keys") match {
+          case Right(NonEmptyList(head, scala.::(h2, tail))) => Right(Key.Multiple(head, NonEmptyList(h2, tail)))
+          case Right(_)                                      => Left(DecodingFailure("Not enough keys for Key.Multiple", c.history))
+          case Left(err)                                     => Left(err)
         }
       }
     }
@@ -347,21 +351,22 @@ sealed trait circe {
     val gnil = typeOf[GNil].dealias
 
     val expr = K match {
-      case `gnil` ⇒ q"`##@-json`[$A]"
-      case _      ⇒ K.typeArgs match {
-        case List(kH, kT) ⇒ q"""
+      case `gnil` => q"`##@-json`[$A]"
+      case _      => K.typeArgs match {
+        case List(kH, kT) => q"""
             import io.circe._
             import io.circe.syntax._
             import cats.data.NonEmptyList
-            import com.datarootlabs.trembita.ql.QueryResult._
+            import com.datarootlabs.trembita.ql._
+            import QueryResult._
 
-            new Encoder[QueryResult[$A, $K, $T]] {
-              override def apply(a: QueryResult[$A, $K, $T]): Json = a match {
+            new io.circe.Encoder[com.datarootlabs.trembita.ql.QueryResult[$A, $K, $T]] {
+              override def apply(a: com.datarootlabs.trembita.ql.QueryResult[$A, $K, $T]): Json = a match {
                 case Empty(totals) => Json.obj("Empty" -> Json.obj(), "totals" -> totals.asInstanceOf[$T].asJson)
                 case cons: ~::[_,_,_,_] => Json.obj(
                   "key" → cons.key.asInstanceOf[Key[$kH]].asJson,
                   "totals" → cons.totals.asInstanceOf[$T].asJson,
-                  "subResult" → cons.subResult.asInstanceOf[QueryResult[$A, $kT, $T]].asJson
+                  "subResult" → cons.subResult.asInstanceOf[com.datarootlabs.trembita.ql.QueryResult[$A, $kT, $T]].asJson
                 )
                 case mul: ~**[_,_, _] =>
                 Json.obj(
@@ -376,7 +381,9 @@ sealed trait circe {
 
       }
     }
-    c.Expr[Encoder[QueryResult[A, K, T]]](q"$expr.asInstanceOf[Encoder[QueryResult[$A, $K, $T]]]")
+    c.Expr[Encoder[QueryResult[A, K, T]]](
+      q"$expr.asInstanceOf[io.circe.Encoder[com.datarootlabs.trembita.ql.QueryResult[$A, $K, $T]]]"
+    )
   }
 
   def circeDecoderImpl[A: c.WeakTypeTag, K <: GroupingCriteria : c.WeakTypeTag, T: c.WeakTypeTag]
@@ -389,15 +396,15 @@ sealed trait circe {
     val gnil = typeOf[GNil].dealias
 
     val expr = K match {
-      case `gnil` ⇒ q"`##@-decode`[$A]"
-      case _      ⇒ K.typeArgs match {
-        case List(kH, kT) ⇒ q"""
+      case `gnil` => q"`##@-decode`[$A]"
+      case _      => K.typeArgs match {
+        case List(kH, kT) => q"""
             import io.circe._
             import io.circe.syntax._
             import cats.data.NonEmptyList
             import com.datarootlabs.trembita.ql.QueryResult._
 
-            new Decoder[QueryResult[$A, $K, $T]] {
+            new io.circe.Decoder[com.datarootlabs.trembita.ql.QueryResult[$A, $K, $T]] {
               private def decodeImpl(c: HCursor): Decoder.Result[QueryResult[$A, $K, $T]] = {
                 val emptyF: Decoder.Result[Empty[$A, $K, $T]] = for {
                   _ <- c.downField("Empty").focus.toRight(
@@ -409,11 +416,11 @@ sealed trait circe {
                 val mulF: Decoder.Result[~**[$A, $K, $T]] = for {
                   totals <- c.get[$T]("totals")
                   values <- c.downField("records").values.map(_.toList).collect {
-                    case scala.::(head, scala.::(next, tail)) ⇒ (head :: next :: tail).map(json => decodeImpl(json.hcursor))
+                    case scala.::(head, scala.::(next, tail)) => (head :: next :: tail).map(json => decodeImpl(json.hcursor))
                       .foldLeft[Decoder.Result[List[QueryResult[$A, $K, $T]]]](Right(Nil)) {
-                        case (Right(acc), Right(v)) ⇒ Right(v :: acc)
-                        case (err@Left(_), _)       ⇒ err
-                        case (_, err@Left(_))       ⇒ err.asInstanceOf[Decoder.Result[List[QueryResult[$A, $K, $T]]]]
+                        case (Right(acc), Right(v)) => Right(v :: acc)
+                        case (err@Left(_), _)       => err
+                        case (_, err@Left(_))       => err.asInstanceOf[io.circe.Decoder.Result[List[com.datarootlabs.trembita.ql.QueryResult[$A, $K, $T]]]]
                       }
                   }.getOrElse(Left(DecodingFailure("Not a NonEmptyList with at least 2 query results", c.history)))
                 } yield {
@@ -436,13 +443,15 @@ sealed trait circe {
                   }
                 }
               }
-              def apply(c: HCursor): Decoder.Result[QueryResult[$A, $K, $T]] = decodeImpl(c)
+              def apply(c: HCursor): io.circe.Decoder.Result[com.datarootlabs.trembita.ql.QueryResult[$A, $K, $T]] = decodeImpl(c)
             }
             """
 
       }
     }
-    c.Expr[Decoder[QueryResult[A, K, T]]](q"$expr.asInstanceOf[Decoder[QueryResult[$A, $K, $T]]]")
+    c.Expr[Decoder[QueryResult[A, K, T]]](
+      q"$expr.asInstanceOf[io.circe.Decoder[com.datarootlabs.trembita.ql.QueryResult[$A, $K, $T]]]"
+    )
   }
 }
 
@@ -460,4 +469,7 @@ object circe extends circe {
 
   implicit def arbitraryGroupResultDecoder[A, K <: GroupingCriteria, T]
   : Decoder[QueryResult[A, K, T]] = macro circeDecoderImpl[A, K, T]
+
+  implicit val DurationEncoder: Encoder[FiniteDuration] = Encoder.instance(_.toNanos.asJson)
+  implicit val DurationDecoder: Decoder[FiniteDuration] = Decoder.instance(_.as[Long].right.map(_.nanos))
 }
