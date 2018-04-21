@@ -74,7 +74,7 @@ class BaseMapPipeline[K, V, F[_], Ex <: Execution]
     source.evalFunc[(K, V)](ev, Ex).map(vs => Ex.fromVector(Ex.toVector(vs).toMap.toVector))
 
   protected[trembita]
-  def bindFunc[B >: (K, V)](f: Either[Throwable, B] ⇒ F[Unit]): F[Unit] = evalFunc[(K, V)]($conforms, ex).map { repr =>
+  def consumeFunc[B >: (K, V)](f: Either[Throwable, B] ⇒ F[Unit]): F[Unit] = evalFunc[(K, V)]($conforms, ex).map { repr =>
     ex.Traverse.traverse[F, B, Unit](repr.asInstanceOf[ex.Repr[B]])(b => f(Right(b)))
   }
 
@@ -109,7 +109,7 @@ class GroupByPipeline[K, V, F[_], Ex <: Execution]
   def evalFunc[B >: (K, Iterable[V])](implicit ev: <:<[Finiteness.Finite, Finiteness.Finite], Ex: Ex): F[Ex.Repr[B]] =
     source.evalFunc[V](ev, Ex).map(vs => Ex.fromVector(Ex.groupBy(vs)(f).toVector).asInstanceOf[Ex.Repr[B]])
 
-  protected[trembita] def bindFunc[B >: (K, Iterable[V])](f: Either[Throwable, B] ⇒ F[Unit]): F[Unit] =
+  protected[trembita] def consumeFunc[B >: (K, Iterable[V])](f: Either[Throwable, B] ⇒ F[Unit]): F[Unit] =
     evalFunc[B]($conforms, ex).map { vs =>
       ex.Traverse.traverse[F, B, Unit](vs.asInstanceOf[ex.Repr[B]])(b => f(Right(b)))
     }

@@ -47,7 +47,7 @@ object Main {
     println("Haven't started...")
 
 
-    val resF = strings.bind { res ⇒
+    val resF = strings.consume { res ⇒
       println(s"[${LocalDateTime.now}] result: $res")
       Future.unit
     }

@@ -32,7 +32,7 @@ object Main {
     println("----------- Result -----------")
     println(report.map(_.pretty()))
 
-    println("\n\n------------ JSON -----------")
-    println(report.map(_.asJson))
+//    println("\n\n------------ JSON -----------")
+//    println(report.map(_.asJson))
   }
 }

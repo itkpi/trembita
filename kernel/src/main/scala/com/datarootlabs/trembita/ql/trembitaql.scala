@@ -261,7 +261,7 @@ object trembitaqlForPipeline {
            val totals = vs.foldLeft(aggF.empty) { case (acc, (_, a)) => aggF.add(acc, getT(a)) }
            (totals, sortedVs(vs.map(_._2).toList))
          }.toVector match {
-           case Vector(_) => Empty[$A, $currCriteria &:: $gnil, AggFunc.Result[$T, $R, $Comb]](aggF.extract(aggF.empty))
+           case Vector() => Empty[$A, $currCriteria &:: $gnil, AggFunc.Result[$T, $R, $Comb]](aggF.extract(aggF.empty))
            case Vector((key, (totals, vs))) => ~::[$A, $currCriteria, $gnil, AggFunc.Result[$T, $R, $Comb]](
              Key.Single(key),
              aggF.extract(totals),

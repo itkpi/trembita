@@ -39,7 +39,7 @@ object Main {
       }
     )
 
-    val result: Future[Unit] = withDoorState.bind { res ⇒
+    val result: Future[Unit] = withDoorState.consume { res ⇒
       println(s"~>$res")
       Future.unit
     }

@@ -314,7 +314,11 @@ trait aggregationInstances {
     def negate(x: FiniteDuration): FiniteDuration = -x
     def zero: FiniteDuration = Duration.Zero
     def plus(x: FiniteDuration, y: FiniteDuration): FiniteDuration = x + y
-    def div(x: FiniteDuration, y: FiniteDuration): FiniteDuration = (x.toNanos / y.toNanos).nanos
+    def div(x: FiniteDuration, y: FiniteDuration): FiniteDuration = {
+      val ynanos = y.toNanos
+      if (ynanos == 0) 0.nanos
+      else (x.toNanos / ynanos).nanos
+    }
     def one: FiniteDuration = 1.nano
     def times(x: FiniteDuration, y: FiniteDuration): FiniteDuration = (x.toNanos * y.toNanos).nanos
   }
