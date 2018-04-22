@@ -9,6 +9,8 @@ import com.datarootlabs.trembita.ql.show._
 import cats.implicits._
 import Finiteness.Finite
 import Execution._
+
+import scala.collection.parallel.immutable.ParVector
 import scala.util.Try
 
 
@@ -25,20 +27,22 @@ object Main extends algebra.instances.AllInstances {
 
   def main(args: Array[String]): Unit = {
     val numbers: DataPipeline[Long, Try, Finite, Sequential] = DataPipeline.from(1L to 20L)
-    val result = numbers.query(_
-      .filter(_ > 5)
-      .groupBy(num ⇒
-        (num % 2 == 0).as[`divisible by 2`] &::
-          (num % 3 == 0).as[`divisible by 3`] &::
-          (num % 4).as[`reminder of 4`] &:: GNil
-      )
-      .aggregate(num ⇒
-        (num * num).toDouble.as[square].avg %::
-          num.as[count].count %::
-          (num * num * num * num).as[`^4`].sum %::
-          num.toString.as[`some name`].sum %:: DNil
-      )
-      .having(_.get[count] > 7))
+    val result = numbers
+      .to[Parallel]
+      .query(_
+        .filter(_ > 5)
+        .groupBy(num ⇒
+          (num % 2 == 0).as[`divisible by 2`] &::
+            (num % 3 == 0).as[`divisible by 3`] &::
+            (num % 4).as[`reminder of 4`] &:: GNil
+        )
+        .aggregate(num ⇒
+          (num * num).toDouble.as[square].avg %::
+            num.as[count].count %::
+            (num * num * num * num).as[`^4`].sum %::
+            num.toString.as[`some name`].sum %:: DNil
+        )
+        .having(_.get[count] > 7))
 
     println("First one:")
     println(result.map(_.pretty()))

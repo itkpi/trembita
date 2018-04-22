@@ -97,19 +97,26 @@ protected[trembita]
 class GroupByPipeline[K, V, F[_], Ex <: Execution]
 (f: V => K, source: DataPipeline[V, F, Finiteness.Finite, Ex], ex: Ex)
 (implicit ME: MonadError[F, Throwable]
-) extends SeqSource[(K, Iterable[V]), F, Finiteness.Finite, Ex] {
+) extends SeqSource[(K, Vector[V]), F, Finiteness.Finite, Ex] {
 
-  def handleError[B >: (K, Iterable[V])](f: Throwable ⇒ B): DataPipeline[B, F, Finiteness.Finite, Ex] =
+  def handleError[B >: (K, Vector[V])](f: Throwable ⇒ B): DataPipeline[B, F, Finiteness.Finite, Ex] =
     this
 
-  def handleErrorWith[B >: (K, Iterable[V])](f: Throwable ⇒ DataPipeline[B, F, Finiteness.Finite, Ex]): DataPipeline[B, F, Finiteness.Finite, Ex] =
+  def handleErrorWith[B >: (K, Vector[V])](f: Throwable ⇒ DataPipeline[B, F, Finiteness.Finite, Ex]): DataPipeline[B, F, Finiteness.Finite, Ex] =
     this
 
   protected[trembita]
-  def evalFunc[B >: (K, Iterable[V])](implicit ev: <:<[Finiteness.Finite, Finiteness.Finite], Ex: Ex): F[Ex.Repr[B]] =
-    source.evalFunc[V](ev, Ex).map(vs => Ex.fromVector(Ex.groupBy(vs)(f).toVector).asInstanceOf[Ex.Repr[B]])
+  def evalFunc[B >: (K, Vector[V])](implicit ev: <:<[Finiteness.Finite, Finiteness.Finite], Ex: Ex): F[Ex.Repr[B]] =
+    source.evalFunc[V](ev, ex).map[Ex.Repr[B]](vs =>
+      Ex.fromVector(
+        Ex.groupBy(
+          Ex.fromVector(
+            ex.toVector(vs.asInstanceOf[ex.Repr[V]])
+          )
+        )(f).mapValues(Ex.toVector(_)).toVector
+      ))
 
-  protected[trembita] def consumeFunc[B >: (K, Iterable[V])](f: Either[Throwable, B] ⇒ F[Unit]): F[Unit] =
+  protected[trembita] def consumeFunc[B >: (K, Vector[V])](f: Either[Throwable, B] ⇒ F[Unit]): F[Unit] =
     evalFunc[B]($conforms, ex).map { vs =>
       ex.Traverse.traverse[F, B, Unit](vs.asInstanceOf[ex.Repr[B]])(b => f(Right(b)))
     }

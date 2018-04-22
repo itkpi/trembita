@@ -8,7 +8,7 @@ import cats.implicits._
 
 object Main {
   def main(args: Array[String]): Unit = {
-    val list: SizedAtLeast[Int, _5, Vector] = SizedAtLeast(_5)(1, 3, 7, 8, 7).to[Vector]
+    val list: SizedAtLeast[Int, _5, Vector] = SizedAtLeast(_5)(1, 3, 7, 5, 5, 5)[Vector]
     println(list.show)
   }
 }

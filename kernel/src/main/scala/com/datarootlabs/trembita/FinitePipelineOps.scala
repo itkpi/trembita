@@ -22,8 +22,8 @@ trait FiniteOps[A, F[_], Ex <: Execution] extends Any {
     * @param f - function to extract [[K]] from [[A]]
     * @return - a data pipeline consisting of pair {{{ (K, Iterable[A]) }}}
     **/
-  def groupBy[K](f: A => K)(implicit ex: Ex, me: MonadError[F, Throwable]): DataPipeline[(K, Iterable[A]), F, Finiteness.Finite, Ex] =
-    new GroupByPipeline[K, A, F, Ex](f, self.asInstanceOf[DataPipeline[A, F, Finiteness.Finite, Ex]], ex)
+  def groupBy[K](f: A => K)(implicit ex: Ex, me: MonadError[F, Throwable]): DataPipeline[(K, Vector[A]), F, Finiteness.Finite, Ex] =
+    new GroupByPipeline[K, A, F, Ex](f, self, ex)
 
 
   /**

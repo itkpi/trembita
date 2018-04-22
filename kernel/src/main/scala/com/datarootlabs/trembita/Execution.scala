@@ -15,6 +15,8 @@ trait Execution {
 
   def fromVector[A](vs: Vector[A]): Repr[A]
 
+  def fromIterable[A](vs: Iterable[A]): Repr[A]
+
   def groupBy[A, K](vs: Repr[A])(f: A => K): Map[K, Repr[A]]
 
   def collect[A, B](repr: Repr[A])(pf: PartialFunction[A, B]): Repr[B]
@@ -37,6 +39,8 @@ object Execution {
 
     def fromVector[A](vs: Vector[A]): Vector[A] = vs
 
+    def fromIterable[A](vs: Iterable[A]): Vector[A] = vs.toVector
+
     def groupBy[A, K](vs: Vector[A])(f: A => K): Map[K, Vector[A]] = vs.groupBy(f)
 
     def sorted[A: Ordering](vs: Vector[A]): Vector[A] = vs.sorted
@@ -55,6 +59,8 @@ object Execution {
     def toVector[A](repr: ParVector[A]): Vector[A] = repr.seq
 
     def fromVector[A](vs: Vector[A]): ParVector[A] = vs.par
+
+    def fromIterable[A](vs: Iterable[A]): Repr[A] = vs.toVector.par
 
     def collect[A, B](repr: ParVector[A])(pf: PartialFunction[A, B]): ParVector[B] = repr.collect(pf)
 
