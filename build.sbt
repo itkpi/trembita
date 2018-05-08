@@ -54,6 +54,15 @@ def sonatypeProject(id: String, base: File) = Project(id, base)
 
 lazy val collection_extentions = sonatypeProject(id = "collection_extentions", base = file("./collection_extentions"))
 
+lazy val chronos = sonatypeProject(id = "chronos", base = file("./chronos"))
+  .settings {
+    libraryDependencies ++= {
+      Seq(
+        "com.propensive" %% "contextual" % "1.1.0"
+      )
+    }
+  }
+
 lazy val kernel = sonatypeProject(id = "trembita-kernel", base = file("./kernel"))
   .dependsOn(collection_extentions)
   .settings(
@@ -167,7 +176,7 @@ lazy val trembita_circe = sonatypeProject(id = "trembita_circe", base = file("./
 
 lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
   .dependsOn(
-    kernel, slf4j, trembita_circe,
+    kernel, slf4j, trembita_circe, chronos,
     cassandra_connector,
     cassandra_connector_phantom,
     distributed_internal,
