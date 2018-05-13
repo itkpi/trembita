@@ -105,7 +105,8 @@ object GroupingCriteria {
   * @tparam Out  - output type
   * @tparam Comb - combiner type
   **/
-@implicitNotFound("""Implicit value not found:
+@implicitNotFound(
+  """Implicit value not found:
 AggFunc[${A}, ${Out}, ${Comb}]...
 Add {{{ com.datarootlabs.trembita.ql._ }}} to your imports
 and check required implicits in your scope:
