@@ -104,6 +104,26 @@ lazy val slf4j = sonatypeProject(id = "trembita-slf4j", base = file("./trembita-
     }
   )
 
+lazy val trembitaPI = sonatypeProject(id = "trembitaPI", base = file("./trembitaPI/kernel"))
+  .dependsOn(kernel)
+  .settings(
+    libraryDependencies ++= {
+      Seq(
+      )
+    }
+  )
+
+lazy val trembita_httPI = sonatypeProject(id = "trembita-httpi", base = file("./trembitaPI/http"))
+  .dependsOn(trembitaPI)
+  .settings(
+    libraryDependencies ++= {
+      Seq(
+        "com.typesafe.akka" %% "akka-http" % "10.1.1",
+        "com.typesafe.akka" %% "akka-stream" % "2.5.12"
+      )
+    }
+  )
+
 lazy val distributed_internal = sonatypeProject(
   id = "trembita-distributed_internal",
   base = file("./distributed_internal"))
@@ -180,7 +200,8 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     cassandra_connector,
     cassandra_connector_phantom,
     distributed_internal,
-    distributed, distributed_worker
+    distributed, distributed_worker,
+    trembitaPI, trembita_httPI
   )
   .settings(
     name := "trembita-examples",
@@ -193,7 +214,8 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     publishLocal := {},
     addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),
     libraryDependencies ++= Seq(
-      "io.circe" %% "circe-java8" % "0.9.3"
+      "io.circe" %% "circe-java8" % "0.9.3",
+      "com.pepegar" %% "hammock-core" % "0.8.3"
     )
   )
 
