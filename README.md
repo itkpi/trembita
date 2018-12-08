@@ -1,12 +1,11 @@
 <img src="https://github.com/vitalii-honta/trembita/blob/master/media/trembita-p.png" alt="trembita"/>
  
 ## Description 
-Project Trembita - Functional Data Pipelining library.
+Project Trembita - Functional Data Pipelining library. Lets you query and transform your `not enough big` data in a pure functional & declarative way
 
 
 ## Processing modules
 - [core](./core) - lazy (parallel) data pipelines, QL for grouping/aggregations and stateful computations using [Cats](https://github.com/typelevel/cats) and [Shapeless](https://github.com/milessabin/shapeless) 
-- [distributed](./distributed) - use it for your `Big Data` (NOT READY YET)
 
 ## Data sources 
  - Any `Iterable` - just wrap your collection into `DataPipeline`
