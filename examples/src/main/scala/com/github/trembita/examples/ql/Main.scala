@@ -12,6 +12,8 @@ import Execution._
 import cats.effect._
 import scala.collection.parallel.immutable.ParVector
 import scala.util.Try
+import shapeless._
+import shapeless.syntax.std.tuple._
 
 object Main extends IOApp with algebra.instances.AllInstances {
 
@@ -34,16 +36,20 @@ object Main extends IOApp with algebra.instances.AllInstances {
         _.filter(_ > 5)
           .groupBy(
             num =>
-              (num % 2 == 0).as[`divisible by 2`] &::
-                (num % 3 == 0).as[`divisible by 3`] &::
-                (num % 4).as[`reminder of 4`] &:: GNil
+              (
+                (num % 2 == 0).as[`divisible by 2`],
+                (num % 3 == 0).as[`divisible by 3`],
+                (num % 4).as[`reminder of 4`]
+            )
           )
           .aggregate(
             num =>
-              (num * num).toDouble.as[square].avg %::
-                num.as[count].count %::
-                (num * num * num * num).as[`^4`].sum %::
-                num.toString.as[`some name`].sum %:: DNil
+              (
+                (num * num).toDouble.as[square].avg,
+                num.as[count].count,
+                (num * num * num * num).as[`^4`].sum,
+                num.toString.as[`some name`].sum
+            )
           )
           .having(_.get[count] > 7)
       )
@@ -58,16 +64,19 @@ object Main extends IOApp with algebra.instances.AllInstances {
       .query(
         _.groupBy(
           num =>
-            (num % 2 == 0).as[`divisible by 2`] &::
-              (num % 3 == 0).as[`divisible by 3`] &::
-              (num % 4).as[`reminder of 4`] &:: GNil
+            (
+              (num % 2 == 0).as[`divisible by 2`],
+              (num % 3 == 0).as[`divisible by 3`],
+              (num % 4).as[`reminder of 4`]
+          )
         ).aggregate(
             num =>
-              (num * num).toDouble.as[square].avg %::
-                num.as[count].count %::
-                (num * num * num * num).as[`^4`].sum %::
-                num.toString.as[`some name`].sum %::
-              DNil
+              (
+                (num * num).toDouble.as[square].avg,
+                num.as[count].count,
+                (num * num * num * num).as[`^4`].sum,
+                num.toString.as[`some name`].sum
+            )
           )
           .having(_.get[`some name`].contains('1'))
       )
