@@ -1,7 +1,7 @@
-package com.datarootlabs.trembita.pi
+package com.github.trembita.pi
 
 
-import com.datarootlabs.trembita.ql.:@
+import com.github.trembita.ql.:@
 import language.higherKinds
 import shapeless.DepFn1
 import scala.annotation.implicitNotFound

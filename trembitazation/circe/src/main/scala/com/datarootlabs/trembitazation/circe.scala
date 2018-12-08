@@ -1,9 +1,9 @@
-package com.datarootlabs.trembitazation
+package com.github.trembitazation
 
 import language.experimental.macros
 import io.circe._
 import io.circe.syntax._
-import com.datarootlabs.trembita.ql._
+import com.github.trembita.ql._
 import QueryResult._
 import AggDecl._
 import AggRes._
@@ -357,16 +357,16 @@ sealed trait circe {
             import io.circe._
             import io.circe.syntax._
             import cats.data.NonEmptyList
-            import com.datarootlabs.trembita.ql._
+            import com.github.trembita.ql._
             import QueryResult._
 
-            new io.circe.Encoder[com.datarootlabs.trembita.ql.QueryResult[$A, $K, $T]] {
-              override def apply(a: com.datarootlabs.trembita.ql.QueryResult[$A, $K, $T]): Json = a match {
+            new io.circe.Encoder[com.github.trembita.ql.QueryResult[$A, $K, $T]] {
+              override def apply(a: com.github.trembita.ql.QueryResult[$A, $K, $T]): Json = a match {
                 case Empty(totals) => Json.obj("Empty" -> Json.obj(), "totals" -> totals.asInstanceOf[$T].asJson)
                 case cons: ~::[_,_,_,_] => Json.obj(
                   "key" → cons.key.asInstanceOf[Key[$kH]].asJson,
                   "totals" → cons.totals.asInstanceOf[$T].asJson,
-                  "subResult" → cons.subResult.asInstanceOf[com.datarootlabs.trembita.ql.QueryResult[$A, $kT, $T]].asJson
+                  "subResult" → cons.subResult.asInstanceOf[com.github.trembita.ql.QueryResult[$A, $kT, $T]].asJson
                 )
                 case mul: ~**[_,_, _] =>
                 Json.obj(
@@ -382,7 +382,7 @@ sealed trait circe {
       }
     }
     c.Expr[Encoder[QueryResult[A, K, T]]](
-      q"$expr.asInstanceOf[io.circe.Encoder[com.datarootlabs.trembita.ql.QueryResult[$A, $K, $T]]]"
+      q"$expr.asInstanceOf[io.circe.Encoder[com.github.trembita.ql.QueryResult[$A, $K, $T]]]"
     )
   }
 
@@ -402,9 +402,9 @@ sealed trait circe {
             import io.circe._
             import io.circe.syntax._
             import cats.data.NonEmptyList
-            import com.datarootlabs.trembita.ql.QueryResult._
+            import com.github.trembita.ql.QueryResult._
 
-            new io.circe.Decoder[com.datarootlabs.trembita.ql.QueryResult[$A, $K, $T]] {
+            new io.circe.Decoder[com.github.trembita.ql.QueryResult[$A, $K, $T]] {
               private def decodeImpl(c: HCursor): Decoder.Result[QueryResult[$A, $K, $T]] = {
                 val emptyF: Decoder.Result[Empty[$A, $K, $T]] = for {
                   _ <- c.downField("Empty").focus.toRight(
@@ -420,7 +420,7 @@ sealed trait circe {
                       .foldLeft[Decoder.Result[List[QueryResult[$A, $K, $T]]]](Right(Nil)) {
                         case (Right(acc), Right(v)) => Right(v :: acc)
                         case (err@Left(_), _)       => err
-                        case (_, err@Left(_))       => err.asInstanceOf[io.circe.Decoder.Result[List[com.datarootlabs.trembita.ql.QueryResult[$A, $K, $T]]]]
+                        case (_, err@Left(_))       => err.asInstanceOf[io.circe.Decoder.Result[List[com.github.trembita.ql.QueryResult[$A, $K, $T]]]]
                       }
                   }.getOrElse(Left(DecodingFailure("Not a NonEmptyList with at least 2 query results", c.history)))
                 } yield {
@@ -443,14 +443,14 @@ sealed trait circe {
                   }
                 }
               }
-              def apply(c: HCursor): io.circe.Decoder.Result[com.datarootlabs.trembita.ql.QueryResult[$A, $K, $T]] = decodeImpl(c)
+              def apply(c: HCursor): io.circe.Decoder.Result[com.github.trembita.ql.QueryResult[$A, $K, $T]] = decodeImpl(c)
             }
             """
 
       }
     }
     c.Expr[Decoder[QueryResult[A, K, T]]](
-      q"$expr.asInstanceOf[io.circe.Decoder[com.datarootlabs.trembita.ql.QueryResult[$A, $K, $T]]]"
+      q"$expr.asInstanceOf[io.circe.Decoder[com.github.trembita.ql.QueryResult[$A, $K, $T]]]"
     )
   }
 }

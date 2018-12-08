@@ -1,4 +1,4 @@
-package com.datarootlabs.trembita
+package com.github.trembita
 
 
 import java.io.File
@@ -9,7 +9,7 @@ import akka.http.scaladsl.marshalling._
 import akka.http.scaladsl.model.{HttpCharset, HttpEntity, HttpResponse}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.datarootlabs.trembita.ql.:@
+import com.github.trembita.ql.:@
 import scala.concurrent.{ExecutionContext, Future}
 
 

@@ -1,9 +1,9 @@
-package com.datarootlabs.trembita
+package com.github.trembita
 
 import cats.Id
 
 import language.{higherKinds, implicitConversions}
-import com.datarootlabs.trembita.ql.:@
+import com.github.trembita.ql.:@
 import pi.Api._
 
 package object pi {

@@ -1,9 +1,8 @@
 import xerial.sbt.Sonatype._
 
-
 lazy val snapshot: Boolean = true
 lazy val v: String = {
-  val vv = "0.1.2"
+  val vv = "0.2.0"
   if (!snapshot) vv
   else vv + "-SNAPSHOT"
 }
@@ -12,12 +11,13 @@ lazy val scalaReflect = Def.setting {
   "org.scala-lang" % "scala-reflect" % scalaVersion.value
 }
 
-organization in ThisBuild := "com.datarootlabs.trembita"
+organization in ThisBuild := "com.github.trembita"
 
+val scalaV = "2.12.8"
 val testV = "3.0.4"
-val catsEffectsV = "0.10"
+val catsEffectsV = "1.1.0"
 val shapelessV = "2.3.3"
-val spireV = "0.15.0"
+val spireV = "0.16.0"
 
 val commonDeps = Seq(
   "org.scalactic" %% "scalactic" % testV,
@@ -27,192 +27,126 @@ val commonDeps = Seq(
   "org.typelevel" %% "spire" % spireV
 )
 
-def sonatypeProject(id: String, base: File) = Project(id, base)
-  .enablePlugins(JmhPlugin)
-  .settings(
-    name := id,
-    isSnapshot := snapshot,
-    version := v,
-    scalaVersion := "2.12.4",
-    publishTo := {
-      val nexus = "https://oss.sonatype.org/"
-      if (isSnapshot.value)
-        Some("snapshots" at nexus + "content/repositories/snapshots")
-      else
-        Some("releases" at nexus + "service/local/staging/deploy/maven2")
-    },
-    scalacOptions += "-Ypartial-unification",
-    sourceDirectory in Jmh := (sourceDirectory in Test).value,
-    classDirectory in Jmh := (classDirectory in Test).value,
-    dependencyClasspath in Jmh := (dependencyClasspath in Test).value,
-    compile in Jmh := (compile in Jmh).dependsOn(compile in Test).value,
-    run in Jmh := (run in Jmh).dependsOn(Keys.compile in Jmh).evaluated,
-    resolvers += Resolver.sonatypeRepo("releases"),
-    addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.6"),
-    libraryDependencies ++= commonDeps
-  )
+def sonatypeProject(id: String, base: File) =
+  Project(id, base)
+    .enablePlugins(JmhPlugin)
+    .settings(
+      name := id,
+      isSnapshot := snapshot,
+      version := v,
+      scalaVersion := scalaV,
+      publishTo := {
+        val nexus = "https://oss.sonatype.org/"
+        if (isSnapshot.value)
+          Some("snapshots" at nexus + "content/repositories/snapshots")
+        else
+          Some("releases" at nexus + "service/local/staging/deploy/maven2")
+      },
+      scalacOptions += "-Ypartial-unification",
+      sourceDirectory in Jmh := (sourceDirectory in Test).value,
+      classDirectory in Jmh := (classDirectory in Test).value,
+      dependencyClasspath in Jmh := (dependencyClasspath in Test).value,
+      compile in Jmh := (compile in Jmh).dependsOn(compile in Test).value,
+      run in Jmh := (run in Jmh).dependsOn(Keys.compile in Jmh).evaluated,
+      resolvers += Resolver.sonatypeRepo("releases"),
+      addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.8"),
+      libraryDependencies ++= commonDeps
+    )
 
-lazy val collection_extentions = sonatypeProject(id = "collection_extentions", base = file("./collection_extentions"))
+lazy val collection_extentions = sonatypeProject(
+  id = "collection_extentions",
+  base = file("./collection_extentions")
+)
 
-lazy val chronos = sonatypeProject(id = "chronos", base = file("./chronos"))
-  .settings {
-    libraryDependencies ++= {
-      Seq(
-        "com.propensive" %% "contextual" % "1.1.0"
-      )
-    }
-  }
+lazy val kernel =
+  sonatypeProject(id = "trembita-kernel", base = file("./kernel"))
+    .dependsOn(collection_extentions)
+    .settings(libraryDependencies ++= {
+      Seq("org.scalatest" %% "scalatest" % testV % "test")
+    })
 
-lazy val kernel = sonatypeProject(id = "trembita-kernel", base = file("./kernel"))
-  .dependsOn(collection_extentions)
-  .settings(
-    libraryDependencies ++= {
-      Seq(
-        "org.scalatest" %% "scalatest" % testV % "test"
-      )
-    }
-  )
+lazy val cassandra_connector = sonatypeProject(
+  id = "trembita-cassandra_connector",
+  base = file("./cassandra_connector")
+).dependsOn(kernel)
+  .settings(libraryDependencies ++= {
+    Seq("com.datastax.cassandra" % "cassandra-driver-core" % "3.4.0")
+  })
 
-lazy val cassandra_connector = sonatypeProject(id = "trembita-cassandra_connector", base = file("./cassandra_connector"))
-  .dependsOn(kernel)
-  .settings(
-    libraryDependencies ++= {
-      Seq(
-        "com.datastax.cassandra" % "cassandra-driver-core" % "3.4.0"
-      )
-    }
-  )
+lazy val cassandra_connector_phantom = sonatypeProject(
+  id = "trembita-cassandra_connector_phantom",
+  base = file("./cassandra_connector_phantom")
+).dependsOn(cassandra_connector)
+  .settings(libraryDependencies ++= {
+    Seq(
+      "com.outworkers" %% "phantom-jdk8" % "2.24.2",
+      "com.datastax.cassandra" % "cassandra-driver-extras" % "3.4.0"
+    )
+  })
 
-lazy val cassandra_connector_phantom = sonatypeProject(id = "trembita-cassandra_connector_phantom", base = file("./cassandra_connector_phantom"))
-  .dependsOn(cassandra_connector)
-  .settings(
-    libraryDependencies ++= {
-      Seq(
-        "com.outworkers" %% "phantom-jdk8" % "2.24.2",
-        "com.datastax.cassandra" % "cassandra-driver-extras" % "3.4.0"
-      )
-    }
-  )
+lazy val slf4j =
+  sonatypeProject(id = "trembita-slf4j", base = file("./trembita-slf4j"))
+    .dependsOn(kernel)
+    .settings(libraryDependencies ++= {
+      Seq("org.slf4j" % "slf4j-api" % "1.7.25")
+    })
 
-lazy val slf4j = sonatypeProject(id = "trembita-slf4j", base = file("./trembita-slf4j"))
-  .dependsOn(kernel)
-  .settings(
-    libraryDependencies ++= {
-      Seq(
-        "org.slf4j" % "slf4j-api" % "1.7.25"
-      )
-    }
-  )
+lazy val trembitaPI =
+  sonatypeProject(id = "trembitaPI", base = file("./trembitaPI/kernel"))
+    .dependsOn(kernel)
+    .settings(libraryDependencies ++= {
+      Seq()
+    })
 
-lazy val trembitaPI = sonatypeProject(id = "trembitaPI", base = file("./trembitaPI/kernel"))
-  .dependsOn(kernel)
-  .settings(
-    libraryDependencies ++= {
-      Seq(
-      )
-    }
-  )
-
-lazy val trembita_httPI = sonatypeProject(id = "trembita-httpi", base = file("./trembitaPI/http"))
-  .dependsOn(trembitaPI)
-  .settings(
-    libraryDependencies ++= {
+lazy val trembita_httPI =
+  sonatypeProject(id = "trembita-httpi", base = file("./trembitaPI/http"))
+    .dependsOn(trembitaPI)
+    .settings(libraryDependencies ++= {
       Seq(
         "com.typesafe.akka" %% "akka-http" % "10.1.1",
         "com.typesafe.akka" %% "akka-stream" % "2.5.12"
       )
-    }
-  )
+    })
 
-lazy val distributed_internal = sonatypeProject(
-  id = "trembita-distributed_internal",
-  base = file("./distributed_internal"))
-  .dependsOn(kernel, slf4j)
-  .settings(
-    libraryDependencies ++= {
-      Seq(
-        "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
-        "ch.qos.logback" % "logback-classic" % "1.1.7",
-        "com.typesafe.akka" %% "akka-cluster" % "2.5.5",
-        "com.github.romix.akka" %% "akka-kryo-serialization" % "0.5.1"
-      )
-    }
-  )
-
-lazy val distributed_worker = sonatypeProject(
-  id = "trembita-distributed_worker",
-  base = file("./distributed_worker"))
-  .dependsOn(distributed_internal)
-  .enablePlugins(DockerPlugin)
-  .settings(
-    mainClass in Compile := Some("com.datarootlabs.trembita.distributed.bootstrap.WorkerMain"),
-    assemblyJarName in assembly := "trembita-distributed_worker.jar",
-    dockerfile in docker := {
-      // The assembly task generates a fat JAR file
-      val artifact: File = assembly.value
-      val artifactTargetPath = s"/app/${artifact.name}"
-
-      new Dockerfile {
-        from("openjdk:8-jre-alpine")
-        maintainer("Vitalii Honta, Scala DevOps at Dataroot Labs")
-        add(artifact, artifactTargetPath)
-        env("CLUSTER_MASTER_HOST", "127.0.0.1")
-        env("CLUSTER_MASTER_PORT", "2551")
-        env("WORKER_HOST", "127.0.0.1")
-        env("WORKER_PORT", "2551")
-        env("CLUSTER_TOKEN", "your-token")
-        entryPoint("java", "-jar", artifactTargetPath)
+lazy val trembita_circe =
+  sonatypeProject(id = "trembita_circe", base = file("./trembitazation/circe"))
+    .dependsOn(kernel)
+    .settings(
+      name := "trembita_circe",
+      version := v,
+      scalacOptions += "-Ypartial-unification",
+      libraryDependencies ++= {
+        val circeV = "0.9.0"
+        Seq(
+          "io.circe" %% "circe-core" % circeV,
+          "io.circe" %% "circe-generic" % circeV,
+          "io.circe" %% "circe-parser" % circeV
+        )
       }
-    },
-    imageNames in docker := Seq("latest").map { imgTag =>
-      ImageName(
-        repository = "trembita-distributed_worker",
-        tag = Some(imgTag)
-      )
-    }
-  )
-
-lazy val distributed = sonatypeProject(
-  id = "trembita-distributed",
-  base = file("./distributed"))
-  .dependsOn(distributed_internal)
-
-lazy val trembita_circe = sonatypeProject(id = "trembita_circe", base = file("./trembitazation/circe"))
-  .dependsOn(kernel)
-  .settings(
-    name := "trembita_circe",
-    version := v,
-    scalaVersion := "2.12.4",
-    scalacOptions += "-Ypartial-unification",
-    libraryDependencies ++= {
-      val circeV = "0.9.0"
-      Seq(
-        "io.circe" %% "circe-core" % circeV,
-        "io.circe" %% "circe-generic" % circeV,
-        "io.circe" %% "circe-parser" % circeV
-      )
-    }
-  )
+    )
 
 lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
   .dependsOn(
-    kernel, slf4j, trembita_circe, chronos,
+    kernel,
+    slf4j,
+    trembita_circe,
     cassandra_connector,
     cassandra_connector_phantom,
-    distributed_internal,
-    distributed, distributed_worker,
-    trembitaPI, trembita_httPI
+    trembitaPI,
+    trembita_httPI
   )
   .settings(
     name := "trembita-examples",
     version := v,
-    scalaVersion := "2.12.4",
     scalacOptions += "-Ypartial-unification",
+    scalaVersion := scalaV,
     isSnapshot := snapshot,
     skip in publish := true,
     publish := {},
     publishLocal := {},
-    addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),
+    addCompilerPlugin(
+      "org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full
+    ),
     libraryDependencies ++= Seq(
       "io.circe" %% "circe-java8" % "0.9.3",
       "com.pepegar" %% "hammock-core" % "0.8.3"
@@ -220,17 +154,11 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
   )
 
 lazy val root = Project(id = "trembita", base = file("."))
-  .aggregate(
-    kernel, slf4j,
-    cassandra_connector,
-    cassandra_connector_phantom,
-    distributed_internal,
-    distributed, distributed_worker
-  )
+  .aggregate(kernel, slf4j, cassandra_connector, cassandra_connector_phantom)
   .settings(
     name := "trembita",
     version := v,
-    scalaVersion := "2.12.4",
+    scalaVersion := scalaV,
     scalacOptions += "-Ypartial-unification",
     isSnapshot := snapshot,
     skip in publish := true,

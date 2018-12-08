@@ -1,16 +1,16 @@
-package com.datarootlabs.trembita.httpi
+package com.github.trembita.httpi
 
 
 import language.experimental.macros
 import scala.reflect.macros.blackbox
-import com.datarootlabs.trembita.pi._
+import com.github.trembita.pi._
 import akka.http.scaladsl.server._
-import com.datarootlabs.trembita.pi.Api._
+import com.github.trembita.pi.Api._
 import Directives._
 import scala.concurrent.ExecutionContext
 import java.io.File
 import akka.http.scaladsl.marshalling.{ToEntityMarshaller, ToResponseMarshallable}
-import com.datarootlabs.trembita.ql.:@
+import com.github.trembita.ql.:@
 import shapeless._
 import scala.annotation.tailrec
 
