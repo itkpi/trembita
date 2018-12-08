@@ -5,7 +5,6 @@ import cats.implicits._
 import shapeless._
 import scala.annotation.implicitNotFound
 
-
 /**
   * Represents some value A tagged with type U
   * It has a runtime representation unlike shapeless.@@
@@ -17,6 +16,7 @@ import scala.annotation.implicitNotFound
 case class :@[A, U](value: A)
 
 object :@ {
+
   /** {{{Eq[A :@ U] == Eq[A] }}} */
   implicit def taggedEq[A: Eq, U]: Eq[A :@ U] = new Eq[A :@ U] {
     def eqv(x: :@[A, U], y: :@[A, U]): Boolean = x.value === y.value
@@ -47,40 +47,55 @@ sealed trait GroupingCriteria extends Product with Serializable {
 }
 
 object GroupingCriteria {
+
   /** An empty GroupingCriteria (like [[shapeless.HNil]]) */
   sealed trait GNil extends GroupingCriteria {
     type Head = GNil
     type Tail = GNil
     def head: GNil = GNil
     def tail: GNil = GNil
-    def &::[GH <: :@[_, _]](head: GH): GH &:: GNil = GroupingCriteria.&::(head, this)
+    def &::[GH <: :@[_, _]](head: GH): GH &:: GNil =
+      GroupingCriteria.&::(head, this)
   }
   final case object GNil extends GNil
 
   /** An cons type (like [[shapeless.::]]) */
-  final case class &::[GH <: :@[_, _], GT <: GroupingCriteria](head: GH, tail: GT) extends GroupingCriteria {
+  final case class &::[GH <: :@[_, _], GT <: GroupingCriteria](head: GH,
+                                                               tail: GT)
+      extends GroupingCriteria {
     type Head = GH
     type Tail = GT
     override def toString: String = s"$head &:: $tail"
   }
 
   /** Copy-pasted from shapeless =) */
-  @implicitNotFound("Implicit not found: GroupingCriteria At[${L}, ${N}]. You requested to access an element at the position ${N}, but the GroupingCriteria ${L} is too short.")
+  @implicitNotFound(
+    "Implicit not found: GroupingCriteria At[${L}, ${N}]. You requested to access an element at the position ${N}, but the GroupingCriteria ${L} is too short."
+  )
   trait At[L <: GroupingCriteria, N <: Nat] extends DepFn1[L] with Serializable
 
   object At {
-    def apply[L <: GroupingCriteria, N <: Nat](implicit at: At[L, N]): Aux[L, N, at.Out] = at
+    def apply[L <: GroupingCriteria, N <: Nat](
+      implicit at: At[L, N]
+    ): Aux[L, N, at.Out] = at
 
-    type Aux[L <: GroupingCriteria, N <: Nat, Out0] = At[L, N] {type Out = Out0}
+    type Aux[L <: GroupingCriteria, N <: Nat, Out0] = At[L, N] {
+      type Out = Out0
+    }
 
-    implicit def groupingCriteriaAtZero[H <: :@[_, _], T <: GroupingCriteria]: Aux[H &:: T, _0, H] =
+    implicit def groupingCriteriaAtZero[H <: :@[_, _], T <: GroupingCriteria]
+      : Aux[H &:: T, _0, H] =
       new At[H &:: T, _0] {
         type Out = H
         def apply(l: H &:: T): Out = l.head
       }
 
-    implicit def groupingCriteriaAtN[H <: :@[_, _], T <: GroupingCriteria, N <: Nat, AtOut]
-    (implicit att: At.Aux[T, N, AtOut]): Aux[H &:: T, Succ[N], AtOut] =
+    implicit def groupingCriteriaAtN[H <: :@[_, _],
+                                     T <: GroupingCriteria,
+                                     N <: Nat,
+                                     AtOut](
+      implicit att: At.Aux[T, N, AtOut]
+    ): Aux[H &:: T, Succ[N], AtOut] =
       new At[H &:: T, Succ[N]] {
         type Out = AtOut
         def apply(l: H &:: T): Out = att(l.tail)
@@ -92,7 +107,6 @@ object GroupingCriteria {
     override def eqv(x: GNil, y: GNil): Boolean = true
   }
 }
-
 
 /**
   * Represents an aggregation function
@@ -115,9 +129,11 @@ and check required implicits in your scope:
 - algebra.ring.Rng[Ax] ∀ type Ax used in TaggedAgg[Ax, _, AggFunc.Type.Product]
 - scala.Ordering[Ax] & com.github.trembita.ql.Default[Ax] ∀ type Ax used in TaggedAgg[Ax, _, AggFunc.Type.Min | AggFunc.Type.Max]
 - algebra.ring.Field[Ax] & spire.algebra.NRoot[Ax] ∀ type Ax used in TaggedAgg[Ax, _, AggFunc.Type.STDEV | AggFunc.Type.RMS]
-""")
+"""
+)
 trait AggFunc[-A, +Out, Comb] {
   def empty: Comb
+
   /**
     * Produces a new combiner
     * from an existing one and some value [[A]]
@@ -141,7 +157,9 @@ trait AggFunc[-A, +Out, Comb] {
 }
 
 object AggFunc {
-  def apply[A, Out, Comb](implicit F: AggFunc[A, Out, Comb]): AggFunc[A, Out, Comb] = F
+  def apply[A, Out, Comb](
+    implicit F: AggFunc[A, Out, Comb]
+  ): AggFunc[A, Out, Comb] = F
 
   /**
     * Represents a result of [[AggFunc]] application
@@ -176,6 +194,7 @@ object AggFunc {
 
     /** Standard deviation */
     sealed trait STDEV extends Type
+
     /** Root mean square */
     sealed trait RMS extends Type
   }
@@ -187,9 +206,11 @@ object AggFunc {
   **/
 sealed trait AggDecl extends Product with Serializable
 object AggDecl {
+
   /** Empty declaration (like [[shapeless.HNil]]) */
   sealed trait DNil extends AggDecl {
-    def %::[DH <: TaggedAgg[_, _, _]](head: DH): DH %:: DNil = AggDecl.%::(head, this)
+    def %::[DH <: TaggedAgg[_, _, _]](head: DH): DH %:: DNil =
+      AggDecl.%::(head, this)
   }
   final case object DNil extends DNil
 
@@ -202,7 +223,9 @@ object AggDecl {
     * @param head - first declaration
     * @param tail - rest of declarations
     **/
-  final case class %::[DH <: TaggedAgg[_, _, _], DT <: AggDecl](head: DH, tail: DT) extends AggDecl {
+  final case class %::[DH <: TaggedAgg[_, _, _], DT <: AggDecl](head: DH,
+                                                                tail: DT)
+      extends AggDecl {
     override def toString: String = s"$head %:: $tail"
   }
 }
@@ -213,6 +236,7 @@ object AggDecl {
   **/
 sealed trait AggRes extends Product with Serializable
 object AggRes {
+
   /** Empty aggregation result (like [[shapeless.HNil]]) */
   sealed trait RNil extends AggRes {
     def *::[RH <: :@[_, _]](head: RH): RH *:: RNil = AggRes.*::(head, this)
@@ -228,7 +252,8 @@ object AggRes {
     * @param head - first result
     * @param tail - rest of results
     **/
-  final case class *::[RH <: :@[_, _], RT <: AggRes](head: RH, tail: RT) extends AggRes {
+  final case class *::[RH <: :@[_, _], RT <: AggRes](head: RH, tail: RT)
+      extends AggRes {
     override def toString: String = s"$head *:: $tail"
   }
 
@@ -240,9 +265,10 @@ object AggRes {
   trait Get[L <: AggRes, U] extends DepFn1[L] with Serializable
 
   object Get {
-    def apply[L <: AggRes, Out](implicit at: Get[L, Out]): Aux[L, Out, at.Out] = at
+    def apply[L <: AggRes, Out](implicit at: Get[L, Out]): Aux[L, Out, at.Out] =
+      at
 
-    type Aux[L <: AggRes, U, Out0] = Get[L, U] {type Out = Out0}
+    type Aux[L <: AggRes, U, Out0] = Get[L, U] { type Out = Out0 }
 
     implicit def fromHead[A, U, T <: AggRes]: Aux[(A :@ U) *:: T, U, A] =
       new Get[(A :@ U) *:: T, U] {
@@ -250,8 +276,9 @@ object AggRes {
         def apply(t: *::[(A :@ U), T]): Out = t.head.value
       }
 
-    implicit def fromTail[H <: :@[_, _], T <: AggRes, U, AtOut]
-    (implicit att: Get.Aux[T, U, AtOut]): Aux[H *:: T, U, AtOut] =
+    implicit def fromTail[H <: :@[_, _], T <: AggRes, U, AtOut](
+      implicit att: Get.Aux[T, U, AtOut]
+    ): Aux[H *:: T, U, AtOut] =
       new Get[H *:: T, U] {
         type Out = AtOut
         def apply(t: *::[H, T]): Out = att(t.tail)
@@ -272,7 +299,8 @@ object QueryBuilder {
     *
     * @tparam A - record type
     **/
-  class Empty[A] protected[trembita]() extends QueryBuilder[A] {
+  class Empty[A] protected[trembita] () extends QueryBuilder[A] {
+
     /**
       * Like Where clause in SQL
       *
@@ -286,17 +314,26 @@ object QueryBuilder {
       * @tparam G - a grouping criteria
       * @param getG - extract [[G]] from record [[A]]
       **/
-    def groupBy[G <: GroupingCriteria](getG: A => G): GroupBy[A, G] = new GroupBy(getG, None)
+    def groupBy[T, G <: GroupingCriteria](getT: A => T)(
+      implicit ev: FromTuple.Aux[T, G]
+    ): GroupBy[A, G] = new GroupBy[A, G](a => ev(getT(a)), None)
   }
 
-  class Filter[A] protected[trembita](protected[trembita] val p: A => Boolean) extends QueryBuilder[A] {
-    def filter(p2: A => Boolean): Filter[A] = new Filter((a: A) => p(a) && p2(a))
-    def groupBy[G <: GroupingCriteria](getG: A => G): GroupBy[A, G] = new GroupBy(getG, Some(this))
+  class Filter[A] protected[trembita] (protected[trembita] val p: A => Boolean)
+      extends QueryBuilder[A] {
+    def filter(p2: A => Boolean): Filter[A] =
+      new Filter((a: A) => p(a) && p2(a))
+
+    def groupBy[T, G <: GroupingCriteria](getT: A => T)(
+      implicit ev: FromTuple.Aux[T, G]
+    ): GroupBy[A, G] = new GroupBy[A, G](a => ev(getT(a)), Some(this))
   }
 
-  class GroupBy[A, G <: GroupingCriteria] protected[trembita]
-  (protected[trembita] val getG: A => G,
-   protected[trembita] val filterOpt: Option[Filter[A]]) extends QueryBuilder[A] {
+  class GroupBy[A, G <: GroupingCriteria] protected[trembita] (
+    protected[trembita] val getG: A => G,
+    protected[trembita] val filterOpt: Option[Filter[A]]
+  ) extends QueryBuilder[A] {
+
     /**
       * An arbitrary aggregation
       *
@@ -306,21 +343,27 @@ object QueryBuilder {
       * @param getT - get an aggregation declaration from record
       * @param aggF - [[AggFunc]] for types [[T]], [[R]], [[Comb]]
       **/
-    def aggregate[T <: AggDecl, R <: AggRes, Comb](getT: A => T)(implicit aggF: AggFunc[T, R, Comb]): Aggregate[A, G, T, R, Comb] =
-      new Aggregate(getG, getT, filterOpt)
+    def aggregate[T, D <: AggDecl, R <: AggRes, Comb](getT: A => T)(
+      implicit ev: FromTuple.Aux[T, D],
+      aggF: AggFunc[D, R, Comb]
+    ): Aggregate[A, G, D, R, Comb] =
+      new Aggregate(getG, a => ev(getT(a)), filterOpt)
   }
 
-  class Aggregate[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb] protected[trembita]
-  (protected[trembita] val getG: A => G,
-   protected[trembita] val getT: A => T,
-   protected[trembita] val filterOpt: Option[Filter[A]])
-  (protected[trembita] implicit val aggF: AggFunc[T, R, Comb]) extends QueryBuilder[A] {
+  class Aggregate[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb] protected[trembita] (
+    protected[trembita] val getG: A => G,
+    protected[trembita] val getT: A => T,
+    protected[trembita] val filterOpt: Option[Filter[A]]
+  )(protected[trembita] implicit val aggF: AggFunc[T, R, Comb])
+      extends QueryBuilder[A] {
+
     /**
       * Like Having clause in SQL
       *
       * @param p - predicate
       **/
-    def having(p: R => Boolean): MaybeOrderedHaving[A, G, T, R, Comb] = new MaybeOrderedHaving(getG, getT, p, filterOpt, None, None, None)
+    def having(p: R => Boolean): MaybeOrderedHaving[A, G, T, R, Comb] =
+      new MaybeOrderedHaving(getG, getT, p, filterOpt, None, None, None)
 
     /**
       * Like Order By clause in SQL
@@ -328,8 +371,18 @@ object QueryBuilder {
       *
       * @param Ord - implicit [[Ordering]] for [[A]]
       **/
-    def orderRecords(implicit Ord: Ordering[A]): MaybeOrderedHaving[A, G, T, R, Comb] =
-      new MaybeOrderedHaving(getG, getT, (_: R) => true, filterOpt, Some(Ord), None, None)
+    def orderRecords(
+      implicit Ord: Ordering[A]
+    ): MaybeOrderedHaving[A, G, T, R, Comb] =
+      new MaybeOrderedHaving(
+        getG,
+        getT,
+        (_: R) => true,
+        filterOpt,
+        Some(Ord),
+        None,
+        None
+      )
 
     /**
       * Like Order By clause in SQL
@@ -339,7 +392,9 @@ object QueryBuilder {
       *
       * @param f - extract an ordering criteria
       **/
-    def orderRecordsBy[B: Ordering](f: A => B): MaybeOrderedHaving[A, G, T, R, Comb] = orderRecords(Ordering.by[A, B](f))
+    def orderRecordsBy[B: Ordering](
+      f: A => B
+    ): MaybeOrderedHaving[A, G, T, R, Comb] = orderRecords(Ordering.by[A, B](f))
 
     /**
       * Like Order By clause in SQL
@@ -347,8 +402,18 @@ object QueryBuilder {
       *
       * @param Ord - implicit [[Ordering]] for [[G]]
       **/
-    def orderGroups(implicit Ord: Ordering[G]): MaybeOrderedHaving[A, G, T, R, Comb] =
-      new MaybeOrderedHaving(getG, getT, (_: R) => true, filterOpt, None, Some(Ord), None)
+    def orderGroups(
+      implicit Ord: Ordering[G]
+    ): MaybeOrderedHaving[A, G, T, R, Comb] =
+      new MaybeOrderedHaving(
+        getG,
+        getT,
+        (_: R) => true,
+        filterOpt,
+        None,
+        Some(Ord),
+        None
+      )
 
     /**
       * Like Order By clause in SQL
@@ -358,7 +423,9 @@ object QueryBuilder {
       *
       * @param f - extract an ordering criteria
       **/
-    def orderGroupsBy[B: Ordering](f: G => B): MaybeOrderedHaving[A, G, T, R, Comb] = orderGroups(Ordering.by[G, B](f))
+    def orderGroupsBy[B: Ordering](
+      f: G => B
+    ): MaybeOrderedHaving[A, G, T, R, Comb] = orderGroups(Ordering.by[G, B](f))
 
     /**
       * Like Order By clause in SQL
@@ -366,8 +433,18 @@ object QueryBuilder {
       *
       * @param Ord - implicit [[Ordering]] for [[R]]
       **/
-    def orderAggregations(implicit Ord: Ordering[R]): MaybeOrderedHaving[A, G, T, R, Comb] =
-      new MaybeOrderedHaving(getG, getT, (_: R) => true, filterOpt, None, None, Some(Ord))
+    def orderAggregations(
+      implicit Ord: Ordering[R]
+    ): MaybeOrderedHaving[A, G, T, R, Comb] =
+      new MaybeOrderedHaving(
+        getG,
+        getT,
+        (_: R) => true,
+        filterOpt,
+        None,
+        None,
+        Some(Ord)
+      )
 
     /**
       * Like Order By clause in SQL
@@ -377,7 +454,10 @@ object QueryBuilder {
       *
       * @param f - extract an ordering criteria
       **/
-    def orderAggregationsBy[B: Ordering](f: R => B): MaybeOrderedHaving[A, G, T, R, Comb] = orderAggregations(Ordering.by[R, B](f))
+    def orderAggregationsBy[B: Ordering](
+      f: R => B
+    ): MaybeOrderedHaving[A, G, T, R, Comb] =
+      orderAggregations(Ordering.by[R, B](f))
 
     /**
       * Order all QueryResuts
@@ -387,26 +467,48 @@ object QueryBuilder {
       * @param OrdG - implicit [[Ordering]] for [[G]]
       * @param OrdR - implicit [[Ordering]] for [[R]]
       **/
-    def ordered(implicit OrdA: Ordering[A], OrdG: Ordering[G], OrdR: Ordering[R]): MaybeOrderedHaving[A, G, T, R, Comb] =
-      new MaybeOrderedHaving(getG, getT, (_: R) => true, filterOpt, Some(OrdA), Some(OrdG), Some(OrdR))
+    def ordered(implicit OrdA: Ordering[A],
+                OrdG: Ordering[G],
+                OrdR: Ordering[R]): MaybeOrderedHaving[A, G, T, R, Comb] =
+      new MaybeOrderedHaving(
+        getG,
+        getT,
+        (_: R) => true,
+        filterOpt,
+        Some(OrdA),
+        Some(OrdG),
+        Some(OrdR)
+      )
   }
 
-  class MaybeOrderedHaving[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb] protected[trembita]
-  (protected[trembita] override val getG: A => G,
-   protected[trembita] override val getT: A => T,
-   protected[trembita] val havingF: R => Boolean,
-   protected[trembita] override val filterOpt: Option[Filter[A]],
-   protected[trembita] val orderRecords: Option[Ordering[A]],
-   protected[trembita] val orderGroups: Option[Ordering[G]],
-   protected[trembita] val orderResults: Option[Ordering[R]])
-  (protected[trembita] override implicit val aggF: AggFunc[T, R, Comb]) extends Aggregate[A, G, T, R, Comb](getG, getT, filterOpt)
-
+  class MaybeOrderedHaving[A,
+                           G <: GroupingCriteria,
+                           T <: AggDecl,
+                           R <: AggRes,
+                           Comb] protected[trembita] (
+    protected[trembita] override val getG: A => G,
+    protected[trembita] override val getT: A => T,
+    protected[trembita] val havingF: R => Boolean,
+    protected[trembita] override val filterOpt: Option[Filter[A]],
+    protected[trembita] val orderRecords: Option[Ordering[A]],
+    protected[trembita] val orderGroups: Option[Ordering[G]],
+    protected[trembita] val orderResults: Option[Ordering[R]]
+  )(protected[trembita] override implicit val aggF: AggFunc[T, R, Comb])
+      extends Aggregate[A, G, T, R, Comb](getG, getT, filterOpt)
 
   /** * A query ready to use by [[trembitaql]]* */
-  final case class Query[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb]
-  (getG: A => G, getT: A => T, filterF: A => Boolean, havingF: R => Boolean,
-   orderRecords: Option[Ordering[A]],
-   orderCriterias: Option[Ordering[G]],
-   orderResults: Option[Ordering[R]])(implicit val aggF: AggFunc[T, R, Comb])
+  final case class Query[A,
+                         G <: GroupingCriteria,
+                         T <: AggDecl,
+                         R <: AggRes,
+                         Comb](
+    getG: A => G,
+    getT: A => T,
+    filterF: A => Boolean,
+    havingF: R => Boolean,
+    orderRecords: Option[Ordering[A]],
+    orderCriterias: Option[Ordering[G]],
+    orderResults: Option[Ordering[R]]
+  )(implicit val aggF: AggFunc[T, R, Comb])
 
 }
