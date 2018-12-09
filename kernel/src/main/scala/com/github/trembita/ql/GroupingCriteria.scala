@@ -299,7 +299,7 @@ object QueryBuilder {
     *
     * @tparam A - record type
     **/
-  class Empty[A] protected[trembita] () extends QueryBuilder[A] {
+  class Empty[A]() extends QueryBuilder[A] {
 
     /**
       * Like Where clause in SQL
@@ -319,8 +319,7 @@ object QueryBuilder {
     ): GroupBy[A, G] = new GroupBy[A, G](a => ev(getT(a)), None)
   }
 
-  class Filter[A] protected[trembita] (protected[trembita] val p: A => Boolean)
-      extends QueryBuilder[A] {
+  class Filter[A](val p: A => Boolean) extends QueryBuilder[A] {
     def filter(p2: A => Boolean): Filter[A] =
       new Filter((a: A) => p(a) && p2(a))
 
@@ -329,10 +328,9 @@ object QueryBuilder {
     ): GroupBy[A, G] = new GroupBy[A, G](a => ev(getT(a)), Some(this))
   }
 
-  class GroupBy[A, G <: GroupingCriteria] protected[trembita] (
-    protected[trembita] val getG: A => G,
-    protected[trembita] val filterOpt: Option[Filter[A]]
-  ) extends QueryBuilder[A] {
+  class GroupBy[A, G <: GroupingCriteria](val getG: A => G,
+                                          val filterOpt: Option[Filter[A]])
+      extends QueryBuilder[A] {
 
     /**
       * An arbitrary aggregation
@@ -350,11 +348,11 @@ object QueryBuilder {
       new Aggregate(getG, a => ev(getT(a)), filterOpt)
   }
 
-  class Aggregate[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb] protected[trembita] (
-    protected[trembita] val getG: A => G,
-    protected[trembita] val getT: A => T,
-    protected[trembita] val filterOpt: Option[Filter[A]]
-  )(protected[trembita] implicit val aggF: AggFunc[T, R, Comb])
+  class Aggregate[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
+    val getG: A => G,
+    val getT: A => T,
+    val filterOpt: Option[Filter[A]]
+  )(implicit val aggF: AggFunc[T, R, Comb])
       extends QueryBuilder[A] {
 
     /**
@@ -485,15 +483,15 @@ object QueryBuilder {
                            G <: GroupingCriteria,
                            T <: AggDecl,
                            R <: AggRes,
-                           Comb] protected[trembita] (
-    protected[trembita] override val getG: A => G,
-    protected[trembita] override val getT: A => T,
-    protected[trembita] val havingF: R => Boolean,
-    protected[trembita] override val filterOpt: Option[Filter[A]],
-    protected[trembita] val orderRecords: Option[Ordering[A]],
-    protected[trembita] val orderGroups: Option[Ordering[G]],
-    protected[trembita] val orderResults: Option[Ordering[R]]
-  )(protected[trembita] override implicit val aggF: AggFunc[T, R, Comb])
+                           Comb](
+    override val getG: A => G,
+    override val getT: A => T,
+    val havingF: R => Boolean,
+    override val filterOpt: Option[Filter[A]],
+    val orderRecords: Option[Ordering[A]],
+    val orderGroups: Option[Ordering[G]],
+    val orderResults: Option[Ordering[R]]
+  )(override implicit val aggF: AggFunc[T, R, Comb])
       extends Aggregate[A, G, T, R, Comb](getG, getT, filterOpt)
 
   /** * A query ready to use by [[trembitaql]]* */

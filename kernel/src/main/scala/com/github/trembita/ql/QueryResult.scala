@@ -106,7 +106,7 @@ object QueryResult {
     * @tparam T - aggregation result
     * @param totals - usually Monoid[T].empty
     **/
-  case class Empty[A, K <: GroupingCriteria, T] protected[trembita] (totals: T)
+  case class Empty[A, K <: GroupingCriteria, T](totals: T)
       extends QueryResult[A, K, T] {
     val key: Key[K#Head] = Key.NoKey
   }
@@ -116,8 +116,7 @@ object QueryResult {
     *
     * @tparam A - record type
     **/
-  case class ##@[A] protected[trembita] (records: List[A])
-      extends QueryResult[A, GNil, Nothing] {
+  case class ##@[A](records: List[A]) extends QueryResult[A, GNil, Nothing] {
     def key: Key[GNil] = Key.NoKey
     def totals: Nothing = throw new IllegalArgumentException("##@(...).totals")
   }
@@ -135,7 +134,7 @@ object QueryResult {
     * @param totals    - rest of the criterias
     * @param subResult - [[QueryResult]] grouped by [[KT]]
     **/
-  case class ~::[A, KH <: :@[_, _], KT <: GroupingCriteria, T] protected[trembita] (
+  case class ~::[A, KH <: :@[_, _], KT <: GroupingCriteria, T](
     key: Key[KH],
     totals: T,
     subResult: QueryResult[A, KT, T]
@@ -153,7 +152,7 @@ object QueryResult {
     * @param resHead - the first [[QueryResult]]
     * @param resTail - rest of the query results
     **/
-  case class ~**[A, K <: GroupingCriteria, T] protected[trembita] (
+  case class ~**[A, K <: GroupingCriteria, T](
     totals: T,
     resHead: QueryResult[A, K, T],
     resTail: NonEmptyList[QueryResult[A, K, T]]
