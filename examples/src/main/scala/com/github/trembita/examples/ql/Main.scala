@@ -10,6 +10,8 @@ import com.github.trembita.ql.show._
 import cats.implicits._
 import Execution._
 import cats.effect._
+import com.github.trembita.ql.AggFunc.Type
+
 import scala.collection.parallel.immutable.ParVector
 import scala.util.Try
 import shapeless._
@@ -86,6 +88,40 @@ object Main extends IOApp with algebra.instances.AllInstances {
           putStrLn("-------------------------")
       }
 
+    case class Totals(square: Double,
+                      count: Long,
+                      power4: Long,
+                      someName: String)
+
+    case class NumbersReportReminderOf4(reminderOf4: Long,
+                                        totals: Totals,
+                                        values: List[Long])
+
+    case class NumbersReportDivisionBy3SubTotal(
+      totals: Totals,
+      subRecords: List[NumbersReportReminderOf4]
+    )
+
+    case class NumbersReportDivisionBy3(
+      divisibleBy3: Boolean,
+      totals: Totals,
+      subRecords: List[NumbersReportDivisionBy3SubTotal]
+    )
+
+    case class NumbersReportDivisibleBy2SubTotal(
+      totals: Totals,
+      subRecords: List[NumbersReportDivisionBy3]
+    )
+
+    case class NumbersReportDivisionBy2(
+      divisibleBy2: Boolean,
+      totals: Totals,
+      subRecords: List[NumbersReportDivisibleBy2SubTotal]
+    )
+
+    case class NumbersReport(totals: Totals,
+                             subRecords: List[NumbersReportDivisionBy2])
+
     val sum = for {
       res <- result
       res2 <- result2
@@ -93,8 +129,8 @@ object Main extends IOApp with algebra.instances.AllInstances {
 
     sum
       .flatTap { sum =>
-        putStrLn("\n Sum:") *>
-          putStrLn(sum.pretty())
+        putStrLn("\n Sum as case class:") *>
+          putStrLn(sum.as[NumbersReport])
       }
       .as(ExitCode.Success)
   }

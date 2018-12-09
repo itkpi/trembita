@@ -1,6 +1,5 @@
 package com.github.trembita
 
-
 import java.io.File
 
 import language.experimental.macros

@@ -1,4 +1,4 @@
-package com.github.trembitazation
+package com.github.trembita
 
 import language.experimental.macros
 import io.circe._

@@ -129,4 +129,8 @@ package object ql
       h.orderGroups,
       h.orderResults
     )(h.aggF)
+
+  implicit class QueryResultToCaseClass[A, K <: GroupingCriteria, T](private val self: QueryResult[A, K, T]) extends AnyVal {
+    def as[R](implicit ev: ToCaseClass.Aux[A, K, T, R]): R = ev(self)
+  }
 }

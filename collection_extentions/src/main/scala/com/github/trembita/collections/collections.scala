@@ -75,18 +75,4 @@ package object collections {
         map.updated(key, f(map(key)))
       } else map + (key -> default)
   }
-
-  implicit class SeqOps[A](val self: Iterable[A]) extends AnyVal {
-    def mapM[M[_]: Monad, B](f: A => M[B]): M[Seq[B]] = self match {
-      case Seq() => Seq.empty[B].pure[M]
-      case _ =>
-        self.tail.foldLeft(f(self.head).map(Seq(_))) {
-          case (accM, elem) =>
-            for {
-              acc ← accM
-              b ← f(elem)
-            } yield acc :+ b
-        }
-    }
-  }
 }
