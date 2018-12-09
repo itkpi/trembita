@@ -7,7 +7,7 @@ import com.github.trembita.internal._
 import scala.collection.generic.CanBuildFrom
 import scala.language.higherKinds
 
-trait Ops2[A, F[_], Ex <: Execution] extends Any {
+trait Ops0[A, F[_], Ex <: Execution] extends Any {
   def self: DataPipelineT[F, A, Ex]
 
   def eval(implicit Ex: Ex, F: Functor[F]): F[Vector[A]] =

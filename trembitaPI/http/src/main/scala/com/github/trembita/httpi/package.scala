@@ -48,13 +48,13 @@ package object httpi {
       case Some(p) => q"path($path / $p) { param => complete { func.value(param) } }"
       case None    => q"path($path) { entity(as[$A]) { param => complete { func.value(param) } } }"
     }
-
-    println(
-      s"""
-         tag: $U
-         in  : $A
-         out : $B
-       """)
+//
+//    println(
+//      s"""
+//         tag: $U
+//         in  : $A
+//         out : $B
+//       """)
     val code =
       q"""
         import akka.http.scaladsl.server._
@@ -70,7 +70,7 @@ package object httpi {
         }}
       """
 
-    println(code)
+//    println(code)
     c.Expr[Auto[(A => B) :@ U]](
       code
     )

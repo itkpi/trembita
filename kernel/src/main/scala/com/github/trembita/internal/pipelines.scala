@@ -60,7 +60,7 @@ protected[trembita] class MappingPipelineT[F[_], +A, B, Ex <: Execution](
   def mapM[C](f2: B => F[C])(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new MapMonadicPipelineT[F, A, C, Ex](f2.compose(f), source)(F)
 
-  def mapK[C, G[_]](
+  def mapG[C, G[_]](
     f2: B => G[C]
   )(implicit funcK: G ~> F): DataPipelineT[F, C, Ex] =
     new MapMonadicPipelineT[F, A, C, Ex](a => funcK(f2(f(a))), source)(F)
@@ -129,10 +129,10 @@ protected[trembita] class FlatMapPipelineT[F[_], +A, B, Ex <: Execution](
   def mapM[C](f2: B => F[C])(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new FlatMapPipelineT[F, A, C, Ex](f(_).mapM(f2), source)(F)
 
-  def mapK[C, G[_]](
+  def mapG[C, G[_]](
     f2: B => G[C]
   )(implicit funcK: G ~> F): DataPipelineT[F, C, Ex] =
-    new FlatMapPipelineT[F, A, C, Ex](f(_).mapK(f2), source)(F)
+    new FlatMapPipelineT[F, A, C, Ex](f(_).mapG(f2), source)(F)
 
   def handleError[BB >: B](
     f2: Throwable => BB
@@ -204,7 +204,7 @@ class CollectPipelineT[F[_], +A, B, Ex <: Execution](
       source
     )(F)
 
-  def mapK[C, G[_]](
+  def mapG[C, G[_]](
     f2: B => G[C]
   )(implicit funcK: G ~> F): DataPipelineT[F, C, Ex] =
     new FlatMapPipelineT[F, A, C, Ex](
@@ -279,7 +279,7 @@ protected[trembita] class HandleErrorPipelineT[F[_], +A, B, Ex <: Execution](
       this.F.handleError(a.pure[F].map(f))(fallback).flatMap(f2)
     }, source)(F)
 
-  def mapK[C, G[_]](
+  def mapG[C, G[_]](
     f2: B => G[C]
   )(implicit funcK: G ~> F): DataPipelineT[F, C, Ex] =
     new MapMonadicPipelineT[F, A, C, Ex]({ a =>
@@ -366,7 +366,7 @@ protected[trembita] class MapMonadicPipelineT[F[_], +A, B, Ex <: Execution](
   def mapM[C](f2: B => F[C])(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new MapMonadicPipelineT[F, A, C, Ex](a => f(a).flatMap(f2), source)(F)
 
-  def mapK[C, G[_]](
+  def mapG[C, G[_]](
     f2: B => G[C]
   )(implicit funcK: G ~> F): DataPipelineT[F, C, Ex] =
     new MapMonadicPipelineT[F, A, C, Ex](
@@ -460,7 +460,7 @@ protected[trembita] abstract class SeqSource[F[_], +A, Ex <: Execution](
   def mapM[B](f: A => F[B])(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
     new MapMonadicPipelineT[F, A, B, Ex](f, this)(F)
 
-  def mapK[B, G[_]](
+  def mapG[B, G[_]](
     f2: A => G[B]
   )(implicit funcK: G ~> F): DataPipelineT[F, B, Ex] =
     new MapMonadicPipelineT[F, A, B, Ex](a => funcK(f2(a)), this)(F)

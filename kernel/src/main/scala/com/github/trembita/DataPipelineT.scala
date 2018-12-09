@@ -65,7 +65,7 @@ trait DataPipelineT[F[_], +A, Ex <: Execution] {
 
   def mapM[B](f: A => F[B])(implicit F: Monad[F]): DataPipelineT[F, B, Ex]
 
-  def mapK[B, G[_]](f: A => G[B])(
+  def mapG[B, G[_]](f: A => G[B])(
     implicit funcK: G ~> F
   ): DataPipelineT[F, B, Ex]
 

@@ -10,8 +10,10 @@ import Directives._
 import scala.concurrent.ExecutionContext
 import java.io.File
 import akka.http.scaladsl.marshalling.{ToEntityMarshaller, ToResponseMarshallable}
+import akka.http.scaladsl.server.util.Tupler
 import com.github.trembita.ql.:@
 import shapeless._
+
 import scala.annotation.tailrec
 
 
@@ -141,7 +143,7 @@ object AsQueryParam {
          }
        """
 
-      println(expr)
+//      println(expr)
 
       c.Expr[AsQueryParam[A]](expr)
     }

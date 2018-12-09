@@ -12,7 +12,7 @@ import scala.concurrent.Future
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
-package object trembita {
+package object trembita extends catsInstancesForDataPipelineT {
 
   type DataPipeline[A, Ex <: Execution] = DataPipelineT[Id, A, Ex]
   object DataPipeline {
@@ -93,45 +93,11 @@ package object trembita {
       )
   }
 
-  /**
-    * Implementation of [[Monad]] for [[DataPipelineT]]
-    **/
-  implicit def dataPipelineTMonadError[F[_], Ex <: Execution](
-    implicit F: MonadError[F, Throwable]
-  ): MonadError[DataPipelineT[F, ?, Ex], Throwable] =
-    new MonadError[DataPipelineT[F, ?, Ex], Throwable] {
-      def pure[A](x: A): DataPipelineT[F, A, Ex] =
-        DataPipelineT.liftF[F, A, Ex]((List(x): Iterable[A]).pure[F])
-
-      def flatMap[A, B](fa: DataPipelineT[F, A, Ex])(
-        f: A => DataPipelineT[F, B, Ex]
-      ): DataPipelineT[F, B, Ex] = fa.flatMap(f)
-
-      def tailRecM[A, B](a: A)(
-        f: A => DataPipelineT[F, Either[A, B], Ex]
-      ): DataPipelineT[F, B, Ex] = f(a).flatMap {
-        case Left(xa) => tailRecM(xa)(f)
-        case Right(b) => pure(b)
-      }
-
-      def raiseError[A](e: Throwable): DataPipelineT[F, A, Ex] =
-        DataPipelineT.liftF(F.raiseError[Iterable[A]](e))
-
-      override def handleError[A](fa: DataPipelineT[F, A, Ex])(
-        f: Throwable => A
-      ): DataPipelineT[F, A, Ex] = fa.handleError(f)
-
-      def handleErrorWith[A](
-        fa: DataPipelineT[F, A, Ex]
-      )(f: Throwable => DataPipelineT[F, A, Ex]): DataPipelineT[F, A, Ex] =
-        fa.handleErrorWith(f)
-    }
-
   implicit class PipelineOps[A, F[_], Ex <: Execution](
     val self: DataPipelineT[F, A, Ex]
   ) extends AnyVal
-      with Ops[A, F, Ex]
-      with Ops2[A, F, Ex]
+      with Ops1[A, F, Ex]
+      with Ops0[A, F, Ex]
 
   implicit def iterable2DataPipeline[A, F[_], Ex <: Execution](
     iterable: Iterable[A]

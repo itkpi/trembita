@@ -68,7 +68,7 @@ package object ql
   }
 
   /** Trembita QL for [[Seq]] */
-  implicit class TrembitaQL[A](val self: Seq[A]) extends AnyVal {
+  implicit class TrembitaQL[A](private val self: Seq[A]) extends AnyVal {
     def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
       queryF: Empty[A] => Query[A, G, T, R, Comb]
     )(
@@ -79,15 +79,32 @@ package object ql
 
   /** Trembita QL for [[DataPipelineT]] */
   implicit class TrembitaQLForPipeline[A, F[_], Ex <: Execution](
-    val self: DataPipelineT[F, A, Ex]
+    private val self: DataPipelineT[F, A, Ex]
   ) extends AnyVal {
     def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
       queryF: Empty[A] => Query[A, G, T, R, Comb]
     )(implicit trembitaql: trembitaqlForPipeline[A, G, T, R, Comb],
       ex: Ex,
       F: MonadError[F, Throwable])
+      : DataPipelineT[F, QueryResult[A, G, AggFunc.Result[T, R, Comb]], Ex] =
+      trembitaql.applyWithoutTopTotals(self, queryF)
+
+    def queryEval[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
+      queryF: Empty[A] => Query[A, G, T, R, Comb]
+    )(implicit trembitaql: trembitaqlForPipeline[A, G, T, R, Comb],
+      ex: Ex,
+      F: MonadError[F, Throwable],
+      monoid: Monoid[QueryResult[A, G, AggFunc.Result[T, R, Comb]]])
       : F[QueryResult[A, G, AggFunc.Result[T, R, Comb]]] =
       trembitaql(self, queryF)
+  }
+
+  implicit class AsOps[F[_], Ex <: Execution, A, G <: GroupingCriteria, T](
+    private val self: DataPipelineT[F, QueryResult[A, G, T], Ex]
+  ) extends AnyVal {
+    def as[R](implicit ev: ToCaseClass.Aux[A, G, T, R],
+              F: Monad[F]): DataPipelineT[F, ev.Out, Ex] =
+      self.map(_.as[R])
   }
 
   /**
@@ -130,7 +147,27 @@ package object ql
       h.orderResults
     )(h.aggF)
 
-  implicit class QueryResultToCaseClass[A, K <: GroupingCriteria, T](private val self: QueryResult[A, K, T]) extends AnyVal {
+  implicit class QueryResultToCaseClass[A, K <: GroupingCriteria, T](
+    private val self: QueryResult[A, K, T]
+  ) extends AnyVal {
     def as[R](implicit ev: ToCaseClass.Aux[A, K, T, R]): R = ev(self)
   }
+
+//  type GNil = GroupingCriteria.GNil
+//  val GNil: GNil = GroupingCriteria.GNil
+//
+//  type &::[GH <: :@[_, _], GT <: GroupingCriteria] =
+//    GroupingCriteria.&::[GH, GT]
+//  val &:: = GroupingCriteria.&::
+//
+//  type DNil = AggDecl.DNil
+//  val DNil: DNil = AggDecl.DNil
+//
+//  type %::[DH <: TaggedAgg[_, _, _], DT <: AggDecl] = AggDecl.%::[DH, DT]
+//  val %:: = AggDecl.%::
+//
+//  type RNil = AggRes.RNil
+//  val RNil: RNil = AggRes.RNil
+//  type *::[RH <: :@[_, _], RT <: AggRes] = AggRes.*::[RH, RT]
+//  val *:: = AggRes.*::
 }

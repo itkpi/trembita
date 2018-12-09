@@ -34,7 +34,7 @@ object Main extends IOApp {
       .collect {
         case i if i % 2 == 0 => s"I'm an even number: $i"
       }
-      .mapK(str => Try { str + "/Try" })
+      .mapG(str => Try { str + "/Try" })
       .mapM(str => IO { str + "/IO" })
 
     val result2: IO[Vector[String]] = strings.eval

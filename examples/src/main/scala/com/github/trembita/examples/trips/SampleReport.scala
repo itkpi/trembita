@@ -3,9 +3,6 @@ package com.github.trembita.examples.trips
 import java.time.LocalDateTime
 import com.github.trembita._
 import com.github.trembita.ql._
-import GroupingCriteria._
-import AggDecl._
-import AggRes._
 import Common._
 import Aliases._
 import cats.implicits._
@@ -24,19 +21,23 @@ class SampleReport(unitMessagesRepository: UnitMessagesRepository) {
 
     val result = getActivities(messagesPipeline)
       .to[Execution.Parallel]
-      .query(
+      .queryEval(
         _.filter(_.ignitionOn)
           .groupBy(
             r =>
-              r.unitId.:@[`unit id`] &::
-                r.driverId.:@[`driver id`] &::
-                r.tripType.:@[`trip type`] &:: GNil
+              (
+                r.unitId.:@[`unit id`],
+                r.driverId.:@[`driver id`],
+                r.tripType.:@[`trip type`]
+            )
           )
           .aggregate(
             r =>
-              r.coveredDistance.:@[`covered distance`].sum %::
-                r.activityDuration.:@[`time in trip`].avg %::
-                r.coveredDistance.:@[`max covered distance`].max %:: DNil
+              (
+                r.coveredDistance.:@[`covered distance`].sum,
+                r.activityDuration.:@[`time in trip`].avg,
+                r.coveredDistance.:@[`max covered distance`].max
+            )
           )
           .orderAggregations
       )
