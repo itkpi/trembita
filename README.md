@@ -14,4 +14,4 @@ Project Trembita - Functional Data Pipelining library. Lets you query and transf
  
 ## Miscelone
  - [trembita slf4j](./trembita-slf4j) - provides [slf4j](https://www.slf4j.org/) logging support. Use it with any compatible logging backend ([logback](https://logback.qos.ch/), [log4j](https://logging.apache.org/log4j/2.x/))
- - [trembitaSON](./trembitason) - converters from `ArbitraryGroupResult` to JSON using [Circe](https://github.com/circe/circe)
+ - [trembitaSON](./trembitason) - allows to convert aggregation results directly into JSON using [Circe](https://github.com/circe/circe)
