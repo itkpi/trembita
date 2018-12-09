@@ -21,11 +21,15 @@ sealed trait Key[+K] {
       kh1 == kh2 && kt1 == kt2
     case _ => false
   }
+
+  def values: List[K]
 }
 object Key {
 
   /** Special case  */
-  sealed trait NoKey extends Key[Nothing]
+  sealed trait NoKey extends Key[Nothing] {
+    val values: List[Nothing] = Nil
+  }
   case object NoKey extends NoKey
 
   /**
@@ -34,7 +38,9 @@ object Key {
     * @tparam K - key type
     * @param value - key value
     **/
-  case class Single[K](value: K) extends Key[K]
+  case class Single[K](value: K) extends Key[K] {
+    def values: List[K] = List(value)
+  }
 
   /**
     * Represents a key
@@ -44,13 +50,16 @@ object Key {
     * @param head - first key
     * @param tail - a [[NonEmptyList]] of the rest keys
     **/
-  case class Multiple[K](head: K, tail: NonEmptyList[K]) extends Key[K]
+  case class Multiple[K](head: K, tail: NonEmptyList[K]) extends Key[K] {
+    def values: List[K] = head :: tail.toList
+  }
 
   /** [[Eq]] implementation for [[Key]] */
   implicit def keyEq[K: Eq]: Eq[Key[K]] = new Eq[Key[K]] {
     override def eqv(x: Key[K], y: Key[K]): Boolean = (x, y) match {
       case (Single(k1), Single(k2)) => k1 === k2
-      case (Multiple(kh1, kt1), Multiple(kh2, kt2)) => kh1 === kh2 && kt1 === kt2
+      case (Multiple(kh1, kt1), Multiple(kh2, kt2)) =>
+        kh1 === kh2 && kt1 === kt2
       case _ => false
     }
   }
@@ -59,9 +68,9 @@ object Key {
   implicit def keyMonoid[K]: Monoid[Key[K]] = new Monoid[Key[K]] {
     def empty: Key[K] = NoKey
     def combine(x: Key[K], y: Key[K]): Key[K] = (x, y) match {
-      case (NoKey, _) => y
-      case (_, NoKey) => x
-      case (Single(v1), Single(v2)) => Multiple(v1, NonEmptyList(v2, Nil))
+      case (NoKey, _)                     => y
+      case (_, NoKey)                     => x
+      case (Single(v1), Single(v2))       => Multiple(v1, NonEmptyList(v2, Nil))
       case (Single(v1), Multiple(v2, vs)) => Multiple(v1, v2 :: vs)
       case (Multiple(v2, vs), Single(v1)) => Multiple(v1, v2 :: vs)
       case (Multiple(v1, vs1), Multiple(v2, vs2)) =>
@@ -97,7 +106,7 @@ object QueryResult {
     * @tparam T - aggregation result
     * @param totals - usually Monoid[T].empty
     **/
-  case class Empty[A, K <: GroupingCriteria, T](totals: T)
+  case class Empty[A, K <: GroupingCriteria, T] protected[trembita] (totals: T)
       extends QueryResult[A, K, T] {
     val key: Key[K#Head] = Key.NoKey
   }
@@ -107,7 +116,8 @@ object QueryResult {
     *
     * @tparam A - record type
     **/
-  case class ##@[A](records: List[A]) extends QueryResult[A, GNil, Nothing] {
+  case class ##@[A] protected[trembita] (records: List[A])
+      extends QueryResult[A, GNil, Nothing] {
     def key: Key[GNil] = Key.NoKey
     def totals: Nothing = throw new IllegalArgumentException("##@(...).totals")
   }
@@ -125,7 +135,7 @@ object QueryResult {
     * @param totals    - rest of the criterias
     * @param subResult - [[QueryResult]] grouped by [[KT]]
     **/
-  case class ~::[A, KH <: :@[_, _], KT <: GroupingCriteria, T](
+  case class ~::[A, KH <: :@[_, _], KT <: GroupingCriteria, T] protected[trembita] (
     key: Key[KH],
     totals: T,
     subResult: QueryResult[A, KT, T]
@@ -143,7 +153,7 @@ object QueryResult {
     * @param resHead - the first [[QueryResult]]
     * @param resTail - rest of the query results
     **/
-  case class ~**[A, K <: GroupingCriteria, T](
+  case class ~**[A, K <: GroupingCriteria, T] protected[trembita] (
     totals: T,
     resHead: QueryResult[A, K, T],
     resTail: NonEmptyList[QueryResult[A, K, T]]

@@ -2,7 +2,7 @@ package com.github.trembita.examples.trembitacirce
 
 import com.github.trembita.ql._
 import com.github.trembita.ql.show._
-import com.github.trembitazation.circe._
+import com.github.trembita.circe._
 import io.circe._
 import io.circe.syntax._
 import cats._
