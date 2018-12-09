@@ -70,7 +70,7 @@ lazy val cassandra_connector = sonatypeProject(
   base = file("./cassandra_connector")
 ).dependsOn(kernel)
   .settings(libraryDependencies ++= {
-    Seq("com.datastax.cassandra" % "cassandra-driver-core" % "3.4.0")
+    Seq("com.datastax.cassandra" % "cassandra-driver-core" % "3.6.0")
   })
 
 lazy val cassandra_connector_phantom = sonatypeProject(
@@ -79,8 +79,8 @@ lazy val cassandra_connector_phantom = sonatypeProject(
 ).dependsOn(cassandra_connector)
   .settings(libraryDependencies ++= {
     Seq(
-      "com.outworkers" %% "phantom-jdk8" % "2.24.2",
-      "com.datastax.cassandra" % "cassandra-driver-extras" % "3.4.0"
+      "com.outworkers" %% "phantom-jdk8" % "2.29.0",
+      "com.datastax.cassandra" % "cassandra-driver-extras" % "3.6.0"
     )
   })
 
@@ -99,7 +99,7 @@ lazy val trembita_circe =
       version := v,
       scalacOptions += "-Ypartial-unification",
       libraryDependencies ++= {
-        val circeV = "0.9.0"
+        val circeV = "0.10.1"
         Seq(
           "io.circe" %% "circe-core" % circeV,
           "io.circe" %% "circe-generic" % circeV,
@@ -129,7 +129,7 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     addCompilerPlugin(
       "org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full
     ),
-    libraryDependencies ++= Seq("io.circe" %% "circe-java8" % "0.9.3")
+    libraryDependencies ++= Seq("io.circe" %% "circe-java8" % "0.10.1")
   )
 
 lazy val root = Project(id = "trembita", base = file("."))
