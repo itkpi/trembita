@@ -5,9 +5,6 @@ import scala.language.experimental.macros
 import scala.language.higherKinds
 import scala.reflect.macros.blackbox
 import com.github.trembita._
-import QueryResult._
-import cats.implicits._
-import cats.data.NonEmptyList
 import QueryBuilder._
 import cats.MonadError
 import cats.kernel.Monoid
@@ -18,22 +15,18 @@ import cats.kernel.Monoid
   * from records of type [[A]]
   * using provided query
   **/
-protected[trembita] trait trembitaql[A,
-                                     G <: GroupingCriteria,
-                                     T <: AggDecl,
-                                     R <: AggRes,
-                                     Comb] {
+trait trembitaql[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb] {
   def apply(
     records: Seq[A],
     queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb]
   ): QueryResult[A, G, AggFunc.Result[T, R, Comb]]
 }
 
-protected[trembita] trait trembitaqlForPipeline[A,
-                                                G <: GroupingCriteria,
-                                                T <: AggDecl,
-                                                R <: AggRes,
-                                                Comb] {
+trait trembitaqlForPipeline[A,
+                            G <: GroupingCriteria,
+                            T <: AggDecl,
+                            R <: AggRes,
+                            Comb] {
   def apply[F[_], Ex <: Execution](
     pipeline: DataPipelineT[F, A, Ex],
     queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb]

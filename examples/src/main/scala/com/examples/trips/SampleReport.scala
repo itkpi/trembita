@@ -1,4 +1,4 @@
-package com.github.trembita.examples.trips
+package com.examples.trips
 
 import java.time.LocalDateTime
 import com.github.trembita._

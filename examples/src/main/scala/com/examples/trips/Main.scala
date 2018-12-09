@@ -1,12 +1,11 @@
-package com.github.trembita.examples.trips
+package com.examples.trips
 
 import java.time.LocalDateTime
-import cats.effect._
-import cats.implicits._
-import com.github.trembita.examples.putStrLn
+import cats.effect.{ExitCode, IO, IOApp}
 import com.outworkers.phantom.connectors.ContactPoints
+import com.examples.putStrLn
+import cats.implicits._
 import com.github.trembita.ql.show._
-import io.circe.syntax._
 
 object Main extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {

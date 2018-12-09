@@ -4,6 +4,24 @@
 Project Trembita - Functional Data Pipelining library. 
 Lets you query and transform your `not enough big` data in a pure functional, typesafe & declarative way.
 
+```scala
+resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+libraryDependencies ++= {
+  val trembitaV = "0.2.0-SNAPSHOT"
+  Seq(
+    "com.github.vitaliihonta.trembita" %% "trembita-kernel" % trembitaV, // kernel,
+    
+    "com.github.vitaliihonta.trembita" %% "trembita-cassandra-connector" % trembitaV, // cassandra
+    
+    "com.github.vitaliihonta.trembita" %% "trembita-cassandra-connector-phantom" % trembitaV, // phantom
+    
+    "com.github.vitaliihonta.trembita" %% "trembita-slf4j" % trembitaV, // slf4j,
+    
+    "com.github.vitaliihonta.trembita" %% "trembita-circe" % trembitaV // circe
+  )
+}
+```
+
 
 ## Processing modules
 - [kernel](./kernel) - lazy (parallel) data pipelines, QL for grouping/aggregations and stateful computations using [Cats](https://github.com/typelevel/cats) and [Shapeless](https://github.com/milessabin/shapeless) 

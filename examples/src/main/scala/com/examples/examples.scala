@@ -1,6 +1,5 @@
-package com.github.trembita
-
-import cats.effect._
+package com
+import cats.effect.IO
 
 package object examples {
   def putStrLn(a: Any): IO[Unit] = IO { println(a) }

@@ -1,5 +1,4 @@
-package com.github.trembita.examples.trips
-
+package com.examples.trips
 
 import java.time.{LocalDateTime => JLocalDateTime}
 import com.outworkers.phantom.connectors.CassandraConnection

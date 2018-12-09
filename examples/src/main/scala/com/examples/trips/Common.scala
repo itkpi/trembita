@@ -1,9 +1,9 @@
-package com.github.trembita.examples.trips
+package com.examples.trips
 
 import cats.effect.Sync
 import cats.implicits._
 import com.github.trembita._
-import fsm._
+import com.github.trembita.fsm._
 import scala.language.higherKinds
 
 object Aliases {

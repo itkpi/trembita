@@ -152,22 +152,4 @@ package object ql
   ) extends AnyVal {
     def as[R](implicit ev: ToCaseClass.Aux[A, K, T, R]): R = ev(self)
   }
-
-//  type GNil = GroupingCriteria.GNil
-//  val GNil: GNil = GroupingCriteria.GNil
-//
-//  type &::[GH <: :@[_, _], GT <: GroupingCriteria] =
-//    GroupingCriteria.&::[GH, GT]
-//  val &:: = GroupingCriteria.&::
-//
-//  type DNil = AggDecl.DNil
-//  val DNil: DNil = AggDecl.DNil
-//
-//  type %::[DH <: TaggedAgg[_, _, _], DT <: AggDecl] = AggDecl.%::[DH, DT]
-//  val %:: = AggDecl.%::
-//
-//  type RNil = AggRes.RNil
-//  val RNil: RNil = AggRes.RNil
-//  type *::[RH <: :@[_, _], RT <: AggRes] = AggRes.*::[RH, RT]
-//  val *:: = AggRes.*::
 }

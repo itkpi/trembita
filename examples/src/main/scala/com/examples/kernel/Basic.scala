@@ -1,9 +1,9 @@
-package com.github.trembita.examples.kernel
+package com.examples.kernel
 
 import cats.effect._
 import cats.implicits._
 import com.github.trembita._
-import com.github.trembita.examples.putStrLn
+import com.examples.putStrLn
 import Execution._
 import scala.util.{Random, Success, Try}
 import scala.util.control.NonFatal

@@ -1,4 +1,4 @@
-package com.github.trembita.examples.trembitacirce
+package com.examples.trembitacirce
 
 import com.github.trembita.ql._
 import com.github.trembita.ql.show._

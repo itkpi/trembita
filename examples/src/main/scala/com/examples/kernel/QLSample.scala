@@ -1,11 +1,10 @@
-package com.github.trembita.examples.kernel
+package com.examples.kernel
 
 import com.github.trembita.ql._
-import com.github.trembita.examples.putStrLn
+import com.examples.putStrLn
 import com.github.trembita._
 import com.github.trembita.ql.show._
 import cats.implicits._
-import Execution._
 import cats.effect._
 import shapeless._
 

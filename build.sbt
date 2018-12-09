@@ -54,7 +54,7 @@ def sonatypeProject(id: String, base: File) =
     )
 
 lazy val collection_extentions = sonatypeProject(
-  id = "collection_extentions",
+  id = "collection-extentions",
   base = file("./collection_extentions")
 )
 
@@ -66,7 +66,7 @@ lazy val kernel =
     })
 
 lazy val cassandra_connector = sonatypeProject(
-  id = "trembita-cassandra_connector",
+  id = "trembita-cassandra-connector",
   base = file("./cassandra_connector")
 ).dependsOn(kernel)
   .settings(libraryDependencies ++= {
@@ -74,7 +74,7 @@ lazy val cassandra_connector = sonatypeProject(
   })
 
 lazy val cassandra_connector_phantom = sonatypeProject(
-  id = "trembita-cassandra_connector_phantom",
+  id = "trembita-cassandra-connector-phantom",
   base = file("./cassandra_connector_phantom")
 ).dependsOn(cassandra_connector)
   .settings(libraryDependencies ++= {
@@ -92,10 +92,10 @@ lazy val slf4j =
     })
 
 lazy val trembita_circe =
-  sonatypeProject(id = "trembita_circe", base = file("./serialization/circe"))
+  sonatypeProject(id = "trembita-circe", base = file("./serialization/circe"))
     .dependsOn(kernel)
     .settings(
-      name := "trembita_circe",
+      name := "trembita-circe",
       version := v,
       scalacOptions += "-Ypartial-unification",
       libraryDependencies ++= {
@@ -110,6 +110,7 @@ lazy val trembita_circe =
 
 lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
   .dependsOn(
+    collection_extentions,
     kernel,
     slf4j,
     trembita_circe,
@@ -128,13 +129,18 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     addCompilerPlugin(
       "org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full
     ),
-    libraryDependencies ++= Seq(
-      "io.circe" %% "circe-java8" % "0.9.3"
-    )
+    libraryDependencies ++= Seq("io.circe" %% "circe-java8" % "0.9.3")
   )
 
 lazy val root = Project(id = "trembita", base = file("."))
-  .aggregate(kernel, slf4j, cassandra_connector, cassandra_connector_phantom)
+  .aggregate(
+    collection_extentions,
+    kernel,
+    slf4j,
+    cassandra_connector,
+    cassandra_connector_phantom,
+    trembita_circe
+  )
   .settings(
     name := "trembita",
     version := v,
