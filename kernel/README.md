@@ -20,7 +20,7 @@ Transforms aggregated data directly at [Circe sample](../examples/src/main/scala
 
 Having a [message](../examples/src/main/scala/com/examples/trips/model.scala) with different metrics
 using FSM you are allowed to define generic [transformation](../examples/src/main/scala/com/examples/trips/Common.scala) from single message into `DrivingActivity` (trip either idle).
-Based on those activities you are allowed to aggregate your data using QL into some kind of [report](../examples/src/main/scala/com/github/trips/SampleReport.scala).
+Based on those activities you are allowed to aggregate your data using QL into some kind of [report](../examples/src/main/scala/com/examples/trips/SampleReport.scala).
 
 Data is fetched from Cassandra using [phantom connector](../cassandra_connector_phantom) (tables are defined in [UnitMessagesRepository](../examples/src/main/scala/com/examples/trips/UnitMessagesRepository.scala))
 
