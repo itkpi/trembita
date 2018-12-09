@@ -11,7 +11,7 @@ lazy val scalaReflect = Def.setting {
   "org.scala-lang" % "scala-reflect" % scalaVersion.value
 }
 
-organization in ThisBuild := "com.github.trembita"
+organization in ThisBuild := "com.github.vitaliihonta.trembita"
 
 val scalaV = "2.12.8"
 val testV = "3.0.4"
@@ -91,25 +91,8 @@ lazy val slf4j =
       Seq("org.slf4j" % "slf4j-api" % "1.7.25")
     })
 
-lazy val trembitaPI =
-  sonatypeProject(id = "trembitaPI", base = file("./trembitaPI/kernel"))
-    .dependsOn(kernel)
-    .settings(libraryDependencies ++= {
-      Seq()
-    })
-
-lazy val trembita_httPI =
-  sonatypeProject(id = "trembita-httpi", base = file("./trembitaPI/http"))
-    .dependsOn(trembitaPI)
-    .settings(libraryDependencies ++= {
-      Seq(
-        "com.typesafe.akka" %% "akka-http" % "10.1.1",
-        "com.typesafe.akka" %% "akka-stream" % "2.5.12"
-      )
-    })
-
 lazy val trembita_circe =
-  sonatypeProject(id = "trembita_circe", base = file("./trembitazation/circe"))
+  sonatypeProject(id = "trembita_circe", base = file("./serialization/circe"))
     .dependsOn(kernel)
     .settings(
       name := "trembita_circe",
@@ -131,9 +114,7 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     slf4j,
     trembita_circe,
     cassandra_connector,
-    cassandra_connector_phantom,
-    trembitaPI,
-    trembita_httPI
+    cassandra_connector_phantom
   )
   .settings(
     name := "trembita-examples",
@@ -148,8 +129,7 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
       "org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full
     ),
     libraryDependencies ++= Seq(
-      "io.circe" %% "circe-java8" % "0.9.3",
-      "com.pepegar" %% "hammock-core" % "0.8.3"
+      "io.circe" %% "circe-java8" % "0.9.3"
     )
   )
 

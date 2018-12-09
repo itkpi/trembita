@@ -8,7 +8,7 @@ import Execution._
 import scala.util.{Random, Success, Try}
 import scala.util.control.NonFatal
 
-object Main extends IOApp {
+object Basic extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val pipeline: DataPipelineT[IO, String, Sequential] =
       DataPipelineT("1 2 3", "4 5 6", "7 8 9", "xyz")
@@ -19,8 +19,8 @@ object Main extends IOApp {
       .map(_.toInt)
       .handleError { case NonFatal(_) => -100 }
 
-    val result1: IO[String] = numbers.eval.map(_.mkString(", "))
-    println(result1)
+    val result1: IO[String] =
+      numbers.eval.map(_.mkString(", ")).flatTap(putStrLn)
 
     val strings: DataPipelineT[IO, String, Parallel] = DataPipelineT
       .randomInts[IO](20)
@@ -37,16 +37,13 @@ object Main extends IOApp {
       .mapG(str => Try { str + "/Try" })
       .mapM(str => IO { str + "/IO" })
 
-    val result2: IO[Vector[String]] = strings.eval
+    val result2: Try[Vector[String]] = strings.mapK[Try].eval
 
     result1.flatTap { result1 =>
       putStrLn(s"result1: $result1") *>
         putStrLn("------------------------------------")
-    } *> result2
-      .flatTap { result2 =>
-        putStrLn(s"result2: $result2") *>
-          putStrLn("------------------------------------")
-      }
-      .as(ExitCode.Success)
+    } *> putStrLn(s"result2: $result2") *>
+      putStrLn("------------------------------------")
+        .as(ExitCode.Success)
   }
 }

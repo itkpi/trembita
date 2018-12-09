@@ -1,4 +1,4 @@
-package com.github.trembita.examples.ql
+package com.github.trembita.examples.kernel
 
 import com.github.trembita.ql._
 import com.github.trembita.examples.putStrLn
@@ -9,7 +9,7 @@ import Execution._
 import cats.effect._
 import shapeless._
 
-object Main extends IOApp with algebra.instances.AllInstances {
+object QLSample extends IOApp with algebra.instances.AllInstances {
 
   trait `divisible by 2`
   trait `divisible by 3`
@@ -74,7 +74,7 @@ object Main extends IOApp with algebra.instances.AllInstances {
           )
           .having(_.get[`some name`].contains('1'))
       )
-      .as[NumbersReport]
+      .as[NumbersReport] // transforms directly into case class
       .eval
       .flatTap { report =>
         putStrLn(s"Report: $report")

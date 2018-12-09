@@ -130,4 +130,12 @@ package object trembita extends catsInstancesForDataPipelineT {
 
     FunctionK.lift { ioToFuture }
   }
+  implicit val IO2Try: IO ~> Try = {
+    def ioToTry[A](ioa: IO[A]): Try[A] = Try { ioa.unsafeRunSync() }
+
+    FunctionK.lift { ioToTry }
+  }
+
+  type Sequential = Execution.Sequential
+  type Parallel = Execution.Parallel
 }

@@ -1,16 +1,14 @@
-package com.github.trembita.examples.fsm
+package com.github.trembita.examples.kernel
 
-import com.github.trembita._
-import com.github.trembita.fsm._
+import cats.effect.{ExitCode, IO, IOApp}
+import com.github.trembita.DataPipelineT
+import com.github.trembita.Execution.Sequential
 import com.github.trembita.examples.putStrLn
+import com.github.trembita.fsm._
 import com.github.trembita.collections._
-import InitialState._
-import Execution._
-import FSM._
-import cats.effect._
 import cats.implicits._
 
-object Main extends IOApp {
+object FSMSample extends IOApp {
   sealed trait DoorState
   case object Opened extends DoorState
   case object Closed extends DoorState
@@ -20,17 +18,17 @@ object Main extends IOApp {
       DataPipelineT.randomInts(20, 100)
 
     val withDoorState = pipeline.fsm[DoorState, Map[DoorState, Int], Int](
-      initial = Pure(FSM.State(Opened, Map.empty))
+      initial = InitialState.pure(FSM.State(Opened, Map.empty))
     )(_.when(Opened) {
       case i if i % 2 == 0 =>
         _.goto(Closed)
           .modify(_.modify(Opened, default = 1)(_ + 1))
-          .push(_(Opened) + i)
+          .push(_.apply(Opened) + i)
       case i if i % 4 == 0 => _.stay push (i * 2)
     }.when(Closed) {
         case i if i % 3 == 0 =>
           _.goto(Opened)
-            .modify(_.modify(Closed, default = 1)(_ + 1)) spam (_(Closed) to 10)
+            .modify(_.modify(Closed, default = 1)(_ + 1)) spam (_.apply(Closed) to 10)
         case i if i % 2 == 0 =>
           _.stay.pushF { data =>
             IO { data.values.sum }

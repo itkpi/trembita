@@ -34,7 +34,7 @@ trait Ops1[A, F[_], Ex <: Execution] extends Any {
         that <- that.eval
       } yield {
         self.iterator.flatMap { a =>
-          that.collectFirst {
+          that.collect {
             case b if on(a, b) => a -> b
           }
         }
@@ -49,9 +49,10 @@ trait Ops1[A, F[_], Ex <: Execution] extends Any {
         self <- self.eval
         that <- that.eval
       } yield {
-        self.iterator.map { a =>
-          a -> that.collectFirst {
-            case b if on(a, b) => b
+        self.iterator.flatMap { a =>
+          that.collect {
+            case b if on(a, b) => a -> Some(b)
+            case _             => a -> None
           }
         }
       }
@@ -65,37 +66,22 @@ trait Ops1[A, F[_], Ex <: Execution] extends Any {
         self <- self.eval
         that <- that.eval
       } yield {
-        that.iterator.map { b =>
-          self.collectFirst {
-            case a if on(a, b) => a
-          } -> b
+        that.iterator.flatMap { b =>
+          self.collect {
+            case a if on(a, b) => Some(a) -> b
+            case _             => None -> b
+          }
         }
       }
     }, F)
 
-  def joinFull[B](that: DataPipelineT[F, B, Ex])(on: (A, B) => Boolean)(
-    implicit F: Monad[F],
-    Ex: Ex
-  ): DataPipelineT[F, (Option[A], Option[B]), Ex] =
-    new StrictSource[F, (Option[A], Option[B]), Ex](
-      {
-        for {
-          self <- self.eval
-          that <- that.eval
-        } yield {
-          self.iterator.map { a =>
-            Some(a) -> that.collectFirst {
-              case b if on(a, b) => b
-            }
-          } ++ that.iterator.map { b =>
-            self.collectFirst {
-              case a if on(a, b) => a
-            } -> Some(b)
-          }
-        }
-      },
-      F
-    )
+  def cartesian[B](
+    that: DataPipelineT[F, B, Ex]
+  )(implicit F: Monad[F]): DataPipelineT[F, (A, B), Ex] =
+    for {
+      a <- self
+      b <- that
+    } yield a -> b
 
   def ++(that: DataPipelineT[F, A, Ex])(implicit F: Monad[F],
                                         Ex: Ex): DataPipelineT[F, A, Ex] =
@@ -131,8 +117,9 @@ trait Ops1[A, F[_], Ex <: Execution] extends Any {
   def +:(a: A)(implicit F: Monad[F], Ex: Ex): DataPipelineT[F, A, Ex] =
     F.pure(a) ++: self
 
-  def mapK[G[_]](
-    funcK: F ~> G
-  )(implicit F: Functor[F], G: Monad[G], Ex: Ex): DataPipelineT[G, A, Ex] =
+  def mapK[G[_]]()(implicit funcK: F ~> G,
+                   F: Functor[F],
+                   G: Monad[G],
+                   Ex: Ex): DataPipelineT[G, A, Ex] =
     new StrictSource[G, A, Ex](funcK(self.eval).map(_.iterator), G)
 }
