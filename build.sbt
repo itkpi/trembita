@@ -54,8 +54,8 @@ def sonatypeProject(id: String, base: File) =
     )
 
 lazy val collection_extentions = sonatypeProject(
-  id = "collection-extentions",
-  base = file("./collection_extentions")
+  id = "collection-extensions",
+  base = file("./utils/collection_extensions")
 )
 
 lazy val kernel =
@@ -66,26 +66,25 @@ lazy val kernel =
     })
 
 lazy val cassandra_connector = sonatypeProject(
-  id = "trembita-cassandra-connector",
-  base = file("./cassandra_connector")
+  id = "trembita-cassandra",
+  base = file("./connectors/cassandra")
 ).dependsOn(kernel)
   .settings(libraryDependencies ++= {
     Seq("com.datastax.cassandra" % "cassandra-driver-core" % "3.6.0")
   })
 
-lazy val cassandra_connector_phantom = sonatypeProject(
-  id = "trembita-cassandra-connector-phantom",
-  base = file("./cassandra_connector_phantom")
-).dependsOn(cassandra_connector)
-  .settings(libraryDependencies ++= {
-    Seq(
-      "com.outworkers" %% "phantom-jdk8" % "2.29.0",
-      "com.datastax.cassandra" % "cassandra-driver-extras" % "3.6.0"
-    )
-  })
+lazy val cassandra_connector_phantom =
+  sonatypeProject(id = "trembita-phantom", base = file("./connectors/phantom"))
+    .dependsOn(cassandra_connector)
+    .settings(libraryDependencies ++= {
+      Seq(
+        "com.outworkers" %% "phantom-jdk8" % "2.29.0",
+        "com.datastax.cassandra" % "cassandra-driver-extras" % "3.6.0"
+      )
+    })
 
 lazy val slf4j =
-  sonatypeProject(id = "trembita-slf4j", base = file("./trembita-slf4j"))
+  sonatypeProject(id = "trembita-slf4j", base = file("./utils/slf4j"))
     .dependsOn(kernel)
     .settings(libraryDependencies ++= {
       Seq("org.slf4j" % "slf4j-api" % "1.7.25")

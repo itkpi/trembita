@@ -153,6 +153,9 @@ sealed trait AggDeclFromTuple {
     }
 }
 
-object FromTuple extends GroupingCriteriaFromTuple with AggDeclFromTuple with LowPriorityQl {
+object FromTuple
+    extends GroupingCriteriaFromTuple
+    with AggDeclFromTuple
+    with LowPriorityQl {
   type Aux[T, Out0] = FromTuple[T] { type Out = Out0 }
 }

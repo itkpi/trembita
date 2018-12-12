@@ -6,7 +6,7 @@ import scala.language.experimental.macros
 import scala.reflect.macros.{TypecheckException, blackbox}
 
 trait ToCaseClass[A, K <: GroupingCriteria, T]
-  extends DepFn1[QueryResult[A, K, T]]
+    extends DepFn1[QueryResult[A, K, T]]
 
 object ToCaseClass {
   type Aux[A, K <: GroupingCriteria, T, Out0] = ToCaseClass[A, K, T] {
@@ -14,19 +14,19 @@ object ToCaseClass {
   }
 
   def apply[A, K <: GroupingCriteria, T](
-                                          implicit ev: ToCaseClass[A, K, T]
-                                        ): Aux[A, K, T, ev.Out] = ev
+    implicit ev: ToCaseClass[A, K, T]
+  ): Aux[A, K, T, ev.Out] = ev
 
   implicit def materialize[A, K <: GroupingCriteria, T, L <: HList, R](
-                                                                        implicit ev: ToHList.Aux[QueryResult[A, K, T], L]
-                                                                      ): ToCaseClass.Aux[A, K, T, R] =
-  macro fromGenericImpl[A, K, T, L, R]
+    implicit ev: ToHList.Aux[QueryResult[A, K, T], L]
+  ): ToCaseClass.Aux[A, K, T, R] =
+    macro fromGenericImpl[A, K, T, L, R]
 
   def fromGenericImpl[A: c.WeakTypeTag,
-  K <: GroupingCriteria : c.WeakTypeTag,
-  T: c.WeakTypeTag,
-  L <: HList : c.WeakTypeTag,
-  R: c.WeakTypeTag](c: blackbox.Context)(
+                      K <: GroupingCriteria: c.WeakTypeTag,
+                      T: c.WeakTypeTag,
+                      L <: HList: c.WeakTypeTag,
+                      R: c.WeakTypeTag](c: blackbox.Context)(
     ev: c.Expr[ToHList.Aux[QueryResult[A, K, T], L]]
   ): c.Expr[ToCaseClass.Aux[A, K, T, R]] = {
     import c.universe._
@@ -47,7 +47,7 @@ object ToCaseClass {
     val rCaseClass = R.typeSymbol.asClass
 
     def decompose(hlist: Type): List[Type] = hlist.typeArgs match {
-      case Nil => Nil
+      case Nil              => Nil
       case List(head, tail) => head :: decompose(tail)
     }
 
@@ -76,70 +76,83 @@ object ToCaseClass {
       if (fields.forall(!_.returnType.typeSymbol.asClass.isCaseClass)) {
         val (genExpr, reprType) = getGeneric(t)
         val expr = q""" (hlist: $hlistT) => $genExpr.from(hlist) """
-        try c.typecheck(expr) catch {
+        try c.typecheck(expr)
+        catch {
           case e: TypecheckException =>
-            c.abort(c.enclosingPosition,
+            c.abort(
+              c.enclosingPosition,
               s"""|$baseErrorMessage
                   |because ${t.fullName.toString} (in $pathStr) has incompatible shape:
                   |  found:    $reprType
-                  |  expected: $hlistT""".stripMargin)
+                  |  expected: $hlistT""".stripMargin
+            )
         }
       } else {
         val casesWithRT: List[(Type, Tree)] =
           if (fields.size != hlistElemTypes.size) {
-            c.abort(c.enclosingPosition,
+            c.abort(
+              c.enclosingPosition,
               s"""|$baseErrorMessage
                  |because ${t.fullName.toString} (in $pathStr) has incompatible shape:
-                 |  found: ${fields.map(_.returnType).mkString("", " :: ", " :: HNil")}
-                 |  expected: ${hlistElemTypes.mkString("", " :: ", " :: HNil")}""".stripMargin)
-          }
-          else fields.map(f => f -> f.returnType).toList.zip(hlistElemTypes).map {
-            case ((field, returnType), hlistElemType) =>
-              val res =
-                if (returnType.typeConstructor =:= typeOf[List[_]].typeConstructor) {
-                  val listInnerType = returnType.typeArgs.head
-                  val hlistInnerType = hlistElemType.typeArgs.head
-                  val caseName = TermName(
-                    s"at_${field.name.toString}_List${t.name.toString}_${listInnerType.typeSymbol.name.toString}"
-                  )
-                  if (isCaseClass(listInnerType)) {
-                    val transformInner = traverse(
-                      listInnerType.typeSymbol.asClass,
-                      path :+ s"${field.fullName.toString}<List>",
-                      hlistInnerType,
-                      extract(hlistInnerType)
-                    )
-                    q""" implicit def $caseName: Case.Aux[$hlistElemType, $returnType] = at[$hlistElemType](a => a.map($transformInner.andThen(hlist => _root_.shapeless.Generic[$listInnerType].from(hlist)))) """
-                  } else {
-                    q""" implicit def $caseName: Case.Aux[$hlistElemType, $returnType] = at[$hlistElemType](a => a)"""
-                  }
-                } else if (isCaseClass(returnType)) {
-                  val rtAsClass = returnType.typeSymbol.asClass
-                  val transformInner =
-                    traverse(rtAsClass, path :+ s"${field.name.toString}", hlistElemType, extract(hlistElemType))
-                  val caseName =
-                    TermName(
-                      s"at_${field.name.toString}_${t.name.toString}_${rtAsClass.name.toString}"
-                    )
-                  q""" implicit def $caseName: Case.Aux[$hlistElemType, $returnType] = at[$hlistElemType](a => $transformInner(a)) """
-                } else {
-                  if (returnType =:= hlistElemType) {
+                 |  found: ${fields
+                   .map(_.returnType)
+                   .mkString("", " :: ", " :: HNil")}
+                 |  expected: ${hlistElemTypes
+                   .mkString("", " :: ", " :: HNil")}""".stripMargin
+            )
+          } else
+            fields.map(f => f -> f.returnType).toList.zip(hlistElemTypes).map {
+              case ((field, returnType), hlistElemType) =>
+                val res =
+                  if (returnType.typeConstructor =:= typeOf[List[_]].typeConstructor) {
+                    val listInnerType = returnType.typeArgs.head
+                    val hlistInnerType = hlistElemType.typeArgs.head
                     val caseName = TermName(
-                      s"at_${field.name.toString}_${t.name.toString}_${returnType.typeSymbol.name.toString}"
+                      s"at_${field.name.toString}_List${t.name.toString}_${listInnerType.typeSymbol.name.toString}"
                     )
-                    q""" implicit def $caseName: Case.Aux[$hlistElemType, $returnType] = at[$hlistElemType](a => a)"""
+                    if (isCaseClass(listInnerType)) {
+                      val transformInner = traverse(
+                        listInnerType.typeSymbol.asClass,
+                        path :+ s"${field.fullName.toString}<List>",
+                        hlistInnerType,
+                        extract(hlistInnerType)
+                      )
+                      q""" implicit def $caseName: Case.Aux[$hlistElemType, $returnType] = at[$hlistElemType](a => a.map($transformInner.andThen(hlist => _root_.shapeless.Generic[$listInnerType].from(hlist)))) """
+                    } else {
+                      q""" implicit def $caseName: Case.Aux[$hlistElemType, $returnType] = at[$hlistElemType](a => a)"""
+                    }
+                  } else if (isCaseClass(returnType)) {
+                    val rtAsClass = returnType.typeSymbol.asClass
+                    val transformInner =
+                      traverse(
+                        rtAsClass,
+                        path :+ s"${field.name.toString}",
+                        hlistElemType,
+                        extract(hlistElemType)
+                      )
+                    val caseName =
+                      TermName(
+                        s"at_${field.name.toString}_${t.name.toString}_${rtAsClass.name.toString}"
+                      )
+                    q""" implicit def $caseName: Case.Aux[$hlistElemType, $returnType] = at[$hlistElemType](a => $transformInner(a)) """
                   } else {
-                    c.abort(
-                      c.enclosingPosition,
-                      s"""|$baseErrorMessage
+                    if (returnType =:= hlistElemType) {
+                      val caseName = TermName(
+                        s"at_${field.name.toString}_${t.name.toString}_${returnType.typeSymbol.name.toString}"
+                      )
+                      q""" implicit def $caseName: Case.Aux[$hlistElemType, $returnType] = at[$hlistElemType](a => a)"""
+                    } else {
+                      c.abort(
+                        c.enclosingPosition,
+                        s"""|$baseErrorMessage
                           |because ${t.fullName.toString} ${field.name.toString} (in $pathStr) has incompatible type:
                           |  found:    $returnType
                           |  expected: $hlistElemType""".stripMargin
-                    )
+                      )
+                    }
                   }
-                }
-              returnType -> res
-          }
+                returnType -> res
+            }
         val cases: List[Tree] =
           casesWithRT.groupBy(_._1).map(_._2.head._2).toList
         val polyFuncName = TermName(s"poly_${t.name.toString}")
@@ -153,22 +166,29 @@ object ToCaseClass {
       }
     }
 
-    val transform = traverse(rCaseClass, List(s"${rCaseClass.fullName.toString}"), L, extract(L))
+    val transform = traverse(
+      rCaseClass,
+      List(s"${rCaseClass.fullName.toString}"),
+      L,
+      extract(L)
+    )
 
     val (genExpr, reprType) = getGeneric(R.typeSymbol)
     val expectedGenExpr = c.typecheck(transform)
     val expectedReprType = expectedGenExpr.tpe.resultType.typeArgs.last
 
-    val typeCheck = try c.typecheck(q"""(hlist: $L) => $genExpr.from($transform(hlist))""", mode = c.TYPEmode) catch {
+    val typeCheck = try c.typecheck(
+      q"""(hlist: $L) => $genExpr.from($transform(hlist))""",
+      mode = c.TYPEmode
+    )
+    catch {
       case e: TypecheckException =>
-        c.abort(c.enclosingPosition,
-          s"""|$baseErrorMessage
+        c.abort(c.enclosingPosition, s"""|$baseErrorMessage
               |because $R shape is not valid:
               |  expected: $expectedReprType
               |  found:    $reprType""".stripMargin)
     }
-    c.Expr[ToCaseClass.Aux[A, K, T, R]](
-      q"""
+    c.Expr[ToCaseClass.Aux[A, K, T, R]](q"""
          new ToCaseClass[$A, $K, $T] {
            type Out = $R
            private val gen = $genExpr

@@ -197,7 +197,7 @@ class CollectPipelineT[F[_], +A, B, Ex <: Execution](
       a =>
         new StrictSource[F, C, Ex]({
           Some(a).collect(pf) match {
-            case None => F.pure[Iterator[C]](Iterator.empty)
+            case None    => F.pure[Iterator[C]](Iterator.empty)
             case Some(b) => f2(b).map(List(_).toIterator)
           }
         }, F),
@@ -211,7 +211,7 @@ class CollectPipelineT[F[_], +A, B, Ex <: Execution](
       a =>
         new StrictSource[F, C, Ex]({
           Some(a).collect(pf) match {
-            case None => F.pure[Iterator[C]](Iterator.empty)
+            case None    => F.pure[Iterator[C]](Iterator.empty)
             case Some(b) => F.map(funcK(f2(b)))(List(_).toIterator)
           }
         }, F),

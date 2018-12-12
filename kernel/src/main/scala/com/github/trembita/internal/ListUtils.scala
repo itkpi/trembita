@@ -2,11 +2,11 @@ package com.github.trembita.internal
 
 import scala.collection.generic.CanBuildFrom
 
-
 /**
   * Used in [[com.github.trembita]]
   **/
 object ListUtils {
+
   /**
     * Having some {{{ Iterable[A] = 1 to 10 }}}
     * and parts = 3
@@ -21,7 +21,7 @@ object ListUtils {
     iterable.size match {
       case 0                    => Nil
       case size if size < parts => List(iterable)
-      case size                 =>
+      case size =>
         val groupSize = size / parts
         iterable.grouped(groupSize).toIterable
     }

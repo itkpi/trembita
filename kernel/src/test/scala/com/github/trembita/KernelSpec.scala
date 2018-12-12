@@ -7,7 +7,6 @@ import org.scalatest.FlatSpec
 
 import scala.util.Try
 
-
 class KernelSpec extends FlatSpec {
   "DataPipeline operations" should "not be executed until 'eval'" in {
     val list = DataPipeline(1, 2, 3)
@@ -43,7 +42,12 @@ class KernelSpec extends FlatSpec {
 
   "DataPipeline[String, Try, ...].mapM(...toInt)" should "be DataPipeline[Int]" in {
     val list = DataPipelineT[Try, String]("1", "2", "3", "abc")
-    val res = list.mapM { str => Try(str.toInt) }.handleError { case e: NumberFormatException => -10 }.eval
+    val res = list
+      .mapM { str =>
+        Try(str.toInt)
+      }
+      .handleError { case e: NumberFormatException => -10 }
+      .eval
     assert(res.get == Vector(1, 2, 3, -10))
   }
 
@@ -95,7 +99,8 @@ class KernelSpec extends FlatSpec {
 
   "DataPipeline.groupBy" should "group elements" in {
     val list = DataPipeline(1, 2, 3, 4)
-    val grouped = list.groupBy(_ % 2 == 0)
+    val grouped = list
+      .groupBy(_ % 2 == 0)
       .mapValues(_.toList)
       .sortBy(_._1)
       .eval
@@ -111,7 +116,9 @@ class KernelSpec extends FlatSpec {
 
   "DataPipeline operations" should "be executed on each force" in {
     var x: Int = 0
-    val list = DataPipeline(1, 2, 3).map { i => x += 1; i }
+    val list = DataPipeline(1, 2, 3).map { i =>
+      x += 1; i
+    }
     val res1 = list.eval
     assert(x == 3)
     val res2 = list.eval
@@ -120,7 +127,11 @@ class KernelSpec extends FlatSpec {
 
   "DataPipeline operations after .memoize()" should "be executed exactly once" in {
     var x: Int = 0
-    val list = DataPipeline(1, 2, 3).map { i => x += 1; i }.memoize()
+    val list = DataPipeline(1, 2, 3)
+      .map { i =>
+        x += 1; i
+      }
+      .memoize()
     val res1 = list.eval
     assert(x == 3)
     val res2 = list.eval
@@ -192,15 +203,19 @@ class KernelSpec extends FlatSpec {
 //  }
 
   "DataPipeline[IO]" should "produce the result wrapped in IO monad" in {
-    val resultIO = DataPipelineT.liftF[IO, (String, Int),  Execution.Sequential](
-      IO(List("a" → 1, "b" → 2, "c" → 3, "a" → 3, "c" → 10))
-    )
+    val resultIO = DataPipelineT
+      .liftF[IO, (String, Int), Execution.Sequential](
+        IO(List("a" → 1, "b" → 2, "c" → 3, "a" → 3, "c" → 10))
+      )
       .reduceByKey
       .mapValues(_ * 10)
       .map { case (k, v) => s"{key=$k, value=$v}" }
       .sorted
-      .eval.map(_.toList.mkString(", "))
+      .eval
+      .map(_.toList.mkString(", "))
 
-    assert(resultIO.unsafeRunSync() == "{key=a, value=40}, {key=b, value=20}, {key=c, value=130}")
+    assert(
+      resultIO.unsafeRunSync() == "{key=a, value=40}, {key=b, value=20}, {key=c, value=130}"
+    )
   }
 }

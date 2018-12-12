@@ -66,7 +66,7 @@ trait monoidInstances {
         val merged = xValues.mergeConcat(yValues)(combineImpl).values.toList
 
         merged match {
-          case Nil => Empty[A, GH &:: GT, T](tMonoid.empty)
+          case Nil          => Empty[A, GH &:: GT, T](tMonoid.empty)
           case List(single) => single
           case scala.::(head, scala.::(next, rest)) =>
             ~**(x.totals |+| y.totals, head, NonEmptyList(next, rest))

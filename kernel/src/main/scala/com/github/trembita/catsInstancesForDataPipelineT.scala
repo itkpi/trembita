@@ -1,5 +1,14 @@
 package com.github.trembita
-import cats.{Alternative, Applicative, Eval, Id, Monad, MonadError, MonoidK, Traverse}
+import cats.{
+  Alternative,
+  Applicative,
+  Eval,
+  Id,
+  Monad,
+  MonadError,
+  MonoidK,
+  Traverse
+}
 import cats.implicits._
 
 import scala.language.higherKinds
