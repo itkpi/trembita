@@ -3,6 +3,7 @@ package com.examples.kernel
 import com.github.trembita.ql._
 import com.examples.putStrLn
 import com.github.trembita._
+import com.github.trembita.syntax._
 import com.github.trembita.ql.show._
 import cats.implicits._
 import cats.effect._
@@ -25,7 +26,7 @@ object QLSample extends IOApp with algebra.instances.AllInstances {
 
     val result = numbers
       .to[Parallel]
-      .queryEval(
+      .query(
         _.filter(_ > 5)
           .groupBy(
             num =>
@@ -46,9 +47,10 @@ object QLSample extends IOApp with algebra.instances.AllInstances {
           )
           .having(_.get[count] > 7)
       )
+      .eval
       .flatTap { result =>
         putStrLn("First one:") *>
-          putStrLn(result.pretty()) *>
+          putStrLn(result.map(_.pretty()).mkString("\n")) *>
           putStrLn("-------------------------")
       }
 

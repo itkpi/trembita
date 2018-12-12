@@ -5,8 +5,10 @@ import cats.implicits._
 import com.datastax.driver.core.{Row, Session, Statement}
 import com.github.trembita.internal.StrictSource
 import com.github.trembita._
+
 import scala.collection.JavaConverters._
 import scala.language.higherKinds
+import scala.reflect.ClassTag
 
 object CassandraSource {
   def rows(session: Session,
@@ -20,12 +22,12 @@ object CassandraSource {
       session.execute(statement).iterator().asScala
     }, F)
 
-  def apply[A](session: Session, statement: Statement)(
+  def apply[A: ClassTag](session: Session, statement: Statement)(
     extractor: Row => A
   ): DataPipeline[A, Execution.Sequential] =
     rows(session, statement).map(extractor)
 
-  def applyF[F[_], A, Ex <: Execution](session: Session, statement: Statement)(
+  def applyF[F[_], A: ClassTag, Ex <: Execution](session: Session, statement: Statement)(
     extractor: Row => A
   )(implicit F: Sync[F]): DataPipelineT[F, A, Ex] =
     rowsF[F, Ex](session, statement).map(extractor)

@@ -3,8 +3,8 @@ package com.examples.kernel
 import cats.effect._
 import cats.implicits._
 import com.github.trembita._
+import com.github.trembita.syntax._
 import com.examples.putStrLn
-import Execution._
 import scala.util.{Random, Success, Try}
 import scala.util.control.NonFatal
 
@@ -37,7 +37,7 @@ object Basic extends IOApp {
       .mapG(str => Try { str + "/Try" })
       .mapM(str => IO { str + "/IO" })
 
-    val result2: Try[Vector[String]] = strings.mapK[Try].eval
+    val result2: IO[Vector[String]] = strings.eval
 
     result1.flatTap { result1 =>
       putStrLn(s"result1: $result1") *>

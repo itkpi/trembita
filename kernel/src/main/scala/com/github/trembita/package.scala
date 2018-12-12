@@ -12,7 +12,7 @@ import scala.concurrent.Future
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
-package object trembita extends catsInstancesForDataPipelineT {
+package object trembita extends AllSyntax {
 
   type DataPipeline[A, Ex <: Execution] = DataPipelineT[Id, A, Ex]
   object DataPipeline {
@@ -23,7 +23,7 @@ package object trembita extends catsInstancesForDataPipelineT {
       * @param xs - elements to wrap
       * @return - a [[StrictSource]]
       **/
-    def apply[A](xs: A*): DataPipeline[A, Execution.Sequential] =
+    def apply[A: ClassTag](xs: A*): DataPipeline[A, Execution.Sequential] =
       new StrictSource[Id, A, Execution.Sequential](xs.toIterator, Monad[Id])
 
     /**
@@ -32,7 +32,9 @@ package object trembita extends catsInstancesForDataPipelineT {
       * @param it - an iterable haven't been evaluated yet
       * @return - a [[StrictSource]]
       **/
-    def from[A](it: => Iterable[A]): DataPipeline[A, Execution.Sequential] =
+    def from[A: ClassTag](
+      it: => Iterable[A]
+    ): DataPipeline[A, Execution.Sequential] =
       new StrictSource[Id, A, Execution.Sequential](it.toIterator, Monad[Id])
   }
   type PairPipelineT[F[_], K, V, Ex <: Execution] = DataPipelineT[F, (K, V), Ex]
@@ -50,9 +52,11 @@ package object trembita extends catsInstancesForDataPipelineT {
       case (k, v) => (k, f(v))
     }
 
-    def keys(implicit F: Monad[F]): DataPipelineT[F, K, Ex] = self.map(_._1)
+    def keys(implicit F: Monad[F], K: ClassTag[K]): DataPipelineT[F, K, Ex] =
+      self.map(_._1)
 
-    def values(implicit F: Monad[F]): DataPipelineT[F, V, Ex] = self.map(_._2)
+    def values(implicit F: Monad[F], V: ClassTag[V]): DataPipelineT[F, V, Ex] =
+      self.map(_._2)
 
     /**
       * Merges all values [[V]]
@@ -62,6 +66,7 @@ package object trembita extends catsInstancesForDataPipelineT {
       * @return - reduced pipeline
       **/
     def reduceByKey(f: (V, V) => V)(implicit ex: Ex,
+                                    K: ClassTag[K],
                                     F: Monad[F]): PairPipelineT[F, K, V, Ex] =
       self.groupBy(_._1).mapValues { vs =>
         vs.foldLeft(Option.empty[V]) {
@@ -80,31 +85,27 @@ package object trembita extends catsInstancesForDataPipelineT {
       * @return - reduced pipeline
       **/
     def reduceByKey(implicit vMonoid: Monoid[V],
+                    K: ClassTag[K],
                     ex: Ex,
                     F: Monad[F]): PairPipelineT[F, K, V, Ex] =
       reduceByKey((v1, v2) => vMonoid.combine(v1, v2))
 
     /** @return - [[MapPipelineT]] */
-    def toMap(implicit ex: Ex, F: Monad[F]): MapPipelineT[F, K, V, Ex] =
+    def toMap(implicit K: ClassTag[K],
+              V: ClassTag[V],
+              F: Monad[F]): MapPipelineT[F, K, V, Ex] =
       new BaseMapPipelineT[F, K, V, Ex](
         self.asInstanceOf[DataPipelineT[F, (K, V), Ex]],
-        ex,
         F
       )
   }
 
-  implicit class PipelineOps[A, F[_], Ex <: Execution](
-    val self: DataPipelineT[F, A, Ex]
-  ) extends AnyVal
-      with Ops1[A, F, Ex]
-      with Ops0[A, F, Ex]
-
-  implicit def iterable2DataPipeline[A, F[_], Ex <: Execution](
+  implicit def iterable2DataPipeline[A: ClassTag, F[_], Ex <: Execution](
     iterable: Iterable[A]
   )(implicit F: Monad[F]): DataPipelineT[F, A, Ex] =
     DataPipelineT.liftF[F, A, Ex](iterable.pure[F])
 
-  implicit def array2DataPipeline[A, F[_], Ex <: Execution](
+  implicit def array2DataPipeline[A: ClassTag, F[_], Ex <: Execution](
     array: Array[A]
   )(implicit F: Monad[F]): DataPipelineT[F, A, Ex] =
     DataPipelineT.liftF[F, A, Ex]((array: Iterable[A]).pure[F])

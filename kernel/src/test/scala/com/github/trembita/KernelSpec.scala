@@ -4,7 +4,7 @@ import cats.effect._
 import cats.implicits._
 import com.github.trembita.internal._
 import org.scalatest.FlatSpec
-
+import com.github.trembita.syntax._
 import scala.util.Try
 
 class KernelSpec extends FlatSpec {
@@ -127,7 +127,7 @@ class KernelSpec extends FlatSpec {
 
   "DataPipeline operations after .memoize()" should "be executed exactly once" in {
     var x: Int = 0
-    val list = DataPipeline(1, 2, 3)
+    val list: DataPipeline[Int, Sequential] = DataPipeline(1, 2, 3)
       .map { i =>
         x += 1; i
       }

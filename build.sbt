@@ -107,6 +107,21 @@ lazy val trembita_circe =
       }
     )
 
+lazy val trembita_spark =
+  sonatypeProject(id = "trembita-spark", base = file("./integrations/spark"))
+    .dependsOn(kernel)
+    .settings(
+      name := "trembita-spark",
+      version := v,
+      scalacOptions += "-Ypartial-unification",
+      libraryDependencies ++= {
+        val sparkV = "2.4.0"
+        Seq(
+          "org.apache.spark" %% "spark-core" % sparkV % "provided"
+        )
+      }
+    )
+
 lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
   .dependsOn(
     collection_extentions,

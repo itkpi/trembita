@@ -8,6 +8,7 @@ import com.github.trembita._
 import QueryBuilder._
 import cats.MonadError
 import cats.kernel.Monoid
+import com.github.trembita.syntax._
 
 /**
   * Trembita QL itself.
@@ -27,13 +28,17 @@ trait trembitaqlForPipeline[A,
                             T <: AggDecl,
                             R <: AggRes,
                             Comb] {
-  def apply[F[_], Ex <: Execution](
-    pipeline: DataPipelineT[F, A, Ex],
-    queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb]
-  )(implicit F: MonadError[F, Throwable],
-    monoid: Monoid[QueryResult[A, G, AggFunc.Result[T, R, Comb]]],
-    ex: Ex): F[QueryResult[A, G, AggFunc.Result[T, R, Comb]]] =
-    applyWithoutTopTotals(pipeline, queryF).reduce
+//  def apply[F[_], Ex <: Execution](
+//    pipeline: DataPipelineT[F, A, Ex],
+//    queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb],
+//    ex: Ex
+//  )(implicit F: MonadError[F, Throwable],
+//    monoid: Monoid[QueryResult[A, G, AggFunc.Result[T, R, Comb]]],
+//    run: ex.Run[F]): F[QueryResult[A, G, AggFunc.Result[T, R, Comb]]] = {
+//
+//    implicit val _ex: Ex = ex
+//    applyWithoutTopTotals(pipeline, queryF).reduce
+//  }
 
   def applyWithoutTopTotals[F[_], Ex <: Execution](
     pipeline: DataPipelineT[F, A, Ex],
@@ -276,7 +281,7 @@ object trembitaqlForPipeline {
           q"""
          val $resCurr = $grCurr.groupBy(_._1($idx)).toVector.map { case (key, vs) =>
            val totals = vs.foldLeft(aggF.empty) { case (acc, (_, a)) => aggF.add(acc, getT(a)) }
-           key -> (totals -> sortedVs( vs.map(_._2) ).toList )
+           key -> (totals -> sortedVs( vs.map(_._2).toVector ).toList )
          } match {
            case Vector() => Empty[$A, $currCriteria &:: $gnil, AggFunc.Result[$T, $R, $Comb]](aggF.extract(aggF.empty))
            case Vector((key, (totals, vs))) => ~::[$A, $currCriteria, $gnil, AggFunc.Result[$T, $R, $Comb]](
@@ -368,7 +373,9 @@ object trembitaqlForPipeline {
 
                val group_0 = orderCriterias match {
                  case None => pipeline.filter(filterF).map(a => getG(a) → a)
-                 case Some(orderCrF) => pipeline.filter(filterF).map(a => getG(a) → a).sortBy(_._1)(orderCrF, ex, F)
+                 case Some(orderCrF) =>
+                   implicit val order = orderCrF
+                   pipeline.filter(filterF).map(a => getG(a) → a).sortBy(_._1)
                }
                ${groupByRec(1, allCriterias)}
                res_0

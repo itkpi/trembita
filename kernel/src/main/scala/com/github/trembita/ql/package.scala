@@ -12,6 +12,8 @@ import ql.QueryBuilder._
 import ql.GroupingCriteria._
 import shapeless.ops.hlist.Tupler
 
+import scala.reflect.ClassTag
+
 package object ql
     extends orderingInstances
     with aggregationInstances
@@ -89,21 +91,21 @@ package object ql
       : DataPipelineT[F, QueryResult[A, G, AggFunc.Result[T, R, Comb]], Ex] =
       trembitaql.applyWithoutTopTotals(self, queryF)
 
-    def queryEval[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
-      queryF: Empty[A] => Query[A, G, T, R, Comb]
-    )(implicit trembitaql: trembitaqlForPipeline[A, G, T, R, Comb],
-      ex: Ex,
-      F: MonadError[F, Throwable],
-      monoid: Monoid[QueryResult[A, G, AggFunc.Result[T, R, Comb]]])
-      : F[QueryResult[A, G, AggFunc.Result[T, R, Comb]]] =
-      trembitaql(self, queryF)
+//    def queryEval[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
+//      queryF: Empty[A] => Query[A, G, T, R, Comb]
+//    )(implicit trembitaql: trembitaqlForPipeline[A, G, T, R, Comb],
+//      ex: Ex,
+//      F: MonadError[F, Throwable],
+//      monoid: Monoid[QueryResult[A, G, AggFunc.Result[T, R, Comb]]])
+//      : F[QueryResult[A, G, AggFunc.Result[T, R, Comb]]] =
+//      trembitaql(self, queryF)
   }
 
   implicit class AsOps[F[_], Ex <: Execution, A, G <: GroupingCriteria, T](
     private val self: DataPipelineT[F, QueryResult[A, G, T], Ex]
   ) extends AnyVal {
-    def as[R](implicit ev: ToCaseClass.Aux[A, G, T, R],
-              F: Monad[F]): DataPipelineT[F, ev.Out, Ex] =
+    def as[R: ClassTag](implicit ev: ToCaseClass.Aux[A, G, T, R],
+                        F: Monad[F]): DataPipelineT[F, ev.Out, Ex] =
       self.map(_.as[R])
   }
 

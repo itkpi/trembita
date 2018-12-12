@@ -3,9 +3,11 @@ package com.github.trembita.internal
 import com.github.trembita._
 import cats._
 import cats.implicits._
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.language.higherKinds
+import scala.reflect.ClassTag
 import scala.util.Try
 
 /**
@@ -26,7 +28,7 @@ trait MapPipelineT[F[_], K, V, Ex <: Execution]
     * @param f - transformation function
     * @return - a pipeline with the same key and transformed values
     **/
-  def mapValues[W](f: V => W)(implicit F: Monad[F]): MapPipelineT[F, K, W, Ex]
+  def mapValues[W: ClassTag](f: V => W)(implicit F: Monad[F]): MapPipelineT[F, K, W, Ex]
 
   /**
     * Returns only those ([[K]], [[V]]) pairs
@@ -55,20 +57,19 @@ trait MapPipelineT[F[_], K, V, Ex <: Execution]
   **/
 protected[trembita] class BaseMapPipelineT[F[_], K, V, Ex <: Execution](
   source: DataPipelineT[F, (K, V), Ex],
-  ex: Ex,
   F: Monad[F]
-) extends SeqSource[F, (K, V), Ex](F)
+)(implicit K: ClassTag[K], V: ClassTag[V]) extends SeqSource[F, (K, V), Ex](F)
     with MapPipelineT[F, K, V, Ex] {
 
-  def mapValues[W](f: V => W)(implicit F: Monad[F]): MapPipelineT[F, K, W, Ex] =
-    new BaseMapPipelineT[F, K, W, Ex](source.mapValues(f), ex, F)
+  def mapValues[W: ClassTag](f: V => W)(implicit F: Monad[F]): MapPipelineT[F, K, W, Ex] =
+    new BaseMapPipelineT[F, K, W, Ex](source.mapValues(f), F)
 
   def filterKeys(
     p: K => Boolean
   )(implicit F: Monad[F]): MapPipelineT[F, K, V, Ex] =
     new BaseMapPipelineT[F, K, V, Ex](source.collect {
       case (k, v) if p(k) => (k, v)
-    }, ex, F)
+    }, F)
 
   def keys(implicit F: Monad[F]): DataPipelineT[F, K, Ex] =
     new MappingPipelineT[F, (K, V), K, Ex](_._1, this)(F)
@@ -76,31 +77,29 @@ protected[trembita] class BaseMapPipelineT[F[_], K, V, Ex <: Execution](
   def values(implicit F: Monad[F]): DataPipelineT[F, V, Ex] =
     new MappingPipelineT[F, (K, V), V, Ex](_._2, this)(F)
 
-  protected[trembita] def evalFunc[B >: (K, V)](Ex: Ex): F[Ex.Repr[B]] =
+  protected[trembita] def evalFunc[B >: (K, V)](Ex: Ex)(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
     F.map(
       source
         .evalFunc[(K, V)](Ex)
-    )(vs => Ex.fromVector(Ex.toVector(vs).toMap.toVector))
+    )(vs => Ex.distinctKeys(vs).asInstanceOf[Ex.Repr[B]])
 
-  def handleError[B >: (K, V)](
+  def handleError[B >: (K, V): ClassTag](
     f: Throwable => B
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
     new BaseMapPipelineT[F, K, V, Ex](
       source
         .handleError(f)
         .asInstanceOf[DataPipelineT[F, (K, V), Ex]],
-      ex,
       F
     )
 
-  def handleErrorWith[B >: (K, V)](
+  def handleErrorWith[B >: (K, V): ClassTag](
     f: Throwable => DataPipelineT[F, B, Ex]
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
     new BaseMapPipelineT[F, K, V, Ex](
       source
         .handleErrorWith(f)
         .asInstanceOf[DataPipelineT[F, (K, V), Ex]],
-      ex,
       F
     )
 }
@@ -116,31 +115,26 @@ protected[trembita] class BaseMapPipelineT[F[_], K, V, Ex <: Execution](
 protected[trembita] class GroupByPipelineT[F[_], K, V, Ex <: Execution](
   f: V => K,
   source: DataPipelineT[F, V, Ex],
-  ex: Ex,
   F: Monad[F]
-) extends SeqSource[F, (K, Vector[V]), Ex](F) {
+)(implicit K: ClassTag[K], V: ClassTag[V]) extends SeqSource[F, (K, Iterable[V]), Ex](F) {
 
-  def handleError[B >: (K, Vector[V])](
+  def handleError[B >: (K, Iterable[V]): ClassTag](
     f: Throwable => B
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
     this
 
-  def handleErrorWith[B >: (K, Vector[V])](
+  def handleErrorWith[B >: (K, Iterable[V]): ClassTag](
     f: Throwable => DataPipelineT[F, B, Ex]
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
     this
 
-  protected[trembita] def evalFunc[B >: (K, Vector[V])](Ex: Ex): F[Ex.Repr[B]] =
+  protected[trembita] def evalFunc[B >: (K, Iterable[V])](Ex: Ex)(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
     F.map(
       source
-        .evalFunc[V](ex)
+        .evalFunc[V](Ex)
     )(
       vs =>
-        Ex.fromVector(
-          Ex.groupBy(Ex.fromVector(ex.toVector(vs.asInstanceOf[ex.Repr[V]])))(f)
-            .mapValues(Ex.toVector)
-            .toVector
-      )
+        Ex.groupBy(vs)(f).asInstanceOf[Ex.Repr[B]]
     )
 }
 

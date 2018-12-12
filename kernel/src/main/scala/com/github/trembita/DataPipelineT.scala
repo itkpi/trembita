@@ -6,6 +6,7 @@ import cats.effect.Sync
 import cats.implicits._
 import internal._
 
+import scala.reflect.ClassTag
 import scala.util.{Random, Success, Try}
 
 /**
@@ -22,7 +23,7 @@ trait DataPipelineT[F[_], +A, Ex <: Execution] {
     * @param f - transformation function
     * @return - transformed [[DataPipelineT]]
     **/
-  def map[B](f: A => B)(implicit F: Monad[F]): DataPipelineT[F, B, Ex]
+  def map[B: ClassTag](f: A => B)(implicit F: Monad[F]): DataPipelineT[F, B, Ex]
 
   /**
     * Monad.flatMap
@@ -31,12 +32,12 @@ trait DataPipelineT[F[_], +A, Ex <: Execution] {
     * @param f - transformation function from [[A]] into {{{DataPipeline[B]}}}
     * @return - transformed [[DataPipelineT]]
     **/
-  def flatMap[B](f: A => DataPipelineT[F, B, Ex])(
+  def flatMap[B: ClassTag](f: A => DataPipelineT[F, B, Ex])(
     implicit F: Monad[F]
   ): DataPipelineT[F, B, Ex]
 
-  def flatten[B](implicit ev: A <:< DataPipelineT[F, B, Ex],
-                 F: Monad[F]): DataPipelineT[F, B, Ex] = flatMap(ev)
+  def flatten[B: ClassTag](implicit ev: A <:< DataPipelineT[F, B, Ex],
+                           F: Monad[F]): DataPipelineT[F, B, Ex] = flatMap(ev)
 
   /**
     * Guarantees that [[DataPipelineT]]
@@ -54,26 +55,26 @@ trait DataPipelineT[F[_], +A, Ex <: Execution] {
     * @param pf - partial function
     * @return - transformed [[DataPipelineT]]
     **/
-  def collect[B](pf: PartialFunction[A, B])(
+  def collect[B: ClassTag](pf: PartialFunction[A, B])(
     implicit F: Monad[F]
   ): DataPipelineT[F, B, Ex]
 
-  def flatCollect[B](
+  def flatCollect[B: ClassTag](
     pf: PartialFunction[A, DataPipelineT[F, B, Ex]]
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
     collect(pf).flatten
 
-  def mapM[B](f: A => F[B])(implicit F: Monad[F]): DataPipelineT[F, B, Ex]
+  def mapM[B: ClassTag](f: A => F[B])(implicit F: Monad[F]): DataPipelineT[F, B, Ex]
 
-  def mapG[B, G[_]](f: A => G[B])(
+  def mapG[B: ClassTag, G[_]](f: A => G[B])(
     implicit funcK: G ~> F
   ): DataPipelineT[F, B, Ex]
 
-  def handleError[B >: A](f: Throwable => B)(
+  def handleError[B >: A: ClassTag](f: Throwable => B)(
     implicit F: MonadError[F, Throwable]
   ): DataPipelineT[F, B, Ex]
 
-  def handleErrorWith[B >: A](f: Throwable => DataPipelineT[F, B, Ex])(
+  def handleErrorWith[B >: A: ClassTag](f: Throwable => DataPipelineT[F, B, Ex])(
     implicit F: MonadError[F, Throwable]
   ): DataPipelineT[F, B, Ex]
 
@@ -83,16 +84,16 @@ trait DataPipelineT[F[_], +A, Ex <: Execution] {
     *
     * @return - collected data
     **/
-  protected[trembita] def evalFunc[B >: A](Ex: Ex): F[Ex.Repr[B]]
+  protected[trembita] def evalFunc[B >: A](Ex: Ex)(implicit run: Ex.Run[F]): F[Ex.Repr[B]]
 }
 
 object DataPipelineT {
-  def apply[F[_], A](
+  def apply[F[_], A: ClassTag](
     xs: A*
   )(implicit F: Monad[F]): DataPipelineT[F, A, Execution.Sequential] =
     new StrictSource[F, A, Execution.Sequential](xs.toIterator.pure[F], F)
 
-  def liftF[F[_], A, Ex <: Execution](
+  def liftF[F[_], A: ClassTag, Ex <: Execution](
     fa: F[Iterable[A]]
   )(implicit F: Monad[F]): DataPipelineT[F, A, Ex] =
     new StrictSource[F, A, Ex](fa.map(_.toIterator), F)
@@ -100,7 +101,7 @@ object DataPipelineT {
   /**
     * @return - an empty [[DataPipelineT]]
     **/
-  def empty[F[_], A](
+  def empty[F[_], A: ClassTag](
     implicit F: Monad[F]
   ): DataPipelineT[F, A, Execution.Sequential] =
     new StrictSource[F, A, Execution.Sequential](F.pure(Iterator.empty), F)
@@ -113,7 +114,7 @@ object DataPipelineT {
     * @param fa    - factory function
     * @return - data pipeline
     **/
-  def repeat[F[_], A](
+  def repeat[F[_], A: ClassTag](
     times: Int
   )(fa: => A)(implicit F: Sync[F]): DataPipelineT[F, A, Execution.Sequential] =
     new StrictSource(F.delay(1 to times).map(_.toIterator.map(_ => fa)), F)

@@ -5,6 +5,8 @@ import cats.implicits._
 import cats.effect._
 import cats.effect.concurrent.Ref
 
+import scala.reflect.ClassTag
+
 package object fsm {
 
   implicit class StatefulOps[A, F[_], Ex <: Execution](
@@ -23,7 +25,7 @@ package object fsm {
       * @param fsmF    - see DSL for providing a FSM
       * @return - mapped pipeline
       **/
-    def fsm[N, D, B](initial: InitialState[N, D, F])(
+    def fsm[N, D, B: ClassTag](initial: InitialState[N, D, F])(
       fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
     )(implicit F: Sync[F]): DataPipelineT[F, B, Ex] = {
       val stateF = fsmF(new FSM.Empty)
