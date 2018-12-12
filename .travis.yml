@@ -1,5 +1,6 @@
 language: scala
 scala:
   - 2.12.8
-
-install: export CODECOV_TOKEN="da6318af-6fde-4c01-a0ae-e2fb7dba811b"
+  
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
