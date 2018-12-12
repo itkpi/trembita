@@ -1,11 +1,12 @@
 package com.github.trembita.ql
 
 import shapeless._
+
 import scala.language.experimental.macros
-import scala.reflect.macros.blackbox
+import scala.reflect.macros.{TypecheckException, blackbox}
 
 trait ToCaseClass[A, K <: GroupingCriteria, T]
-    extends DepFn1[QueryResult[A, K, T]]
+  extends DepFn1[QueryResult[A, K, T]]
 
 object ToCaseClass {
   type Aux[A, K <: GroupingCriteria, T, Out0] = ToCaseClass[A, K, T] {
@@ -13,19 +14,19 @@ object ToCaseClass {
   }
 
   def apply[A, K <: GroupingCriteria, T](
-    implicit ev: ToCaseClass[A, K, T]
-  ): Aux[A, K, T, ev.Out] = ev
+                                          implicit ev: ToCaseClass[A, K, T]
+                                        ): Aux[A, K, T, ev.Out] = ev
 
   implicit def materialize[A, K <: GroupingCriteria, T, L <: HList, R](
-    implicit ev: ToHList.Aux[QueryResult[A, K, T], L]
-  ): ToCaseClass.Aux[A, K, T, R] =
-    macro fromGenericImpl[A, K, T, L, R]
+                                                                        implicit ev: ToHList.Aux[QueryResult[A, K, T], L]
+                                                                      ): ToCaseClass.Aux[A, K, T, R] =
+  macro fromGenericImpl[A, K, T, L, R]
 
   def fromGenericImpl[A: c.WeakTypeTag,
-                      K <: GroupingCriteria: c.WeakTypeTag,
-                      T: c.WeakTypeTag,
-                      L <: HList: c.WeakTypeTag,
-                      R: c.WeakTypeTag](c: blackbox.Context)(
+  K <: GroupingCriteria : c.WeakTypeTag,
+  T: c.WeakTypeTag,
+  L <: HList : c.WeakTypeTag,
+  R: c.WeakTypeTag](c: blackbox.Context)(
     ev: c.Expr[ToHList.Aux[QueryResult[A, K, T], L]]
   ): c.Expr[ToCaseClass.Aux[A, K, T, R]] = {
     import c.universe._
@@ -41,10 +42,12 @@ object ToCaseClass {
     if (!R.typeSymbol.asClass.isCaseClass) {
       c.abort(c.enclosingPosition, s"$R is not a case class")
     }
+    val queryResult = tq"com.github.trembita.ql.QueryResult[$A, $K, $T]"
+    lazy val baseErrorMessage = s"Unable to convert $queryResult into $R"
     val rCaseClass = R.typeSymbol.asClass
 
     def decompose(hlist: Type): List[Type] = hlist.typeArgs match {
-      case Nil              => Nil
+      case Nil => Nil
       case List(head, tail) => head :: decompose(tail)
     }
 
@@ -56,17 +59,41 @@ object ToCaseClass {
     def isCaseClass(tpe: Type): Boolean =
       tpe.typeSymbol.isClass && tpe.typeSymbol.asClass.isCaseClass
 
+    def getGeneric(t: Symbol): (Tree, Type) = {
+      val genExpr = c.typecheck(q"shapeless.Generic[$t]")
+      val reprType = genExpr.tpe.member(TypeName("Repr")).asType.typeSignature
+      genExpr -> reprType
+    }
+
     def traverse(t: ClassSymbol,
+                 path: List[String],
                  hlistT: Type,
                  hlistElemTypes: List[Type]): Tree = {
+      lazy val pathStr = path.mkString(".")
       val fields = t.info.decls.collect {
         case d if d.isMethod && d.asMethod.isCaseAccessor => d.asMethod
       }
       if (fields.forall(!_.returnType.typeSymbol.asClass.isCaseClass)) {
-        q""" (hlist: $hlistT) => _root_.shapeless.Generic[$t].from(hlist) """
+        val (genExpr, reprType) = getGeneric(t)
+        val expr = q""" (hlist: $hlistT) => $genExpr.from(hlist) """
+        try c.typecheck(expr) catch {
+          case e: TypecheckException =>
+            c.abort(c.enclosingPosition,
+              s"""|$baseErrorMessage
+                  |because ${t.fullName.toString} (in $pathStr) has incompatible shape:
+                  |  found:    $reprType
+                  |  expected: $hlistT""".stripMargin)
+        }
       } else {
         val casesWithRT: List[(Type, Tree)] =
-          fields.map(f => f -> f.returnType).toList.zip(hlistElemTypes).map {
+          if (fields.size != hlistElemTypes.size) {
+            c.abort(c.enclosingPosition,
+              s"""|$baseErrorMessage
+                 |because ${t.fullName.toString} (in $pathStr) has incompatible shape:
+                 |  found: ${fields.map(_.returnType).mkString("", " :: ", " :: HNil")}
+                 |  expected: ${hlistElemTypes.mkString("", " :: ", " :: HNil")}""".stripMargin)
+          }
+          else fields.map(f => f -> f.returnType).toList.zip(hlistElemTypes).map {
             case ((field, returnType), hlistElemType) =>
               val res =
                 if (returnType.typeConstructor =:= typeOf[List[_]].typeConstructor) {
@@ -78,6 +105,7 @@ object ToCaseClass {
                   if (isCaseClass(listInnerType)) {
                     val transformInner = traverse(
                       listInnerType.typeSymbol.asClass,
+                      path :+ s"${field.fullName.toString}<List>",
                       hlistInnerType,
                       extract(hlistInnerType)
                     )
@@ -88,7 +116,7 @@ object ToCaseClass {
                 } else if (isCaseClass(returnType)) {
                   val rtAsClass = returnType.typeSymbol.asClass
                   val transformInner =
-                    traverse(rtAsClass, hlistElemType, extract(hlistElemType))
+                    traverse(rtAsClass, path :+ s"${field.name.toString}", hlistElemType, extract(hlistElemType))
                   val caseName =
                     TermName(
                       s"at_${field.name.toString}_${t.name.toString}_${rtAsClass.name.toString}"
@@ -103,7 +131,10 @@ object ToCaseClass {
                   } else {
                     c.abort(
                       c.enclosingPosition,
-                      s"$field return type $returnType (in case class $t) does not conform to hlist element type $hlistElemType"
+                      s"""|$baseErrorMessage
+                          |because ${t.fullName.toString} ${field.name.toString} (in $pathStr) has incompatible type:
+                          |  found:    $returnType
+                          |  expected: $hlistElemType""".stripMargin
                     )
                   }
                 }
@@ -122,13 +153,25 @@ object ToCaseClass {
       }
     }
 
-    val transform = traverse(rCaseClass, L, extract(L))
+    val transform = traverse(rCaseClass, List(s"${rCaseClass.fullName.toString}"), L, extract(L))
 
-    val queryResult = tq"com.github.trembita.ql.QueryResult[$A, $K, $T]"
-    c.Expr[ToCaseClass.Aux[A, K, T, R]](q"""
+    val (genExpr, reprType) = getGeneric(R.typeSymbol)
+    val expectedGenExpr = c.typecheck(transform)
+    val expectedReprType = expectedGenExpr.tpe.resultType.typeArgs.last
+
+    val typeCheck = try c.typecheck(q"""(hlist: $L) => $genExpr.from($transform(hlist))""", mode = c.TYPEmode) catch {
+      case e: TypecheckException =>
+        c.abort(c.enclosingPosition,
+          s"""|$baseErrorMessage
+              |because $R shape is not valid:
+              |  expected: $expectedReprType
+              |  found:    $reprType""".stripMargin)
+    }
+    c.Expr[ToCaseClass.Aux[A, K, T, R]](
+      q"""
          new ToCaseClass[$A, $K, $T] {
            type Out = $R
-           private val gen = shapeless.Generic[$R]
+           private val gen = $genExpr
            def apply(in: $queryResult): $R = {
              val hlist = $ev(in)
              val prepared = $transform(hlist)
