@@ -1,3 +1,6 @@
+[![codecov](https://codecov.io/gh/vitaliihonta/trembita/branch/master/graph/badge.svg)](https://codecov.io/gh/vitaliihonta/trembita)
+[![Build Status](https://travis-ci.com/vitaliihonta/trembita.svg?branch=master)](https://travis-ci.com/vitaliihonta/trembita)
+
 <img src="https://github.com/vitalii-honta/trembita/blob/master/media/trembita-p.png" alt="trembita"/>
  
 ## Description 
