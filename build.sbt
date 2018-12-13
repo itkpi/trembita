@@ -70,7 +70,7 @@ lazy val cassandra_connector = sonatypeProject(
   base = file("./connectors/cassandra")
 ).dependsOn(kernel)
   .settings(libraryDependencies ++= {
-    Seq("com.datastax.cassandra" % "cassandra-driver-core" % "3.6.0")
+    Seq("com.datastax.cassandra" % "cassandra-driver-core" % "3.6.0" % "provided")
   })
 
 lazy val cassandra_connector_phantom =
@@ -78,8 +78,8 @@ lazy val cassandra_connector_phantom =
     .dependsOn(cassandra_connector)
     .settings(libraryDependencies ++= {
       Seq(
-        "com.outworkers" %% "phantom-jdk8" % "2.29.0",
-        "com.datastax.cassandra" % "cassandra-driver-extras" % "3.6.0"
+        "com.outworkers" %% "phantom-jdk8" % "2.29.0" % "provided",
+        "com.datastax.cassandra" % "cassandra-driver-extras" % "3.6.0" % "provided"
       )
     })
 
@@ -113,7 +113,7 @@ lazy val trembita_spark =
     .settings(
       name := "trembita-spark",
       version := v,
-      scalacOptions += "-Ypartial-unification",
+      scalacOptions ++= Seq("-Ypartial-unification", "-language:experimental.macros"),
       libraryDependencies ++= {
         val sparkV = "2.4.0"
         Seq(
@@ -129,7 +129,8 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     slf4j,
     trembita_circe,
     cassandra_connector,
-    cassandra_connector_phantom
+    cassandra_connector_phantom,
+    trembita_spark
   )
   .settings(
     name := "trembita-examples",
@@ -143,7 +144,16 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     addCompilerPlugin(
       "org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full
     ),
-    libraryDependencies ++= Seq("io.circe" %% "circe-java8" % "0.10.1")
+    libraryDependencies ++= {
+      val sparkV = "2.4.0"
+      Seq(
+        "io.circe" %% "circe-java8" % "0.10.1",
+        "com.datastax.cassandra" % "cassandra-driver-core" % "3.6.0",
+        "com.datastax.cassandra" % "cassandra-driver-extras" % "3.6.0",
+        "com.outworkers" %% "phantom-jdk8" % "2.29.0",
+        "org.apache.spark" %% "spark-core" % sparkV
+      ).map(_ exclude("org.slf4j", "log4j-over-slf4j"))
+    }
   )
 
 lazy val root = Project(id = "trembita", base = file("."))

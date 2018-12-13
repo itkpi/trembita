@@ -14,7 +14,7 @@ import scala.util.{Random, Success, Try}
   *
   * @tparam A - type of data
   **/
-trait DataPipelineT[F[_], +A, Ex <: Execution] {
+trait DataPipelineT[F[_], +A, Ex <: Execution] extends Serializable {
 
   /**
     * Functor.map
@@ -64,11 +64,7 @@ trait DataPipelineT[F[_], +A, Ex <: Execution] {
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
     collect(pf).flatten
 
-  def mapM[B: ClassTag](f: A => F[B])(implicit F: Monad[F]): DataPipelineT[F, B, Ex]
-
-  def mapG[B: ClassTag, G[_]](f: A => G[B])(
-    implicit funcK: G ~> F
-  ): DataPipelineT[F, B, Ex]
+  protected[trembita] def mapMImpl[AA >: A, B: ClassTag](f: A => F[B])(implicit F: Monad[F]): DataPipelineT[F, B, Ex]
 
   def handleError[B >: A: ClassTag](f: Throwable => B)(
     implicit F: MonadError[F, Throwable]

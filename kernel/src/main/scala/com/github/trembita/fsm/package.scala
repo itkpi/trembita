@@ -27,10 +27,10 @@ package object fsm {
       **/
     def fsm[N, D, B: ClassTag](initial: InitialState[N, D, F])(
       fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
-    )(implicit F: Sync[F]): DataPipelineT[F, B, Ex] = {
+    )(implicit F: Sync[F], ev: (A => F[Iterable[B]]) => MagnetM[F, A, Iterable[B], Ex]): DataPipelineT[F, B, Ex] = {
       val stateF = fsmF(new FSM.Empty)
       val stateOptF = Ref.unsafe[F, Option[FSM.State[N, D, F]]](None)
-      self mapM { elem =>
+      self mapM { elem: A =>
         val elemF: F[Iterable[B]] =
           stateOptF.get.flatMap { stateOpt =>
             val currState = stateOpt match {

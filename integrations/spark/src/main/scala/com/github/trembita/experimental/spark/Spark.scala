@@ -1,4 +1,4 @@
-package com.github.trembita.spark
+package com.github.trembita.experimental.spark
 
 import cats.{Applicative, Bimonad, Comonad, Eval, Id}
 import com.github.trembita._
@@ -8,7 +8,7 @@ import org.apache.spark._
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
-trait Spark extends Execution {
+sealed trait Spark extends Execution {
   protected def sc: SparkContext
   type Repr[X] = RDD[X]
   type Run[G[_]] = RunOnSpark[G]
@@ -30,6 +30,8 @@ trait Spark extends Execution {
   def concat[A](xs: Repr[A], ys: Repr[A]): Repr[A] = xs union ys
   def zip[A, B: ClassTag](xs: Repr[A], ys: Repr[B]): Repr[(A, B)] = xs zip ys
 
+  def distinctKeys[A: ClassTag, B: ClassTag](repr: RDD[(A, B)]): RDD[(A, B)] = repr.reduceByKey((a, b) => a)
+
   val Monad: MonadTag[RDD] = new MonadTag[RDD] {
     def pure[A: ClassTag](x: A): RDD[A] = sc.parallelize(Seq(x))
     def flatMap[A, B: ClassTag](fa: RDD[A])(f: A => RDD[B]): RDD[B] =
@@ -40,10 +42,16 @@ trait Spark extends Execution {
 
   val Traverse: TraverseTag[RDD, RunOnSpark] =
     new TraverseTag[RDD, RunOnSpark] {
-      def traverse[G[_], A, B](
+      def traverse[G[_], A, B: ClassTag](
         fa: RDD[A]
       )(f: A => G[B])(implicit G: RunOnSpark[G]): G[RDD[B]] = G.lift {
-        fa.map(G.runFunc(_)(f))
+        G.traverse(fa)(f)
       }
     }
+}
+
+object Spark {
+  def derive(_sc: SparkContext): Spark = new Spark {
+    val sc = _sc
+  }
 }

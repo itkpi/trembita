@@ -62,15 +62,8 @@ protected[trembita] class LoggedSource[F[_], +A, Ex <: Execution](
   protected[trembita] def evalFunc[B >: A](Ex: Ex)(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
     source.evalFunc[B](Ex)
 
-  def mapM[B: ClassTag](
-    f: A => F[B]
-  )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
-    new LoggedSource[F, B, Ex](logger, source.mapM(f))
-
-  def mapG[B: ClassTag, G[_]](
-    f: A => G[B]
-  )(implicit funcK: G ~> F): DataPipelineT[F, B, Ex] =
-    new LoggedSource[F, B, Ex](logger, source.mapG(f))
+  def mapMImpl[AA >: A, B: ClassTag](f: A => F[B])(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
+    new LoggedSource[F, B, Ex](logger, source.mapMImpl[AA, B](f))
 }
 
 object LoggedSource {

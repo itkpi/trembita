@@ -27,15 +27,15 @@ object Basic extends IOApp {
       .map(_ + 1)
       .to[Parallel]
       .flatMap(i => i :: (48 + i) :: Nil)
-      .mapM { i =>
+      .mapM { i: Int =>
         putStrLn("mapM is working") *>
           IO { i * 12 }
       }
       .collect {
         case i if i % 2 == 0 => s"I'm an even number: $i"
       }
-      .mapG(str => Try { str + "/Try" })
-      .mapM(str => IO { str + "/IO" })
+      .mapG((str: String) => Try { str + "/Try" })
+      .mapM((str: String) => IO { str + "/IO" })
 
     val result2: IO[Vector[String]] = strings.eval
 

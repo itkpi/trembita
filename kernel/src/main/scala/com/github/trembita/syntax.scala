@@ -13,10 +13,10 @@ object syntax extends AllSyntax {}
 trait AllSyntax {
   implicit def liftOps[A, F[_], Ex <: Execution](
     self: DataPipelineT[F, A, Ex]
-  )(implicit ex: Ex): Ops0[A, F, Ex] =
-    new Ops0(self)(ex)
+  )(implicit ex: Ex): ExDependentOps[A, F, Ex] =
+    new ExDependentOps(self)(ex)
 
-  final class Ops0[A, F[_], Ex <: Execution](self: DataPipelineT[F, A, Ex])(
+  final class ExDependentOps[A, F[_], Ex <: Execution](self: DataPipelineT[F, A, Ex])(
     implicit final val Ex: Ex
   ) {
 

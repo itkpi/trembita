@@ -8,15 +8,15 @@ import cats.implicits._
 import scala.collection.parallel.immutable.ParVector
 import scala.reflect.ClassTag
 
-trait MonadTag[F[_]] {
+trait MonadTag[F[_]] extends Serializable {
   def pure[A: ClassTag](a: A): F[A]
   def map[A, B: ClassTag](fa: F[A])(f: A => B): F[B]
   def flatMap[A, B: ClassTag](fa: F[A])(f: A => F[B]): F[B]
   def flatten[A: ClassTag](ffa: F[F[A]]): F[A] = flatMap(ffa)(identity)
 }
-trait TraverseTag[F[_], Run[_[_]]] {
-  def traverse[G[_], A, B](fa: F[A])(f: A => G[B])(implicit G: Run[G]): G[F[B]]
-  def sequence[G[_]: Run, A](fga: F[G[A]]): G[F[A]] =
+trait TraverseTag[F[_], Run[_[_]]] extends Serializable {
+  def traverse[G[_], A, B: ClassTag](fa: F[A])(f: A => G[B])(implicit G: Run[G]): G[F[B]]
+  def sequence[G[_]: Run, A: ClassTag](fga: F[G[A]]): G[F[A]] =
     traverse(fga)(ga => ga)
 }
 
@@ -38,7 +38,7 @@ trait Execution extends Serializable {
 
   def collect[A, B: ClassTag](repr: Repr[A])(pf: PartialFunction[A, B]): Repr[B]
 
-  def distinctKeys[A, B: ClassTag](repr: Repr[(A, B)]): Repr[(A, B)]
+  def distinctKeys[A: ClassTag, B: ClassTag](repr: Repr[(A, B)]): Repr[(A, B)]
 
   def sorted[A: Ordering: ClassTag](repr: Repr[A]): Repr[A]
 
@@ -71,7 +71,7 @@ object Execution {
     )(f: A => K): Vector[(K, Iterable[A])] =
       vs.groupBy(f).toVector
 
-    def distinctKeys[A, B: ClassTag](repr: Repr[(A, B)]): Repr[(A, B)] =
+    def distinctKeys[A: ClassTag, B: ClassTag](repr: Repr[(A, B)]): Repr[(A, B)] =
       repr.groupBy(_._1).mapValues(_.head._2).toVector
 
     def sorted[A: Ordering: ClassTag](vs: Vector[A]): Vector[A] = vs.sorted
@@ -90,7 +90,7 @@ object Execution {
     val Traverse: TraverseTag[Vector, Applicative] =
       new TraverseTag[Vector, Applicative] {
         type Run[G[_]] = Applicative[G]
-        def traverse[G[_], A, B](fa: Vector[A])(f: A => G[B])(
+        def traverse[G[_], A, B: ClassTag](fa: Vector[A])(f: A => G[B])(
           implicit G: Run[G]
         ): G[Vector[B]] = cats.Traverse[Vector].traverse(fa)(f)
       }
@@ -121,7 +121,7 @@ object Execution {
                             ys: ParVector[B]): ParVector[(A, B)] =
       xs.zip(ys)
 
-    def distinctKeys[A, B: ClassTag](repr: Repr[(A, B)]): Repr[(A, B)] =
+    def distinctKeys[A: ClassTag, B: ClassTag](repr: Repr[(A, B)]): Repr[(A, B)] =
       repr.groupBy(_._1).mapValues(_.head._2).to[ParVector]
 
     val Monad: MonadTag[ParVector] = new MonadTag[ParVector] {
@@ -143,7 +143,7 @@ object Execution {
 
     val Traverse: TraverseTag[ParVector, Applicative] =
       new TraverseTag[ParVector, Applicative] {
-        def traverse[G[_], A, B](
+        def traverse[G[_], A, B: ClassTag](
           fa: ParVector[A]
         )(f: A => G[B])(implicit G: Run[G]): G[ParVector[B]] = {
           foldRight[A, G[ParVector[B]]](

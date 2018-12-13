@@ -12,7 +12,7 @@ import scala.concurrent.Future
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
-package object trembita extends AllSyntax {
+package object trembita extends AllSyntax with standardMagnets {
 
   type DataPipeline[A, Ex <: Execution] = DataPipelineT[Id, A, Ex]
   object DataPipeline {
@@ -37,6 +37,22 @@ package object trembita extends AllSyntax {
     ): DataPipeline[A, Execution.Sequential] =
       new StrictSource[Id, A, Execution.Sequential](it.toIterator, Monad[Id])
   }
+
+  implicit class CommonOps[F[_], A, Ex <: Execution](private val self: DataPipelineT[F, A, Ex]) extends AnyVal {
+
+    def mapM[B: ClassTag](magnet: MagnetM[F, A, B, Ex])(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
+      self.mapMImpl[A, B](magnet.prepared)
+
+    def mapG[B: ClassTag, G[_]](magnet: MagnetM[G, A, B, Ex])(
+      implicit funcK: G ~> F,
+      F: Monad[F]
+    ): DataPipelineT[F, B, Ex] = self.mapMImpl[A, B] { a =>
+      val gb = magnet.prepared(a)
+      val fb = funcK(gb)
+      fb
+    }
+  }
+
   type PairPipelineT[F[_], K, V, Ex <: Execution] = DataPipelineT[F, (K, V), Ex]
 
   /**
