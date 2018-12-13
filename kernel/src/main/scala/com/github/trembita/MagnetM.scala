@@ -3,7 +3,7 @@ package com.github.trembita
 import scala.language.higherKinds
 import scala.language.implicitConversions
 
-trait MagnetM[F[_], A, B, Ex <: Execution] {
+trait MagnetM[F[_], A, B, Ex <: Execution] extends Serializable {
   def prepared: A => F[B]
 }
 

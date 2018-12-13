@@ -3,7 +3,7 @@ package com.github.trembita.experimental
 import scala.language.experimental.macros
 import com.github.trembita.MagnetM
 import org.apache.spark.SparkContext
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 package object spark {
   implicit val runIdOnSpark: RunOnSpark[cats.Id] = new RunIdOnSpark

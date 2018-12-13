@@ -117,7 +117,8 @@ lazy val trembita_spark =
       libraryDependencies ++= {
         val sparkV = "2.4.0"
         Seq(
-          "org.apache.spark" %% "spark-core" % sparkV % "provided"
+          "org.apache.spark" %% "spark-core" % sparkV % "provided",
+          "org.scalamacros" %% "resetallattrs" % "1.0.0"
         )
       }
     )
@@ -151,8 +152,22 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
         "com.datastax.cassandra" % "cassandra-driver-core" % "3.6.0",
         "com.datastax.cassandra" % "cassandra-driver-extras" % "3.6.0",
         "com.outworkers" %% "phantom-jdk8" % "2.29.0",
-        "org.apache.spark" %% "spark-core" % sparkV
+        "org.apache.spark" %% "spark-core" % sparkV % "provided"
       ).map(_ exclude("org.slf4j", "log4j-over-slf4j"))
+    },
+    test in assembly := {},
+    mainClass in assembly := Some("com.examples.spark.Main"),
+    assemblyJarName in assembly := "trembita-spark.jar",
+    assemblyMergeStrategy in assembly := {
+      case m if m.toLowerCase.endsWith("manifest.mf") => MergeStrategy.discard
+      case m if m.toLowerCase.matches("meta-inf.*\\.sf$") =>
+        MergeStrategy.discard
+      case "log4j.properties" => MergeStrategy.discard
+      case m if m.toLowerCase.startsWith("meta-inf/services/") =>
+        MergeStrategy.filterDistinctLines
+      case "reference.conf"        => MergeStrategy.concat
+      case m if m endsWith ".conf" => MergeStrategy.concat
+      case _                       => MergeStrategy.first
     }
   )
 

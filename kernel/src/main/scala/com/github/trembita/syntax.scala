@@ -18,7 +18,7 @@ trait AllSyntax {
 
   final class ExDependentOps[A, F[_], Ex <: Execution](self: DataPipelineT[F, A, Ex])(
     implicit final val Ex: Ex
-  ) {
+  ) extends Serializable {
 
     def eval(implicit F: Functor[F], run: Ex.Run[F]): F[Vector[A]] =
       self

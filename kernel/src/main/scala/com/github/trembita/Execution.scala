@@ -21,8 +21,8 @@ trait TraverseTag[F[_], Run[_[_]]] extends Serializable {
 }
 
 trait Execution extends Serializable {
-  type Repr[X]
-  type Run[G[_]]
+  type Repr[X] <: Serializable
+  type Run[G[_]] <: Serializable
   val Monad: MonadTag[Repr]
   val Traverse: TraverseTag[Repr, Run]
 
