@@ -8,9 +8,14 @@ import scala.concurrent.{ExecutionContext, Future}
 package object spark {
   implicit val runIdOnSpark: RunOnSpark[cats.Id] = new RunIdOnSpark
 
-  implicit def runFutureOnSpark(implicit timeout: Timeout): RunOnSpark[Future] = new RunFutureOnSpark(timeout)
+  implicit def runFutureOnSpark(implicit timeout: Timeout): RunOnSpark[Future] =
+    new RunFutureOnSpark(timeout)
 
   implicit def deriveSpark(implicit sc: SparkContext): Spark = Spark.derive(sc)
 
-  implicit def materializeFuture[A, B](f: A => Future[B]): MagnetM[Future, A, B, Spark] = macro rewrite.materializeFutureImpl[A, B]
+  implicit def materializeFuture[A, B](
+    f: A => Future[B]
+  ): MagnetM[Future, A, B, Spark] = macro rewrite.materializeFutureImpl[A, B]
+
+  sealed trait Serialize extends Serializable
 }

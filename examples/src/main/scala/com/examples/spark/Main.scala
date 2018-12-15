@@ -9,22 +9,37 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 object Main {
-
+  implicit def ec: ExecutionContext = ExecutionContext.global
+  val cahedThreadPool =
+    ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
   def main(args: Array[String]): Unit = {
     implicit val sc: SparkContext =
       new SparkContext("spark://spark-master:7077", "trembita-spark")
     implicit val timeout: Timeout = Timeout(5.minutes)
-    implicit val ec: ExecutionContext = ExecutionContext.global
 
+    try {
+      trembitaSample
+    } finally {
+      sc.stop()
+    }
+  }
+
+  private def trembitaSample(implicit sc: SparkContext,
+                             timeout: Timeout): Unit = {
     val numbers = DataPipelineT[Future, Int](1, 2, 3, 20, 40, 60)
       .to[Spark]
       .map(_ + 1)
       .mapM { i: Int =>
-        val n = Future { i + 1 }(ExecutionContext.fromExecutor(Executors.newCachedThreadPool()))
+        val n = Future { i + 1 }(cahedThreadPool)
         val b = Future {
           val x = 1 + 2
           x * 3
-        }.flatTap(xx => Future { println(s"debug: $xx") })
+        }.flatTap(
+          xx =>
+            Future {
+              println(s"debug: $xx")
+          }
+        )
 
         (for {
           nx <- n
@@ -33,36 +48,8 @@ object Main {
         } yield nx + bx).recover { case _ => -100500 }
       }
 
-//    val rdd = sc
-//      .parallelize(Seq(1, 2, 3, 20, 40, 60))
-//      .map { i: Int =>
-//        val n = Future { i + 1 }
-//        val b = Future {
-//          val x = 1 + 2
-//          x * 3
-//        }.flatTap(xx => Future { println(s"debug: $xx") })
-//
-//        val result = (for {
-//          nx <- n
-//          bx <- b
-//          if nx > bx
-//        } yield nx + bx).recover { case _ => -100500 }
-//        Await.result(result, timeout.duration)
-//      }
-
-    try {
-      val result = args.headOption.map(_.toLowerCase) match {
-//        case Some("rdd") =>
-//          println("RDD COLLECT")
-//          rdd.collect().toVector
-        case _           =>
-          println("TREMBITA EVAL")
-          Await.result(numbers.eval, Duration.Inf)
-      }
-      println(result)
-    } finally {
-      sc.stop()
-    }
+    println("TREMBITA EVAL")
+    val result = Await.result(numbers.eval, Duration.Inf)
+    println(result)
   }
-//  val x = main
 }

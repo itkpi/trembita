@@ -42,7 +42,7 @@ def sonatypeProject(id: String, base: File) =
         else
           Some("releases" at nexus + "service/local/staging/deploy/maven2")
       },
-      scalacOptions += "-Ypartial-unification",
+      scalacOptions ++= Seq("-Ypartial-unification", "-feature"),
       sourceDirectory in Jmh := (sourceDirectory in Test).value,
       classDirectory in Jmh := (classDirectory in Test).value,
       dependencyClasspath in Jmh := (dependencyClasspath in Test).value,
@@ -70,7 +70,9 @@ lazy val cassandra_connector = sonatypeProject(
   base = file("./connectors/cassandra")
 ).dependsOn(kernel)
   .settings(libraryDependencies ++= {
-    Seq("com.datastax.cassandra" % "cassandra-driver-core" % "3.6.0" % "provided")
+    Seq(
+      "com.datastax.cassandra" % "cassandra-driver-core" % "3.6.0" % "provided"
+    )
   })
 
 lazy val cassandra_connector_phantom =
@@ -113,7 +115,10 @@ lazy val trembita_spark =
     .settings(
       name := "trembita-spark",
       version := v,
-      scalacOptions ++= Seq("-Ypartial-unification", "-language:experimental.macros"),
+      scalacOptions ++= Seq(
+        "-Ypartial-unification",
+        "-language:experimental.macros"
+      ),
       libraryDependencies ++= {
         val sparkV = "2.4.0"
         Seq(
@@ -153,7 +158,7 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
         "com.datastax.cassandra" % "cassandra-driver-extras" % "3.6.0",
         "com.outworkers" %% "phantom-jdk8" % "2.29.0",
         "org.apache.spark" %% "spark-core" % sparkV % "provided"
-      ).map(_ exclude("org.slf4j", "log4j-over-slf4j"))
+      ).map(_ exclude ("org.slf4j", "log4j-over-slf4j"))
     },
     test in assembly := {},
     mainClass in assembly := Some("com.examples.spark.Main"),

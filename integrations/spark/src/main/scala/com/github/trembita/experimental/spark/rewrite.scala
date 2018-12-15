@@ -2,8 +2,6 @@ package com.github.trembita.experimental.spark
 
 import scala.language.experimental.macros
 import scala.language.higherKinds
-import com.github.trembita.MagnetM
-import scala.annotation.StaticAnnotation
 import scala.reflect.macros.whitebox
 import org.scalamacros.resetallattrs._
 import scala.concurrent.{ExecutionContext, Future}
@@ -16,11 +14,8 @@ class rewrite(val c: whitebox.Context) {
   private val executionContext =
     typeOf[scala.concurrent.ExecutionContext].dealias
 
-  private def printt(any: Any): Unit = println("\t" + any)
-  private def printtDeap(depth: Int)(any: Any): Unit =
-    println(List.tabulate(depth)(_ => "\t").mkString + any)
+  private val serializable = typeOf[java.io.Serializable]
 
-  private val globalEC: c.Tree = q"scala.concurrent.ExecutionContext.global"
   private val debug: Boolean = sys.env
     .get("trembita.spark.debug")
     .flatMap(str => scala.util.Try { str.toBoolean }.toOption)
@@ -35,6 +30,7 @@ class rewrite(val c: whitebox.Context) {
         case s if s.info.resultType <:< executionContext => arg
       }
   }
+
   def materializeFutureImpl[A: c.WeakTypeTag, B: c.WeakTypeTag](
     f: c.Expr[A => Future[B]]
   ): c.Tree = {
@@ -49,23 +45,38 @@ class rewrite(val c: whitebox.Context) {
       )
     }
 
-//    ifDebug {
-    println("Given: ")
-    println(f.tree)
-//    }
+    ifDebug {
+      println("Given: ")
+      println(f.tree)
+    }
+    val freshObjectName = TermName(c.freshName("serialization_workaround"))
     val (collectEC, initAllEc) =
-      simpleTraverse(Map.empty[String, Tree] -> List.empty[Tree]) {
-        case ((foundEC, exprs), ec) =>
-          val name = ec.symbol.name.toString
-          println(s"Traverse: got $name")
-          if (foundEC contains name) {
-            println(s"\t$name was traversed")
-            foundEC -> exprs
+      simpleTraverseForNonSerializable(
+        Map.empty[String, Tree] -> List.empty[Tree]
+      ) {
+        case ((foundNS, exprs), nonSerializable) =>
+          val name = nonSerializable.symbol.name.toString
+          if (!nonSerializable.symbol.isStatic) {
+            if (nonSerializable.symbol.info <:< executionContext)
+              c.abort(
+                c.enclosingPosition,
+                s"Lambda contains reference to ExecutionContext which is not globally accessible: $nonSerializable"
+              )
+            else {
+              c.abort(
+                c.enclosingPosition,
+                s"""|Lambda contains reference to non-serializable value which is not globally accessible: $nonSerializable
+                    |  of type ${nonSerializable.symbol.info}
+                 """.stripMargin
+              )
+            }
+          }
+          if (foundNS contains name) {
+            foundNS -> exprs
           } else {
             val freshName = TermName(c.freshName(name))
-            println(s"\tgrapping $name as $freshName")
-            val updatedExpr = exprs :+ q"@transient lazy val $freshName = ${c.resetAllAttrs(ec)};"
-            (foundEC + (name -> q"$freshName"), updatedExpr)
+            val updatedExpr = exprs :+ q"@transient lazy val $freshName = ${c.resetAllAttrs(nonSerializable)};"
+            (foundNS + (name -> q"$freshObjectName.$freshName"), updatedExpr)
           }
       }(f.tree)
     val updatedF: c.Tree = f.tree match {
@@ -79,30 +90,37 @@ class rewrite(val c: whitebox.Context) {
         }
         c.abort(c.enclosingPosition, other.toString())
     }
+
+    val freshMagnetName = TermName(c.freshName(s"MagnetMSparkFuture"))
     val magnetExpr =
       q"""
-          new MagnetM[$Future, $A, $B, $Spark] {
-            val prepared: $A => $FutureB = {
+          object $freshMagnetName extends MagnetM[$Future, $A, $B, $Spark] {
+            object $freshObjectName {
               ..$initAllEc
+            }
+            @transient lazy val prepared: $A => $FutureB = {
               $updatedF
             }
           }
+          ($freshMagnetName: MagnetM[$Future, $A, $B, $Spark])
       """
-//    ifDebug {
-    println("--- Rewritten ---")
-    println(magnetExpr)
-//    }
+    ifDebug {
+      println("--- Rewritten ---")
+      println(magnetExpr)
+    }
     c.resetAllAttrs(magnetExpr)
   }
 
-  private def simpleTraverse[A](zero: A)(f: (A, Tree) => A): Tree => A = {
+  private def simpleTraverseForNonSerializable[A](
+    zero: A
+  )(f: (A, Tree) => A): Tree => A = {
     var acc = zero
     val traverser = new Traverser {
       override def traverse(tree: c.universe.Tree): Unit =
         super.traverse(tree match {
-          case EC(ec) =>
-            acc = f(acc, ec)
-            ec
+          case EC(x) =>
+            acc = f(acc, x)
+            x
           case _ => tree
         })
     }
@@ -113,15 +131,12 @@ class rewrite(val c: whitebox.Context) {
       }
   }
 
-  private def simpleTransformer(replacementEC: String => Tree) =
+  private def simpleTransformer(replacements: String => Tree) =
     new Transformer {
       override def transform(tree: c.universe.Tree): c.universe.Tree =
         super.transform(tree match {
-          case EC(ec) =>
-            println("name: " + ec.symbol.name)
-            println("\tvalue: " + ec)
-            val replacement = replacementEC(ec.symbol.name.toString)
-            println("\treplacement: " + replacement)
+          case EC(x) =>
+            val replacement = replacements(x.symbol.name.toString)
             replacement
           case _ => tree
         })
