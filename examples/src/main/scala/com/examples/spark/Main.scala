@@ -8,6 +8,12 @@ import cats.implicits._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
+/**
+  * To run this example, you need a spark-cluster.
+  * Use docker-compose to deploy one
+  *
+  * @see resources/spark/cluster
+  * */
 object Main {
   implicit def ec: ExecutionContext = ExecutionContext.global
   val cahedThreadPool =

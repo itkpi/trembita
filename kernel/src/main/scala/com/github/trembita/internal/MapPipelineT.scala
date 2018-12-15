@@ -83,7 +83,7 @@ protected[trembita] class BaseMapPipelineT[F[_], K, V, Ex <: Execution](
         .evalFunc[(K, V)](Ex)
     )(vs => Ex.distinctKeys(vs).asInstanceOf[Ex.Repr[B]])
 
-  def handleError[B >: (K, V): ClassTag](
+  override def handleError[B >: (K, V): ClassTag](
     f: Throwable => B
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
     new BaseMapPipelineT[F, K, V, Ex](
@@ -93,7 +93,7 @@ protected[trembita] class BaseMapPipelineT[F[_], K, V, Ex <: Execution](
       F
     )
 
-  def handleErrorWith[B >: (K, V): ClassTag](
+  override def handleErrorWith[B >: (K, V): ClassTag](
     f: Throwable => DataPipelineT[F, B, Ex]
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
     new BaseMapPipelineT[F, K, V, Ex](
@@ -117,17 +117,6 @@ protected[trembita] class GroupByPipelineT[F[_], K, V, Ex <: Execution](
   source: DataPipelineT[F, V, Ex],
   F: Monad[F]
 )(implicit K: ClassTag[K], V: ClassTag[V]) extends SeqSource[F, (K, Iterable[V]), Ex](F) {
-
-  def handleError[B >: (K, Iterable[V]): ClassTag](
-    f: Throwable => B
-  )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
-    this
-
-  def handleErrorWith[B >: (K, Iterable[V]): ClassTag](
-    f: Throwable => DataPipelineT[F, B, Ex]
-  )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
-    this
-
   protected[trembita] def evalFunc[B >: (K, Iterable[V])](Ex: Ex)(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
     F.map(
       source

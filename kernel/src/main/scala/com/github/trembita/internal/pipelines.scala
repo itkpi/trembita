@@ -404,7 +404,7 @@ object BridgePipelineT {
     run0: Ex0.Run[F],
     inject: InjectTaggedK[Ex0.Repr, Ex1#Repr]): DataPipelineT[F, A, Ex1] =
     new SeqSource[F, A, Ex1](F) {
-      def handleError[B >: A: ClassTag](
+      override def handleError[B >: A: ClassTag](
         f: Throwable => B
       )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex1] =
         make[F, B, Ex0, Ex1](source.handleError(f), Ex0, F)(
@@ -412,12 +412,6 @@ object BridgePipelineT {
           run0,
           inject
         )
-
-      def handleErrorWith[B >: A: ClassTag](
-        f: Throwable => DataPipelineT[F, B, Ex1]
-      )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex1] =
-        this // todo: think about
-
       protected[trembita] def evalFunc[B >: A](
         Ex: Ex1
       )(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
@@ -461,6 +455,14 @@ protected[trembita] abstract class SeqSource[F[_], +A, Ex <: Execution](
     f: A => F[B]
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
     new MapMonadicPipelineT[F, A, B, Ex](f, this)(F)
+
+  def handleError[B >: A: ClassTag](f: Throwable => B)(
+    implicit F: MonadError[F, Throwable]
+  ): DataPipelineT[F, B, Ex] = this
+
+  def handleErrorWith[B >: A: ClassTag](
+    f: Throwable => DataPipelineT[F, B, Ex]
+  )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] = this
 }
 
 /**
@@ -475,7 +477,7 @@ protected[trembita] class StrictSource[F[_], +A, Ex <: Execution](
   F: Monad[F]
 )(implicit A: ClassTag[A])
     extends SeqSource[F, A, Ex](F) {
-  def handleError[B >: A: ClassTag](
+  override def handleError[B >: A: ClassTag](
     f: Throwable => B
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
     new StrictSource[F, B, Ex](
@@ -497,7 +499,7 @@ protected[trembita] class StrictSource[F[_], +A, Ex <: Execution](
       F
     )
 
-  def handleErrorWith[B >: A: ClassTag](
+  override def handleErrorWith[B >: A: ClassTag](
     f: Throwable => DataPipelineT[F, B, Ex]
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
     new StrictSource[F, DataPipelineT[F, B, Ex], Ex](
@@ -538,14 +540,6 @@ protected[trembita] class MemoizedPipelineT[F[_], +A, Ex <: Execution](
   F: Monad[F]
 )(implicit A: ClassTag[A])
     extends SeqSource[F, A, Ex](F) {
-  def handleError[B >: A: ClassTag](f: Throwable => B)(
-    implicit F: MonadError[F, Throwable]
-  ): DataPipelineT[F, B, Ex] = this
-
-  def handleErrorWith[B >: A: ClassTag](
-    f: Throwable => DataPipelineT[F, B, Ex]
-  )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] = this
-
   protected[trembita] def evalFunc[B >: A](
     Ex: Ex
   )(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
@@ -563,7 +557,7 @@ protected[trembita] class SortedPipelineT[+A: Ordering, F[_], Ex <: Execution](
   F: Monad[F]
 )(implicit A: ClassTag[A])
     extends SeqSource[F, A, Ex](F) {
-  def handleError[B >: A: ClassTag](
+  override def handleError[B >: A: ClassTag](
     f: Throwable => B
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
     new SortedPipelineT[A, F, Ex](
@@ -573,7 +567,7 @@ protected[trembita] class SortedPipelineT[+A: Ordering, F[_], Ex <: Execution](
       F
     )
 
-  def handleErrorWith[B >: A: ClassTag](
+  override def handleErrorWith[B >: A: ClassTag](
     f: Throwable => DataPipelineT[F, B, Ex]
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
     new SortedPipelineT[A, F, Ex](

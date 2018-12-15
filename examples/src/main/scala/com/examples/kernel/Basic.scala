@@ -41,7 +41,9 @@ object Basic extends IOApp {
     result1.flatTap { result1 =>
       putStrLn(s"result1: $result1") *>
         putStrLn("------------------------------------")
-    } *> putStrLn(s"result2: $result2") *>
+    } *> result2.flatTap { result2 =>
+      putStrLn(s"result2: $result2")
+    } *>
       putStrLn("------------------------------------")
         .as(ExitCode.Success)
   }

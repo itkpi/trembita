@@ -1,7 +1,8 @@
 package com.github.trembita
 
 import cats.{Monad, ~>}
-import com.github.trembita.internal.{GroupByPipelineT, SortedPipelineT}
+import com.github.trembita.internal._
+
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
@@ -75,7 +76,10 @@ trait ExecutionIndependentOps[F[_], A, Ex <: Execution] extends Any {
   def sorted(implicit F: Monad[F],
              A: ClassTag[A],
              ordering: Ordering[A]): DataPipelineT[F, A, Ex] =
-    new SortedPipelineT[A, F, Ex](`this`.asInstanceOf[DataPipelineT[F, A, Ex]], F)
+    new SortedPipelineT[A, F, Ex](
+      `this`.asInstanceOf[DataPipelineT[F, A, Ex]],
+      F
+    )
 
   def sortBy[B: Ordering](f: A => B)(implicit A: ClassTag[A],
                                      F: Monad[F]): DataPipelineT[F, A, Ex] =
@@ -83,6 +87,47 @@ trait ExecutionIndependentOps[F[_], A, Ex <: Execution] extends Any {
       `this`.asInstanceOf[DataPipelineT[F, A, Ex]],
       F
     )(Ordering.by(f), A)
+
+  def zip[B: ClassTag](
+    that: DataPipelineT[F, B, Ex]
+  )(implicit A: ClassTag[A], F: Monad[F]): DataPipelineT[F, (A, B), Ex] =
+    new ZipPipelineT[F, A, B, Ex](`this`, that)
+
+  def ++(that: DataPipelineT[F, A, Ex])(implicit A: ClassTag[A],
+                                        F: Monad[F]): DataPipelineT[F, A, Ex] =
+    new ConcatPipelineT[F, A, Ex](`this`, that)
+
+  def join[B](that: DataPipelineT[F, B, Ex])(on: (A, B) => Boolean)(
+    implicit canJoin: CanJoin[Ex#Repr],
+    A: ClassTag[A],
+    B: ClassTag[B],
+    F: Monad[F]
+  ): DataPipelineT[F, (A, B), Ex] =
+    new JoinPipelineT[F, A, B, Ex](`this`, that, on)
+
+  def joinLeft[B](that: DataPipelineT[F, B, Ex])(on: (A, B) => Boolean)(
+    implicit canJoin: CanJoin[Ex#Repr],
+    A: ClassTag[A],
+    B: ClassTag[B],
+    F: Monad[F]
+  ): DataPipelineT[F, (A, Option[B]), Ex] =
+    new JoinLeftPipelineT[F, A, B, Ex](`this`, that, on)
+
+  def joinRight[B](that: DataPipelineT[F, B, Ex])(on: (A, B) => Boolean)(
+    implicit canJoin: CanJoin[Ex#Repr],
+    A: ClassTag[A],
+    B: ClassTag[B],
+    F: Monad[F]
+  ): DataPipelineT[F, (Option[A], B), Ex] =
+    new JoinRightPipelineT[F, A, B, Ex](`this`, that, on)
+
+  def cartesian[B](
+    that: DataPipelineT[F, B, Ex]
+  )(implicit F: Monad[F]): DataPipelineT[F, (A, B), Ex] =
+    for {
+      a <- `this`
+      b <- that
+    } yield a -> b
 
   /**
     * Prints each element of the pipeline

@@ -27,18 +27,6 @@ trait trembitaqlForPipeline[A,
                             T <: AggDecl,
                             R <: AggRes,
                             Comb] {
-//  def apply[F[_], Ex <: Execution](
-//    pipeline: DataPipelineT[F, A, Ex],
-//    queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb],
-//    ex: Ex
-//  )(implicit F: MonadError[F, Throwable],
-//    monoid: Monoid[QueryResult[A, G, AggFunc.Result[T, R, Comb]]],
-//    run: ex.Run[F]): F[QueryResult[A, G, AggFunc.Result[T, R, Comb]]] = {
-//
-//    implicit val _ex: Ex = ex
-//    applyWithoutTopTotals(pipeline, queryF).reduce
-//  }
-
   def applyWithoutTopTotals[F[_], Ex <: Execution](
     pipeline: DataPipelineT[F, A, Ex],
     queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb]

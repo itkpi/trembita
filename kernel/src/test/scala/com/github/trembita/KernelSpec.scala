@@ -4,7 +4,6 @@ import cats.effect._
 import cats.implicits._
 import com.github.trembita.internal._
 import org.scalatest.FlatSpec
-import com.github.trembita.syntax._
 import scala.util.Try
 
 class KernelSpec extends FlatSpec {
@@ -43,7 +42,7 @@ class KernelSpec extends FlatSpec {
   "DataPipeline[String, Try, ...].mapM(...toInt)" should "be DataPipeline[Int]" in {
     val list = DataPipelineT[Try, String]("1", "2", "3", "abc")
     val res = list
-      .mapM { str =>
+      .mapM { str: String =>
         Try(str.toInt)
       }
       .handleError { case e: NumberFormatException => -10 }
@@ -123,19 +122,6 @@ class KernelSpec extends FlatSpec {
     assert(x == 3)
     val res2 = list.eval
     assert(x == 6)
-  }
-
-  "DataPipeline operations after .memoize()" should "be executed exactly once" in {
-    var x: Int = 0
-    val list: DataPipeline[Int, Sequential] = DataPipeline(1, 2, 3)
-      .map { i =>
-        x += 1; i
-      }
-      .memoize()
-    val res1 = list.eval
-    assert(x == 3)
-    val res2 = list.eval
-    assert(x == 3)
   }
 
   "DataPipeline.find" should "successfully find an element" in {

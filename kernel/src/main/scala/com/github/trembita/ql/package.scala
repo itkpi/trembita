@@ -90,15 +90,6 @@ package object ql
       F: MonadError[F, Throwable])
       : DataPipelineT[F, QueryResult[A, G, AggFunc.Result[T, R, Comb]], Ex] =
       trembitaql.applyWithoutTopTotals(self, queryF)
-
-//    def queryEval[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
-//      queryF: Empty[A] => Query[A, G, T, R, Comb]
-//    )(implicit trembitaql: trembitaqlForPipeline[A, G, T, R, Comb],
-//      ex: Ex,
-//      F: MonadError[F, Throwable],
-//      monoid: Monoid[QueryResult[A, G, AggFunc.Result[T, R, Comb]]])
-//      : F[QueryResult[A, G, AggFunc.Result[T, R, Comb]]] =
-//      trembitaql(self, queryF)
   }
 
   implicit class AsOps[F[_], Ex <: Execution, A, G <: GroupingCriteria, T](
