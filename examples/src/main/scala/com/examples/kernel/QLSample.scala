@@ -3,7 +3,6 @@ package com.examples.kernel
 import com.github.trembita.ql._
 import com.examples.putStrLn
 import com.github.trembita._
-import com.github.trembita.syntax._
 import com.github.trembita.ql.show._
 import cats.implicits._
 import cats.effect._

@@ -3,7 +3,6 @@ package com.examples.kernel
 import cats.effect._
 import cats.implicits._
 import com.github.trembita._
-import com.github.trembita.syntax._
 import com.examples.putStrLn
 import scala.util.{Random, Success, Try}
 import scala.util.control.NonFatal

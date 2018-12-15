@@ -3,55 +3,22 @@ package com.github
 import scala.language.{higherKinds, implicitConversions}
 import cats._
 import cats.implicits._
-import cats.arrow._
-import cats.data.Kleisli
-import cats.effect.{Effect, IO, Sync}
 import com.github.trembita.internal._
-import scala.collection.generic.CanBuildFrom
-import scala.concurrent.Future
 import scala.reflect.ClassTag
-import scala.util.{Failure, Success, Try}
 
-package object trembita extends AllSyntax with standardMagnets {
+package object trembita extends standardMagnets with arrows with injections {
 
   type DataPipeline[A, Ex <: Execution] = DataPipelineT[Id, A, Ex]
-  object DataPipeline {
 
-    /**
-      * Wraps given elements into a [[DataPipelineT]]
-      *
-      * @param xs - elements to wrap
-      * @return - a [[StrictSource]]
-      **/
-    def apply[A: ClassTag](xs: A*): DataPipeline[A, Execution.Sequential] =
-      new StrictSource[Id, A, Execution.Sequential](xs.toIterator, Monad[Id])
+  implicit class CommonOps[F[_], A, Ex <: Execution](
+    val `this`: DataPipelineT[F, A, Ex]
+  ) extends AnyVal
+      with ExecutionIndependentOps[F, A, Ex] {}
 
-    /**
-      * Wraps an [[Iterable]] passed by-name
-      *
-      * @param it - an iterable haven't been evaluated yet
-      * @return - a [[StrictSource]]
-      **/
-    def from[A: ClassTag](
-      it: => Iterable[A]
-    ): DataPipeline[A, Execution.Sequential] =
-      new StrictSource[Id, A, Execution.Sequential](it.toIterator, Monad[Id])
-  }
-
-  implicit class CommonOps[F[_], A, Ex <: Execution](private val self: DataPipelineT[F, A, Ex]) extends AnyVal {
-
-    def mapM[B: ClassTag](magnet: MagnetM[F, A, B, Ex])(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
-      self.mapMImpl[A, B](magnet.prepared)
-
-    def mapG[B: ClassTag, G[_]](magnet: MagnetM[G, A, B, Ex])(
-      implicit funcK: G ~> F,
-      F: Monad[F]
-    ): DataPipelineT[F, B, Ex] = self.mapMImpl[A, B] { a =>
-      val gb = magnet.prepared(a)
-      val fb = funcK(gb)
-      fb
-    }
-  }
+  implicit def liftOps[F[_], A, Ex <: Execution](
+    self: DataPipelineT[F, A, Ex]
+  )(implicit ex: Ex): ExecutionDependentOps[F, A, Ex] =
+    new ExecutionDependentOps(self)(ex)
 
   type PairPipelineT[F[_], K, V, Ex <: Execution] = DataPipelineT[F, (K, V), Ex]
 
@@ -116,6 +83,7 @@ package object trembita extends AllSyntax with standardMagnets {
       )
   }
 
+  /** Implicit conversions */
   implicit def iterable2DataPipeline[A: ClassTag, F[_], Ex <: Execution](
     iterable: Iterable[A]
   )(implicit F: Monad[F]): DataPipelineT[F, A, Ex] =
@@ -125,33 +93,6 @@ package object trembita extends AllSyntax with standardMagnets {
     array: Array[A]
   )(implicit F: Monad[F]): DataPipelineT[F, A, Ex] =
     DataPipelineT.liftF[F, A, Ex]((array: Iterable[A]).pure[F])
-
-  implicit def TryT[G[_]](implicit G: MonadError[G, Throwable]): Try ~> G = {
-    def tryToG[A](tryA: Try[A]): G[A] = tryA match {
-      case Success(v) => G.pure(v)
-      case Failure(e) => G.raiseError(e)
-    }
-
-    FunctionK.lift { tryToG }
-  }
-
-  implicit def IdT[F[_]]: F ~> F = FunctionK.id
-
-  implicit val FutureToIO: Future ~> IO = {
-    def futureToIo[A](fa: Future[A]): IO[A] = IO.fromFuture(IO.pure(fa))
-
-    FunctionK.lift { futureToIo }
-  }
-  implicit val IO_ToFuture: IO ~> Future = {
-    def ioToFuture[A](ioa: IO[A]): Future[A] = ioa.unsafeToFuture()
-
-    FunctionK.lift { ioToFuture }
-  }
-  implicit val IO2Try: IO ~> Try = {
-    def ioToTry[A](ioa: IO[A]): Try[A] = Try { ioa.unsafeRunSync() }
-
-    FunctionK.lift { ioToTry }
-  }
 
   type Sequential = Execution.Sequential
   type Parallel = Execution.Parallel

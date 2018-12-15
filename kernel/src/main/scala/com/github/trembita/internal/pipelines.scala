@@ -157,7 +157,10 @@ protected[trembita] class FlatMapPipelineT[F[_], +A, B, Ex <: Execution](
     Ex: Ex
   )(implicit run: Ex.Run[F]): F[Ex.Repr[C]] =
     F.flatMap(source.evalFunc[A](Ex)) { vs =>
-      val res = Ex.Traverse.traverse(vs)(f(_).evalFunc(Ex))(ClassTag(vs.getClass.asInstanceOf[Class[Ex.Repr[B]]]), run)
+      val res = Ex.Traverse.traverse(vs)(f(_).evalFunc(Ex))(
+        ClassTag(vs.getClass.asInstanceOf[Class[Ex.Repr[B]]]),
+        run
+      )
       F.map(res)(Ex.Monad.flatten(_)).asInstanceOf[F[Ex.Repr[C]]]
     }
 }
@@ -397,12 +400,18 @@ object BridgePipelineT {
     source: DataPipelineT[F, A, Ex0],
     Ex0: Ex0,
     F: Monad[F]
-  )(implicit A: ClassTag[A], run0: Ex0.Run[F]): DataPipelineT[F, A, Ex1] =
+  )(implicit A: ClassTag[A],
+    run0: Ex0.Run[F],
+    inject: InjectTaggedK[Ex0.Repr, Ex1#Repr]): DataPipelineT[F, A, Ex1] =
     new SeqSource[F, A, Ex1](F) {
       def handleError[B >: A: ClassTag](
         f: Throwable => B
       )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex1] =
-        make[F, B, Ex0, Ex1](source.handleError(f), Ex0, F)
+        make[F, B, Ex0, Ex1](source.handleError(f), Ex0, F)(
+          implicitly[ClassTag[B]],
+          run0,
+          inject
+        )
 
       def handleErrorWith[B >: A: ClassTag](
         f: Throwable => DataPipelineT[F, B, Ex1]
@@ -415,11 +424,7 @@ object BridgePipelineT {
         F.map(
           source
             .evalFunc[A](Ex0)
-        )(
-          vs =>
-            Ex.fromVector(Ex0.toVector(vs.asInstanceOf[Ex0.Repr[A]]))
-              .asInstanceOf[Ex.Repr[B]]
-        )
+        )(vs => inject(vs).asInstanceOf[Ex.Repr[B]])
     }
 }
 

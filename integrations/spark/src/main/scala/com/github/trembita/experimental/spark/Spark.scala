@@ -1,16 +1,14 @@
 package com.github.trembita.experimental.spark
 
-import cats.{Applicative, Bimonad, Comonad, Eval, Id}
 import com.github.trembita._
 import org.apache.spark.rdd.RDD
 import org.apache.spark._
-
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
 sealed trait Spark extends Execution {
   protected def sc: SparkContext
-  type Repr[X] = RDD[X]
+  final type Repr[X] = RDD[X]
   type Run[G[_]] = RunOnSpark[G]
 
   def toVector[A](repr: RDD[A]): Vector[A] = repr.collect().toVector

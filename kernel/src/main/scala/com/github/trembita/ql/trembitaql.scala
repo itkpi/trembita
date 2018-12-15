@@ -8,7 +8,6 @@ import com.github.trembita._
 import QueryBuilder._
 import cats.MonadError
 import cats.kernel.Monoid
-import com.github.trembita.syntax._
 
 /**
   * Trembita QL itself.

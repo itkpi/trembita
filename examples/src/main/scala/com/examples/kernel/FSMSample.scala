@@ -4,7 +4,6 @@ import cats.effect.{ExitCode, IO, IOApp}
 import com.github.trembita.DataPipelineT
 import com.examples.putStrLn
 import com.github.trembita._
-import com.github.trembita.syntax._
 import com.github.trembita.fsm._
 import com.github.trembita.collections._
 import cats.implicits._
