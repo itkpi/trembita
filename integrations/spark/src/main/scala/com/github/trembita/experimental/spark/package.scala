@@ -5,6 +5,8 @@ import scala.language.implicitConversions
 import com.github.trembita.{InjectTaggedK, MagnetM}
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
+
+import scala.collection.parallel.immutable.ParVector
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
 
@@ -30,5 +32,17 @@ package object spark {
     implicit sc: SparkContext
   ): InjectTaggedK[RDD, Vector] = new InjectTaggedK[RDD, Vector] {
     def apply[A: ClassTag](fa: RDD[A]): Vector[A] = fa.collect().toVector
+  }
+
+  implicit def turnParVectorIntoRDD(
+    implicit sc: SparkContext
+  ): InjectTaggedK[ParVector, RDD] = new InjectTaggedK[ParVector, RDD] {
+    def apply[A: ClassTag](fa: ParVector[A]): RDD[A] = sc.parallelize(fa.seq)
+  }
+
+  implicit def turnRDDIntoParVector(
+    implicit sc: SparkContext
+  ): InjectTaggedK[RDD, ParVector] = new InjectTaggedK[RDD, ParVector] {
+    def apply[A: ClassTag](fa: RDD[A]): ParVector[A] = fa.collect().toVector.par
   }
 }
