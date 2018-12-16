@@ -166,11 +166,7 @@ class CollectPipelineT[F[_], +A, B, Ex <: Execution](
   override def handleErrorWithImpl[C >: B: ClassTag](
     fallback: Throwable => F[C]
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, C, Ex] =
-    new HandleErrorWithPipelineT[F, A, C, Ex](
-      pf(_): C,
-      fallback,
-      source
-    )(F)
+    new HandleErrorWithPipelineT[F, A, C, Ex](pf(_): C, fallback, source)(F)
 
   protected[trembita] def evalFunc[C >: B](
     Ex: Ex
@@ -471,6 +467,20 @@ protected[trembita] class MemoizedPipelineT[F[_], +A, Ex <: Execution](
     F.map(source.evalFunc[A](Ex))(Ex.memoize(_)).asInstanceOf[F[Ex.Repr[B]]]
 }
 
+object MapKPipelineT {
+  def make[F[_], G[_], A, Ex <: Execution](source: DataPipelineT[F, A, Ex],
+                                           ex0: Ex,
+                                           arrow: F ~> G,
+                                           G: Monad[G],
+  )(implicit A: ClassTag[A], run0: ex0.Run[F]): DataPipelineT[G, A, Ex] =
+    new SeqSource[G, A, Ex](G) {
+      protected[trembita] def evalFunc[B >: A](
+        Ex: Ex
+      )(implicit run: Ex.Run[G]): G[Ex.Repr[B]] =
+        arrow(source.evalFunc[B](ex0)).asInstanceOf[G[Ex.Repr[B]]]
+    }
+}
+
 /**
   * A [[DataPipelineT]] been sorted
   *
@@ -491,16 +501,6 @@ protected[trembita] class SortedPipelineT[+A: Ordering, F[_], Ex <: Execution](
         .asInstanceOf[DataPipelineT[F, A, Ex]],
       F
     )
-
-//  override def handleErrorWith[B >: A: ClassTag](
-//    f: Throwable => DataPipelineT[F, B, Ex]
-//  )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
-//    new SortedPipelineT[A, F, Ex](
-//      source
-//        .handleErrorWith(f)
-//        .asInstanceOf[DataPipelineT[F, A, Ex]],
-//      F
-//    )
 
   protected[trembita] def evalFunc[B >: A](
     Ex: Ex

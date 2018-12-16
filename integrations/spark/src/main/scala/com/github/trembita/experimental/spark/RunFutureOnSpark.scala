@@ -1,12 +1,8 @@
 package com.github.trembita.experimental.spark
 
 import org.apache.spark.rdd.RDD
-
 import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
-
-case class Timeout(duration: FiniteDuration)
 
 class RunFutureOnSpark(timeout: Timeout) extends RunOnSpark[Future] {
   def traverse[A, B: ClassTag](rdd: RDD[A])(f: A => Future[B]): RDD[B] =

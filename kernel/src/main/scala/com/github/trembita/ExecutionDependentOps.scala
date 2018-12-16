@@ -174,7 +174,12 @@ final class ExecutionDependentOps[F[_], A, Ex <: Execution](
     implicit run1: Ex.Run[F],
     A: ClassTag[A],
     F: Monad[F],
-    turnInto: InjectTaggedK[Ex.Repr, Ex2#Repr]
+    injectK: InjectTaggedK[Ex.Repr, Ex2#Repr]
   ): DataPipelineT[F, A, Ex2] =
     BridgePipelineT.make[F, A, Ex, Ex2](self, Ex, F)
+
+  def mapK[G[_]](arrow: F ~> G)(implicit G: Monad[G],
+                                run0: Ex.Run[F],
+                                A: ClassTag[A]): DataPipelineT[G, A, Ex] =
+    MapKPipelineT.make[F, G, A, Ex](self, Ex, arrow, G)
 }

@@ -1,5 +1,6 @@
 package com.github.trembita.experimental.spark
 
+import cats.effect.IO
 import cats.{Monad, MonadError}
 import com.github.trembita._
 
@@ -54,4 +55,23 @@ trait MagnetlessSparkBasicOps[F[_], A] extends Any {
       case NonFatal(e) => f(e)
       case other       => throw other
     }
+}
+
+trait MagnetlessSparkIOOps[A] extends Any {
+  def `this`: DataPipelineT[IO, A, Spark]
+
+  def mapM[B: ClassTag](f: A => IO[B]): DataPipelineT[IO, B, Spark] =
+    `this`.mapMImpl(f)
+
+  def handleErrorWith(
+    f: Throwable => IO[A]
+  )(implicit A: ClassTag[A]): DataPipelineT[IO, A, Spark] =
+    `this`.handleErrorWithImpl(f)
+
+  def recoverWith(
+    pf: PartialFunction[Throwable, IO[A]]
+  )(implicit A: ClassTag[A]): DataPipelineT[IO, A, Spark] =
+    `this`.handleErrorWithImpl(
+      pf.applyOrElse(_, (e: Throwable) => IO.raiseError(e))
+    )
 }

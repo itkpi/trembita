@@ -1,5 +1,6 @@
 package com.github.trembita.experimental
 
+import cats.effect.IO
 import cats.{Eval, StackSafeMonad, ~>}
 import scala.language.experimental.macros
 import scala.language.{higherKinds, implicitConversions}
@@ -17,9 +18,16 @@ package object spark {
   implicit def runFutureOnSpark(implicit timeout: Timeout): RunOnSpark[Future] =
     new RunFutureOnSpark(timeout)
 
+  implicit def runIOOnSpark(implicit timeout: Timeout): RunOnSpark[IO] =
+    new RunIOOnSpark(timeout)
+
   implicit class SparkOps[F[_], A](val `this`: DataPipelineT[F, A, Spark])
       extends AnyVal
       with MagnetlessSparkBasicOps[F, A]
+
+  implicit class SparkIOOps[A](val `this`: DataPipelineT[IO, A, Spark])
+      extends AnyVal
+      with MagnetlessSparkIOOps[A]
 
   implicit def materializeFuture[A, B](
     f: A => Future[B]
