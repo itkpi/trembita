@@ -70,7 +70,7 @@ object InitialState {
   * @tparam A - input type
   * @tparam B - resulting type
   **/
-sealed trait FSM[F[_], N, D, A, B] {
+sealed trait FSM[F[_], N, D, A, B] extends Serializable {
 
   /**
     * Extends behavior of the [[FSM]]
@@ -95,7 +95,7 @@ object FSM {
     * @param name - state name
     * @param data - state's data
     **/
-  case class State[N, D, F[_]](name: N, data: D)(implicit F: Applicative[F]) {
+  case class State[N, D, F[_]](name: N, data: D) {
 
     /**
       * Goto other state
@@ -135,15 +135,21 @@ object FSM {
       * @param f - produce a value from state's data
       * @return - the same state with output value
       **/
-    def push[B](f: D => B): F[(State[N, D, F], Iterable[B])] =
+    def push[B](
+      f: D => B
+    )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
       F.pure(this → List(f(data)))
 
-    def modPush[B](f: D => (D, Option[B])): F[(State[N, D, F], Iterable[B])] = {
+    def modPush[B](
+      f: D => (D, Option[B])
+    )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] = {
       val (newData, result) = f(data)
       (State[N, D, F](name, newData), result.toList: Iterable[B]).pure[F]
     }
 
-    def pushF[B](f: D => F[B]): F[(State[N, D, F], Iterable[B])] =
+    def pushF[B](
+      f: D => F[B]
+    )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
       F.map(f(data))(b => this → List(b))
 
     /**
@@ -153,24 +159,38 @@ object FSM {
       * @param value - value to produce
       * @return - the same state with output value
       **/
-    def push[B](value: B): F[(State[N, D, F], Iterable[B])] =
+    def push[B](
+      value: B
+    )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
       F.pure(this → List(value))
 
-    def pushF[B](valueF: F[B]): F[(State[N, D, F], Iterable[B])] =
+    def pushF[B](
+      valueF: F[B]
+    )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
       F.map(valueF)(v => this → List(v))
 
-    def dontPush[B]: F[(State[N, D, F], Iterable[B])] = F.pure(this → Nil)
+    def dontPush[B](
+      implicit F: Applicative[F]
+    ): F[(State[N, D, F], Iterable[B])] = F.pure(this → Nil)
 
-    def spam[B](f: D => Iterable[B]): F[(State[N, D, F], Iterable[B])] =
+    def spam[B](
+      f: D => Iterable[B]
+    )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
       F.pure(this → f(data))
 
-    def spamF[B](f: D => F[Iterable[B]]): F[(State[N, D, F], Iterable[B])] =
+    def spamF[B](
+      f: D => F[Iterable[B]]
+    )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
       F.map(f(data))(this → _)
 
-    def spam[B](values: Iterable[B]): F[(State[N, D, F], Iterable[B])] =
+    def spam[B](
+      values: Iterable[B]
+    )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
       F.pure(this → values)
 
-    def spamF[B](valuesF: F[Iterable[B]]): F[(State[N, D, F], Iterable[B])] =
+    def spamF[B](
+      valuesF: F[Iterable[B]]
+    )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
       F.map(valuesF)(this → _)
   }
 

@@ -30,6 +30,9 @@ trait arrows {
   implicit def idToFuture: Id ~> Future =
     λ[Id[?] ~> Future[?]](a => Future.successful(a))
 
+  implicit def idToIO: Id ~> IO =
+    λ[Id[?] ~> IO[?]](a => IO.pure(a))
+
   implicit def tryToFuture: Try ~> Future =
     λ[Try[?] ~> Future[?]](a => Future.fromTry(a))
 

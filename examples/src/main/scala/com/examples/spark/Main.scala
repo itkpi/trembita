@@ -22,7 +22,7 @@ object Main extends IOApp {
   def run(args: List[String]): IO[ExitCode] =
     IO(new SparkContext("spark://spark-master:7077", "trembita-spark"))
       .bracket(use = { implicit trembitaSpark: SparkContext =>
-        implicit val timeout: Timeout = Timeout(5.minutes)
+        implicit val timeout: AsyncTimeout = AsyncTimeout(5.minutes)
 
         val numbers = DataPipelineT[Future, Int](1, 2, 3, 20, 40, 60)
           .to[Spark]

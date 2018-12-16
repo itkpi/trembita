@@ -1,15 +1,18 @@
 package com.github.trembita.experimental
 
 import cats.effect.IO
-import cats.{Eval, StackSafeMonad, ~>}
+import cats.{Eval, Functor, Id, StackSafeMonad, ~>}
 import com.github.trembita.operations.{CanSort, InjectTaggedK, MagnetF}
 
 import scala.language.experimental.macros
 import scala.language.{higherKinds, implicitConversions}
 import com.github.trembita.DataPipelineT
+import com.github.trembita.fsm.{FSM, InitialState}
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.Encoder
 
+import scala.reflect.runtime.universe.TypeTag
 import scala.collection.parallel.immutable.ParVector
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
@@ -18,15 +21,18 @@ import scala.util.control.NonFatal
 package object spark {
   implicit val runIdOnSpark: RunOnSpark[cats.Id] = new RunIdOnSpark
 
-  implicit def runFutureOnSpark(implicit timeout: Timeout): RunOnSpark[Future] =
+  implicit def runFutureOnSpark(implicit timeout: AsyncTimeout): RunOnSpark[Future] =
     new RunFutureOnSpark(timeout)
 
-  implicit def runIOOnSpark(implicit timeout: Timeout): RunOnSpark[IO] =
+  implicit def runIOOnSpark(implicit timeout: AsyncTimeout): RunOnSpark[IO] =
     new RunIOOnSpark(timeout)
 
   implicit class SparkOps[F[_], A](val `this`: DataPipelineT[F, A, Spark])
       extends AnyVal
-      with MagnetlessSparkBasicOps[F, A]
+      with MagnetlessSparkBasicOps[F, A] {
+    def evalWith(run: Spark#Run[F])(implicit F: Functor[F]): F[Vector[A]] =
+      `this`.eval(F, run)
+  }
 
   implicit class SparkIOOps[A](val `this`: DataPipelineT[IO, A, Spark])
       extends AnyVal
@@ -111,4 +117,25 @@ package object spark {
   implicit val canSortRDD: CanSort[RDD] = new CanSort[RDD] {
     def sorted[A: Ordering: ClassTag](fa: RDD[A]): RDD[A] = fa.sortBy(identity)
   }
+
+  implicit class SparkFsmByKey[F[_], A](
+    private val self: DataPipelineT[F, A, Spark]
+  ) extends AnyVal {
+    def fsmByKey[K: Encoder: ClassTag,
+                 N: Encoder,
+                 D: Encoder,
+                 B: ClassTag: TypeTag: Encoder](getKey: A => K)(
+      initial: InitialState[N, D, F]
+    )(fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B])(
+      implicit sparkFSM: SparkFSM[F],
+      A: ClassTag[A],
+      AEnc: Encoder[A],
+      F: SerializableMonad[F],
+      run: Spark#Run[F]
+    ): DataPipelineT[F, B, Spark] =
+      self.mapRepr[B](sparkFSM.byKey[A, K, N, D, B](_)(getKey, initial)(fsmF))
+  }
+
+  implicit def runIODsl(timeout: AsyncTimeout): RunOnSpark[IO] =
+    new RunIOOnSpark(timeout)
 }

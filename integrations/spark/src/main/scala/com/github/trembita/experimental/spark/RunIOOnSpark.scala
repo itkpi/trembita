@@ -5,7 +5,7 @@ import cats.effect.IO
 import scala.concurrent.TimeoutException
 import scala.reflect.ClassTag
 
-class RunIOOnSpark(timeout: Timeout) extends RunOnSpark[IO] {
+class RunIOOnSpark(timeout: AsyncTimeout) extends RunOnSpark[IO] {
   def traverse[A, B: ClassTag](rdd: RDD[A])(f: A => IO[B]): RDD[B] =
     rdd.mapPartitions { partition =>
       val _f = f

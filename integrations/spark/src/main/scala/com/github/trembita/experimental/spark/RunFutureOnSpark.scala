@@ -4,7 +4,7 @@ import org.apache.spark.rdd.RDD
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.reflect.ClassTag
 
-class RunFutureOnSpark(timeout: Timeout) extends RunOnSpark[Future] {
+class RunFutureOnSpark(timeout: AsyncTimeout) extends RunOnSpark[Future] {
   def traverse[A, B: ClassTag](rdd: RDD[A])(f: A => Future[B]): RDD[B] =
     rdd.mapPartitions { partition =>
       val _f = f
