@@ -142,15 +142,6 @@ class KernelSpec extends FlatSpec {
     assert(result3 == Vector(1, 2, 3))
   }
 
-  "PairPipeline.reduceByKey" should "produce correct result" in {
-    val pipeline = DataPipeline("a" → 1, "b" → 2, "c" → 3, "a" → 3, "c" → 10)
-    val result1 = pipeline.reduceByKey(_ + _).eval.sortBy(_._1)
-    assert(result1 == Vector("a" → 4, "b" → 2, "c" → 13))
-
-    val result2 = pipeline.reduceByKey.eval.sortBy(_._1) // uses Monoid
-    assert(result1 == Vector("a" → 4, "b" → 2, "c" → 13))
-  }
-
   "DataPipeline.zip" should "work correctly for pipelines" in {
     val p1 = DataPipeline(1, 2, 3, 4)
     val p2 = DataPipeline("a", "b", "c")
@@ -188,8 +179,8 @@ class KernelSpec extends FlatSpec {
       .liftF[IO, (String, Int), Environment.Sequential](
         IO(List("a" → 1, "b" → 2, "c" → 3, "a" → 3, "c" → 10))
       )
-      .reduceByKey
-      .mapValues(_ * 10)
+      .groupBy(_._1)
+      .mapValues(_.foldLeft(0) { case (acc, (_, x)) => acc + x } * 10)
       .map { case (k, v) => s"{key=$k, value=$v}" }
       .sorted
       .eval
