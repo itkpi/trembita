@@ -98,7 +98,7 @@ Happy to say that using `cats.effect.IO` on spark is also supported =)
  - Other non-serializable resources also will fail in runtime. This will be adapted later
 
 ### Examples
-You can find full example [here](.examples/src/main/scala/com/examples/spark/Main.scala).
+You can find full example [here](./examples/src/main/scala/com/examples/spark/Main.scala).
 You can also find a script to run the example on spark cluster within docker:
 ```bash
 # in project root
