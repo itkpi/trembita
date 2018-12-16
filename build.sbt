@@ -42,7 +42,7 @@ def sonatypeProject(id: String, base: File) =
         else
           Some("releases" at nexus + "service/local/staging/deploy/maven2")
       },
-      scalacOptions += "-Ypartial-unification",
+      scalacOptions ++= Seq("-Ypartial-unification", "-feature"),
       sourceDirectory in Jmh := (sourceDirectory in Test).value,
       classDirectory in Jmh := (classDirectory in Test).value,
       dependencyClasspath in Jmh := (dependencyClasspath in Test).value,
@@ -70,7 +70,9 @@ lazy val cassandra_connector = sonatypeProject(
   base = file("./connectors/cassandra")
 ).dependsOn(kernel)
   .settings(libraryDependencies ++= {
-    Seq("com.datastax.cassandra" % "cassandra-driver-core" % "3.6.0")
+    Seq(
+      "com.datastax.cassandra" % "cassandra-driver-core" % "3.6.0" % "provided"
+    )
   })
 
 lazy val cassandra_connector_phantom =
@@ -78,8 +80,8 @@ lazy val cassandra_connector_phantom =
     .dependsOn(cassandra_connector)
     .settings(libraryDependencies ++= {
       Seq(
-        "com.outworkers" %% "phantom-jdk8" % "2.29.0",
-        "com.datastax.cassandra" % "cassandra-driver-extras" % "3.6.0"
+        "com.outworkers" %% "phantom-jdk8" % "2.29.0" % "provided",
+        "com.datastax.cassandra" % "cassandra-driver-extras" % "3.6.0" % "provided"
       )
     })
 
@@ -107,6 +109,25 @@ lazy val trembita_circe =
       }
     )
 
+lazy val trembita_spark =
+  sonatypeProject(id = "trembita-spark", base = file("./integrations/spark"))
+    .dependsOn(kernel)
+    .settings(
+      name := "trembita-spark",
+      version := v,
+      scalacOptions ++= Seq(
+        "-Ypartial-unification",
+        "-language:experimental.macros"
+      ),
+      libraryDependencies ++= {
+        val sparkV = "2.4.0"
+        Seq(
+          "org.apache.spark" %% "spark-core" % sparkV % "provided",
+          "org.scalamacros" %% "resetallattrs" % "1.0.0"
+        )
+      }
+    )
+
 lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
   .dependsOn(
     collection_extentions,
@@ -114,7 +135,8 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     slf4j,
     trembita_circe,
     cassandra_connector,
-    cassandra_connector_phantom
+    cassandra_connector_phantom,
+    trembita_spark
   )
   .settings(
     name := "trembita-examples",
@@ -128,7 +150,30 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     addCompilerPlugin(
       "org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full
     ),
-    libraryDependencies ++= Seq("io.circe" %% "circe-java8" % "0.10.1")
+    libraryDependencies ++= {
+      val sparkV = "2.4.0"
+      Seq(
+        "io.circe" %% "circe-java8" % "0.10.1",
+        "com.datastax.cassandra" % "cassandra-driver-core" % "3.6.0",
+        "com.datastax.cassandra" % "cassandra-driver-extras" % "3.6.0",
+        "com.outworkers" %% "phantom-jdk8" % "2.29.0",
+        "org.apache.spark" %% "spark-core" % sparkV % "provided"
+      ).map(_ exclude ("org.slf4j", "log4j-over-slf4j"))
+    },
+    test in assembly := {},
+    mainClass in assembly := Some("com.examples.spark.Main"),
+    assemblyJarName in assembly := "trembita-spark.jar",
+    assemblyMergeStrategy in assembly := {
+      case m if m.toLowerCase.endsWith("manifest.mf") => MergeStrategy.discard
+      case m if m.toLowerCase.matches("meta-inf.*\\.sf$") =>
+        MergeStrategy.discard
+      case "log4j.properties" => MergeStrategy.discard
+      case m if m.toLowerCase.startsWith("meta-inf/services/") =>
+        MergeStrategy.filterDistinctLines
+      case "reference.conf"        => MergeStrategy.concat
+      case m if m endsWith ".conf" => MergeStrategy.concat
+      case _                       => MergeStrategy.first
+    }
   )
 
 lazy val root = Project(id = "trembita", base = file("."))

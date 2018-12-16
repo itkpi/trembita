@@ -14,14 +14,14 @@ class SampleReport(unitMessagesRepository: UnitMessagesRepository) {
                fromDate: LocalDateTime,
                toDate: LocalDateTime) = {
 
-    val messagesPipeline: DataPipelineT[IO, UnitMessage, Execution.Sequential] =
+    val messagesPipeline: DataPipelineT[IO, UnitMessage, Sequential] =
       PhantomSource.applyF(unitMessagesRepository.connector)(
         unitMessagesRepository.selectByUnits(unitIds, fromDate, toDate)
       )
 
     val result = getActivities(messagesPipeline)
-      .to[Execution.Parallel]
-      .queryEval(
+      .to[Parallel]
+      .query(
         _.filter(_.ignitionOn)
           .groupBy(
             r =>
@@ -42,6 +42,6 @@ class SampleReport(unitMessagesRepository: UnitMessagesRepository) {
           .orderAggregations
       )
 
-    result
+    result.eval
   }
 }

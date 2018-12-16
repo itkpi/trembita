@@ -25,7 +25,7 @@ object QLSample extends IOApp with algebra.instances.AllInstances {
 
     val result = numbers
       .to[Parallel]
-      .queryEval(
+      .query(
         _.filter(_ > 5)
           .groupBy(
             num =>
@@ -46,9 +46,10 @@ object QLSample extends IOApp with algebra.instances.AllInstances {
           )
           .having(_.get[count] > 7)
       )
+      .eval
       .flatTap { result =>
         putStrLn("First one:") *>
-          putStrLn(result.pretty()) *>
+          putStrLn(result.map(_.pretty()).mkString("\n")) *>
           putStrLn("-------------------------")
       }
 

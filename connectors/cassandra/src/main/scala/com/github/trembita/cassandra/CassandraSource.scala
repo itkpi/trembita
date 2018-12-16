@@ -7,26 +7,27 @@ import com.github.trembita.internal.StrictSource
 import com.github.trembita._
 import scala.collection.JavaConverters._
 import scala.language.higherKinds
+import scala.reflect.ClassTag
 
 object CassandraSource {
   def rows(session: Session,
            statement: Statement): DataPipeline[Row, Execution.Sequential] =
     DataPipeline.from(session.execute(statement).iterator().asScala.toIterable)
 
-  def rowsF[F[_], Ex <: Execution](session: Session, statement: Statement)(
+  def rowsF[F[_]](session: Session, statement: Statement)(
     implicit F: Sync[F]
-  ): DataPipelineT[F, Row, Ex] =
-    new StrictSource[F, Row, Ex](F.delay {
+  ): DataPipelineT[F, Row, Sequential] =
+    new StrictSource[F, Row](F.delay {
       session.execute(statement).iterator().asScala
     }, F)
 
-  def apply[A](session: Session, statement: Statement)(
+  def apply[A: ClassTag](session: Session, statement: Statement)(
     extractor: Row => A
   ): DataPipeline[A, Execution.Sequential] =
-    rows(session, statement).map(extractor)
+    rows(session, statement).mapImpl(extractor)
 
-  def applyF[F[_], A, Ex <: Execution](session: Session, statement: Statement)(
+  def applyF[F[_], A: ClassTag](session: Session, statement: Statement)(
     extractor: Row => A
-  )(implicit F: Sync[F]): DataPipelineT[F, A, Ex] =
-    rowsF[F, Ex](session, statement).map(extractor)
+  )(implicit F: Sync[F]): DataPipelineT[F, A, Sequential] =
+    rowsF[F](session, statement).mapImpl(extractor)
 }

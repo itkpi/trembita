@@ -4,7 +4,6 @@ import cats.effect._
 import cats.implicits._
 import com.github.trembita._
 import com.examples.putStrLn
-import Execution._
 import scala.util.{Random, Success, Try}
 import scala.util.control.NonFatal
 
@@ -17,7 +16,7 @@ object Basic extends IOApp {
       .to[Parallel]
       .flatMap(_.split(" "))
       .map(_.toInt)
-      .handleError { case NonFatal(_) => -100 }
+      .recoverNonFatal(_ => -100)
 
     val result1: IO[String] =
       numbers.eval.map(_.mkString(", ")).flatTap(putStrLn)
@@ -37,12 +36,14 @@ object Basic extends IOApp {
       .mapG(str => Try { str + "/Try" })
       .mapM(str => IO { str + "/IO" })
 
-    val result2: Try[Vector[String]] = strings.mapK[Try].eval
+    val result2: IO[Vector[String]] = strings.eval
 
     result1.flatTap { result1 =>
       putStrLn(s"result1: $result1") *>
         putStrLn("------------------------------------")
-    } *> putStrLn(s"result2: $result2") *>
+    } *> result2.flatTap { result2 =>
+      putStrLn(s"result2: $result2")
+    } *>
       putStrLn("------------------------------------")
         .as(ExitCode.Success)
   }

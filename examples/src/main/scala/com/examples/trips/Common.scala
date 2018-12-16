@@ -1,9 +1,10 @@
 package com.examples.trips
 
-import cats.effect.Sync
+import cats.effect.{IO, Sync}
 import cats.implicits._
 import com.github.trembita._
 import com.github.trembita.fsm._
+
 import scala.language.higherKinds
 
 object Aliases {
@@ -24,9 +25,9 @@ object Common {
   case object Idle extends UnitState
   case class FirstMsg(firstMsg: UnitMessage)
 
-  def getActivities[F[_], Ex <: Execution](
-    messagesPipeline: DataPipelineT[F, UnitMessage, Ex]
-  )(implicit F: Sync[F]): DataPipelineT[F, DrivingActivity, Ex] = {
+  def getActivities(
+    messagesPipeline: DataPipelineT[IO, UnitMessage, Sequential]
+  ): DataPipelineT[IO, DrivingActivity, Sequential] = {
     messagesPipeline.fsm[UnitState, FirstMsg, DrivingActivity](
       InitialState.fromFirstElement(
         (msg: UnitMessage) =>

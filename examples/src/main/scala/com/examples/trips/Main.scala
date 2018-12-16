@@ -36,7 +36,7 @@ object Main extends IOApp {
     report
       .flatTap { report =>
         putStrLn("----------- Result -----------") *>
-          putStrLn(report.pretty())
+          putStrLn(report.map(_.pretty()))
       }
       .as(ExitCode.Success)
   }

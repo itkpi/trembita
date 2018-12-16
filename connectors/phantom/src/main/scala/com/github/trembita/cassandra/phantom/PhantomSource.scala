@@ -1,6 +1,5 @@
 package com.github.trembita.cassandra.phantom
 
-import cats.MonadError
 import cats.effect.Sync
 import com.github.trembita._
 import com.datastax.driver.core.{ProtocolVersion, Session}
@@ -9,25 +8,26 @@ import com.outworkers.phantom.{Table, Row => PhantomRow}
 import com.outworkers.phantom.builder.query.SelectQuery
 import com.outworkers.phantom.connectors.CassandraConnection
 import scala.language.higherKinds
+import scala.reflect.ClassTag
 
 object PhantomSource {
-  def apply[R, T <: Table[T, R]](connection: CassandraConnection)(
+  def apply[R: ClassTag, T <: Table[T, R]](connection: CassandraConnection)(
     query: SelectQuery[T, R, _, _, _, _, _]
   ): DataPipeline[R, Execution.Sequential] = {
     implicit val session: Session = connection.session
     CassandraSource
       .rows(connection.session, query.executableQuery.statement())
-      .map(row => query.fromRow(new PhantomRow(row, ProtocolVersion.V5)))
+      .mapImpl(row => query.fromRow(new PhantomRow(row, ProtocolVersion.V5)))
   }
 
-  def applyF[R, T <: Table[T, R], F[_], Ex <: Execution](
+  def applyF[R: ClassTag, T <: Table[T, R], F[_], Ex <: Execution](
     connection: CassandraConnection
   )(
     query: SelectQuery[T, R, _, _, _, _, _]
-  )(implicit F: Sync[F]): DataPipelineT[F, R, Ex] = {
+  )(implicit F: Sync[F]): DataPipelineT[F, R, Sequential] = {
     implicit val session: Session = connection.session
     CassandraSource
-      .rowsF[F, Ex](connection.session, query.executableQuery.statement())
-      .map(row => query.fromRow(new PhantomRow(row, ProtocolVersion.V5)))
+      .rowsF[F](connection.session, query.executableQuery.statement())
+      .mapImpl(row => query.fromRow(new PhantomRow(row, ProtocolVersion.V5)))
   }
 }

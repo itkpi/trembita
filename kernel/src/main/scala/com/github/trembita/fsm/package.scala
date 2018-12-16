@@ -4,6 +4,8 @@ import cats._
 import cats.implicits._
 import cats.effect._
 import cats.effect.concurrent.Ref
+import scala.language.higherKinds
+import scala.reflect.ClassTag
 
 package object fsm {
 
@@ -23,12 +25,14 @@ package object fsm {
       * @param fsmF    - see DSL for providing a FSM
       * @return - mapped pipeline
       **/
-    def fsm[N, D, B](initial: InitialState[N, D, F])(
+    def fsm[N, D, B: ClassTag](initial: InitialState[N, D, F])(
       fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
-    )(implicit F: Sync[F]): DataPipelineT[F, B, Ex] = {
+    )(implicit F: Sync[F],
+      ev: (A => F[Iterable[B]]) => MagnetF[F, A, Iterable[B], Ex],
+      liftPipeline: LiftPipeline[F, Ex]): DataPipelineT[F, B, Ex] = {
       val stateF = fsmF(new FSM.Empty)
       val stateOptF = Ref.unsafe[F, Option[FSM.State[N, D, F]]](None)
-      self mapM { elem =>
+      self mapM { elem: A =>
         val elemF: F[Iterable[B]] =
           stateOptF.get.flatMap { stateOpt =>
             val currState = stateOpt match {
@@ -48,7 +52,7 @@ package object fsm {
             }
           }
         elemF
-      } flatMap { vs =>
+      } flatMapImpl { vs =>
         vs
       }
     }
