@@ -1,11 +1,13 @@
-package com.github.trembita
+package com.github.trembita.operations
+
 import cats.Monad
 import com.github.trembita.internal.StrictSource
+import com.github.trembita.{DataPipelineT, Environment, Parallel, Sequential}
 
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
-trait LiftPipeline[F[_], Ex <: Execution] {
+trait LiftPipeline[F[_], Ex <: Environment] {
   def liftIterable[A: ClassTag](xs: Iterable[A]): DataPipelineT[F, A, Ex]
   def liftIterableF[A: ClassTag](fa: F[Iterable[A]]): DataPipelineT[F, A, Ex]
 }

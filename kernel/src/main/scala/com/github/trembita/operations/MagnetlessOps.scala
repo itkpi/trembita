@@ -1,11 +1,12 @@
-package com.github.trembita
-import cats.{Monad, MonadError, ~>}
+package com.github.trembita.operations
 
+import cats.{Monad, MonadError, ~>}
+import com.github.trembita.{DataPipelineT, Environment}
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
-trait MagnetlessOps[F[_], A, Ex <: Execution] extends Any {
+trait MagnetlessOps[F[_], A, Ex <: Environment] extends Any {
   def `this`: DataPipelineT[F, A, Ex]
 
   def map[B: ClassTag](

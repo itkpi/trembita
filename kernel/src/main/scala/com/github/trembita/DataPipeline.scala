@@ -12,7 +12,7 @@ object DataPipeline {
     * @param xs - elements to wrap
     * @return - a [[StrictSource]]
     **/
-  def apply[A: ClassTag](xs: A*): DataPipeline[A, Execution.Sequential] =
+  def apply[A: ClassTag](xs: A*): DataPipeline[A, Environment.Sequential] =
     new StrictSource[Id, A](xs.toIterator, Monad[Id])
 
   /**
@@ -23,6 +23,6 @@ object DataPipeline {
     **/
   def from[A: ClassTag](
     it: => Iterable[A]
-  ): DataPipeline[A, Execution.Sequential] =
+  ): DataPipeline[A, Environment.Sequential] =
     new StrictSource[Id, A](it.toIterator, Monad[Id])
 }

@@ -80,7 +80,7 @@ package object ql
   }
 
   /** Trembita QL for [[DataPipelineT]] */
-  implicit class TrembitaQLForPipeline[A, F[_], Ex <: Execution](
+  implicit class TrembitaQLForPipeline[A, F[_], Ex <: Environment](
     private val self: DataPipelineT[F, A, Ex]
   ) extends AnyVal {
     def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
@@ -92,7 +92,7 @@ package object ql
       trembitaql.applyWithoutTopTotals(self, queryF)
   }
 
-  implicit class AsOps[F[_], Ex <: Execution, A, G <: GroupingCriteria, T](
+  implicit class AsOps[F[_], Ex <: Environment, A, G <: GroupingCriteria, T](
     private val self: DataPipelineT[F, QueryResult[A, G, T], Ex]
   ) extends AnyVal {
     def as[R: ClassTag](implicit ev: ToCaseClass.Aux[A, G, T, R],

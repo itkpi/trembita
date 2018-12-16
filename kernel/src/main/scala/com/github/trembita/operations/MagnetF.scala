@@ -1,21 +1,22 @@
-package com.github.trembita
+package com.github.trembita.operations
 
-import scala.language.higherKinds
-import scala.language.implicitConversions
+import com.github.trembita.{Environment, Parallel, Sequential}
 
-trait Magnet[A, B, Ex <: Execution] extends Serializable {
+import scala.language.{higherKinds, implicitConversions}
+
+trait Magnet[A, B, Ex <: Environment] extends Serializable {
   def prepared: A => B
 }
 
-trait PartialMagnet[A, B, Ex <: Execution] extends Serializable {
+trait PartialMagnet[A, B, Ex <: Environment] extends Serializable {
   def prepared: PartialFunction[A, B]
 }
 
-trait MagnetF[F[_], A, B, Ex <: Execution] extends Serializable {
+trait MagnetF[F[_], A, B, Ex <: Environment] extends Serializable {
   def prepared: A => F[B]
 }
 
-trait PartialMagnetF[F[_], A, B, Ex <: Execution] extends Serializable {
+trait PartialMagnetF[F[_], A, B, Ex <: Environment] extends Serializable {
   def prepared: PartialFunction[A, F[B]]
 }
 

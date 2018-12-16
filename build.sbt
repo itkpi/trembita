@@ -128,6 +128,24 @@ lazy val trembita_spark =
       }
     )
 
+lazy val trembita_akka_streamns =
+  sonatypeProject(
+    id = "trembita-akka-streams",
+    base = file("./integrations/akka/streams")
+  ).dependsOn(kernel)
+    .settings(
+      name := "trembita-akka-streams",
+      version := v,
+      scalacOptions ++= Seq("-Ypartial-unification"),
+      libraryDependencies ++= {
+        val akkaV = "2.5.19"
+        Seq(
+          "com.typesafe.akka" %% "akka-actor" % akkaV,
+          "com.typesafe.akka" %% "akka-stream" % akkaV
+        )
+      }
+    )
+
 lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
   .dependsOn(
     collection_extentions,
@@ -136,7 +154,8 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     trembita_circe,
     cassandra_connector,
     cassandra_connector_phantom,
-    trembita_spark
+    trembita_spark,
+    trembita_akka_streamns
   )
   .settings(
     name := "trembita-examples",
@@ -150,6 +169,7 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     addCompilerPlugin(
       "org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full
     ),
+    addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.8"),
     libraryDependencies ++= {
       val sparkV = "2.4.0"
       Seq(
@@ -184,7 +204,8 @@ lazy val root = Project(id = "trembita", base = file("."))
     cassandra_connector,
     cassandra_connector_phantom,
     trembita_circe,
-    trembita_spark
+    trembita_spark,
+    trembita_akka_streamns
   )
   .settings(
     name := "trembita",

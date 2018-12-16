@@ -1,11 +1,13 @@
 package com.github.trembita
 
+import scala.language.implicitConversions
 import scala.language.higherKinds
 import cats._
 import cats.effect.Sync
 import cats.implicits._
+import com.github.trembita.operations.LiftPipeline
 import internal._
-
+import scala.annotation.unchecked.uncheckedVariance
 import scala.reflect.ClassTag
 import scala.util.{Random, Success, Try}
 
@@ -14,7 +16,7 @@ import scala.util.{Random, Success, Try}
   *
   * @tparam A - type of data
   **/
-trait DataPipelineT[F[_], +A, Ex <: Execution] extends Serializable {
+trait DataPipelineT[F[_], +A, Ex <: Environment] extends Serializable {
 
   /**
     * Functor.map
@@ -35,7 +37,7 @@ trait DataPipelineT[F[_], +A, Ex <: Execution] extends Serializable {
     * @return - transformed [[DataPipelineT]]
     **/
   protected[trembita] def flatMapImpl[B: ClassTag](
-    f: A => DataPipelineT[F, B, Ex]
+    f: A => DataPipelineT[F, B, Ex] @uncheckedVariance
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex]
 
   /**
@@ -80,7 +82,7 @@ trait DataPipelineT[F[_], +A, Ex <: Execution] extends Serializable {
     *
     * @return - collected data
     **/
-  protected[trembita] def evalFunc[B >: A](Ex: Ex)(
+  protected[trembita] def evalFunc[B >: A](Ex: Ex @uncheckedVariance)(
     implicit run: Ex.Run[F]
   ): F[Ex.Repr[B]]
 }
@@ -88,20 +90,30 @@ trait DataPipelineT[F[_], +A, Ex <: Execution] extends Serializable {
 object DataPipelineT {
   def apply[F[_], A: ClassTag](
     xs: A*
-  )(implicit F: Monad[F]): DataPipelineT[F, A, Execution.Sequential] =
+  )(implicit F: Monad[F]): DataPipelineT[F, A, Environment.Sequential] =
     new StrictSource[F, A](xs.toIterator.pure[F], F)
 
-  def liftF[F[_], A: ClassTag, Ex <: Execution](
+  def liftF[F[_], A: ClassTag, Ex <: Environment](
     fa: F[Iterable[A]]
   )(implicit liftPipeline: LiftPipeline[F, Ex]): DataPipelineT[F, A, Ex] =
     liftPipeline.liftIterableF(fa)
+
+  def fromRepr[F[_], A: ClassTag, E <: Environment](
+    repr: E#Repr[A]
+  )(implicit F: Monad[F]): DataPipelineT[F, A, E] =
+    fromReprF[F, A, E](repr.pure[F])
+
+  def fromReprF[F[_], A: ClassTag, E <: Environment](
+    repr: F[E#Repr[A]]
+  )(implicit F: Monad[F]): DataPipelineT[F, A, E] =
+    EvaluatedSource.make[F, A, E](repr, F)
 
   /**
     * @return - an empty [[DataPipelineT]]
     **/
   def empty[F[_], A: ClassTag](
     implicit F: Monad[F]
-  ): DataPipelineT[F, A, Execution.Sequential] =
+  ): DataPipelineT[F, A, Environment.Sequential] =
     new StrictSource[F, A](F.pure(Iterator.empty), F)
 
   /**
@@ -112,9 +124,9 @@ object DataPipelineT {
     * @param fa    - factory function
     * @return - data pipeline
     **/
-  def repeat[F[_], A: ClassTag](
-    times: Int
-  )(fa: => A)(implicit F: Sync[F]): DataPipelineT[F, A, Execution.Sequential] =
+  def repeat[F[_], A: ClassTag](times: Int)(
+    fa: => A
+  )(implicit F: Sync[F]): DataPipelineT[F, A, Environment.Sequential] =
     new StrictSource(F.delay(1 to times).map(_.toIterator.map(_ => fa)), F)
 
   /**
@@ -126,7 +138,7 @@ object DataPipelineT {
     **/
   def randomInts[F[_]](
     size: Int
-  )(implicit F: Sync[F]): DataPipelineT[F, Int, Execution.Sequential] =
+  )(implicit F: Sync[F]): DataPipelineT[F, Int, Environment.Sequential] =
     repeat(size)(Random.nextInt())
 
   /**
@@ -139,7 +151,7 @@ object DataPipelineT {
     **/
   def randomInts[F[_]](size: Int, max: Int)(
     implicit F: Sync[F]
-  ): DataPipelineT[F, Int, Execution.Sequential] =
+  ): DataPipelineT[F, Int, Environment.Sequential] =
     repeat(size)(Random.nextInt(max))
 
   /**
@@ -151,6 +163,17 @@ object DataPipelineT {
     **/
   def fromFile[F[_]](
     fileName: String
-  )(implicit F: Sync[F]): DataPipelineT[F, String, Execution.Sequential] =
+  )(implicit F: Sync[F]): DataPipelineT[F, String, Environment.Sequential] =
     new StrictSource(F.delay(scala.io.Source.fromFile(fileName).getLines()), F)
+
+  /** Implicit conversions */
+  implicit def fromIterable[A: ClassTag, F[_], Ex <: Environment](
+    iterable: Iterable[A]
+  )(implicit liftPipeline: LiftPipeline[F, Ex]): DataPipelineT[F, A, Ex] =
+    liftPipeline.liftIterable(iterable)
+
+  implicit def fromArray[A: ClassTag, F[_], Ex <: Environment](
+    array: Array[A]
+  )(implicit liftPipeline: LiftPipeline[F, Ex]): DataPipelineT[F, A, Ex] =
+    liftPipeline.liftIterable(array.toIterable)
 }

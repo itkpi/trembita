@@ -1,7 +1,8 @@
 package com.github.trembita.experimental.spark
 
-import scala.language.experimental.macros
 import scala.language.higherKinds
+import scala.language.experimental.macros
+import com.github.trembita.operations.MagnetF
 import scala.reflect.macros.whitebox
 import org.scalamacros.resetallattrs._
 import scala.concurrent.{ExecutionContext, Future}
@@ -37,6 +38,7 @@ class rewrite(val c: whitebox.Context) {
     val A = weakTypeOf[A].dealias
     val B = weakTypeOf[B].dealias
     val FutureB = weakTypeOf[Future[B]].dealias
+    val MagnetF = weakTypeOf[MagnetF[Future, A, B, Spark]]
 
     if (B.typeConstructor =:= Future) {
       c.abort(
@@ -94,7 +96,7 @@ class rewrite(val c: whitebox.Context) {
     val freshMagnetName = TermName(c.freshName(s"MagnetMSparkFuture"))
     val magnetExpr =
       q"""
-          object $freshMagnetName extends MagnetF[$Future, $A, $B, $Spark] {
+          object $freshMagnetName extends $MagnetF {
             object $freshObjectName {
               ..$initAllEc
             }
@@ -102,7 +104,7 @@ class rewrite(val c: whitebox.Context) {
               $updatedF
             }
           }
-          ($freshMagnetName: MagnetF[$Future, $A, $B, $Spark])
+          ($freshMagnetName: $MagnetF)
       """
     ifDebug {
       println("--- Rewritten ---")

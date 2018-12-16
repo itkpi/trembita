@@ -1,6 +1,6 @@
-package com.github.trembita
+package com.github.trembita.operations
 
-import cats.{InjectK, ~>}
+import cats.~>
 
 import scala.collection.parallel.immutable.ParVector
 import scala.language.higherKinds
@@ -14,9 +14,7 @@ object InjectTaggedK {
     new InjectTaggedK[F, G] {
       def apply[A: ClassTag](fa: F[A]): G[A] = arrow(fa)
     }
-}
 
-trait injections {
   implicit val injectVectorIntoPar: InjectTaggedK[Vector, ParVector] =
     InjectTaggedK.fromArrow(λ[Vector[?] ~> ParVector[?]](_.par))
 
