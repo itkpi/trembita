@@ -11,7 +11,7 @@ import scala.reflect.ClassTag
 
 object CassandraSource {
   def rows(session: Session,
-           statement: Statement): DataPipeline[Row, Execution.Sequential] =
+           statement: Statement): DataPipeline[Row, Environment.Sequential] =
     DataPipeline.from(session.execute(statement).iterator().asScala.toIterable)
 
   def rowsF[F[_]](session: Session, statement: Statement)(
@@ -23,7 +23,7 @@ object CassandraSource {
 
   def apply[A: ClassTag](session: Session, statement: Statement)(
     extractor: Row => A
-  ): DataPipeline[A, Execution.Sequential] =
+  ): DataPipeline[A, Environment.Sequential] =
     rows(session, statement).mapImpl(extractor)
 
   def applyF[F[_], A: ClassTag](session: Session, statement: Statement)(

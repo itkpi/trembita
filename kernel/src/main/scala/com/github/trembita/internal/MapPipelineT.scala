@@ -4,6 +4,7 @@ import com.github.trembita._
 import cats._
 import cats.implicits._
 
+import scala.annotation.unchecked.uncheckedVariance
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.language.higherKinds
@@ -18,7 +19,7 @@ import scala.util.Try
   * @tparam K - key
   * @tparam V - value
   **/
-trait MapPipelineT[F[_], K, V, Ex <: Execution]
+trait MapPipelineT[F[_], K, V, Ex <: Environment]
     extends DataPipelineT[F, (K, V), Ex] {
 
   /**
@@ -55,14 +56,14 @@ trait MapPipelineT[F[_], K, V, Ex <: Execution]
   * @tparam V - value
   * @param source - (K, V) pair pipeline
   **/
-protected[trembita] class BaseMapPipelineT[F[_], K, V, Ex <: Execution](
+protected[trembita] class BaseMapPipelineT[F[_], K, V, Ex <: Environment](
   source: DataPipelineT[F, (K, V), Ex],
   F: Monad[F]
 )(implicit K: ClassTag[K], V: ClassTag[V]) extends SeqSource[F, (K, V), Ex](F)
     with MapPipelineT[F, K, V, Ex] {
 
-  def mapValues[W: ClassTag](f: V => W)(implicit F: Monad[F]): MapPipelineT[F, K, W, Ex] =
-    new BaseMapPipelineT[F, K, W, Ex](source.mapValues(f), F)
+  def mapValues[W: ClassTag](f: V => W)(implicit F: Monad[F]): MapPipelineT[F, K, W, Ex@uncheckedVariance] =
+    new BaseMapPipelineT[F, K, W, Ex](source.mapImpl{case (k, v) => k -> f(v)}, F)
 
   def filterKeys(
     p: K => Boolean
@@ -102,7 +103,7 @@ protected[trembita] class BaseMapPipelineT[F[_], K, V, Ex <: Execution](
   * @tparam V - value
   * @param f - grouping function
   **/
-protected[trembita] class GroupByPipelineT[F[_], K, V, Ex <: Execution](
+protected[trembita] class GroupByPipelineT[F[_], K, V, Ex <: Environment](
   f: V => K,
   source: DataPipelineT[F, V, Ex],
   F: Monad[F]

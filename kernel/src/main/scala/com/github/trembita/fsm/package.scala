@@ -1,15 +1,15 @@
 package com.github.trembita
 
-import cats._
 import cats.implicits._
 import cats.effect._
 import cats.effect.concurrent.Ref
+import com.github.trembita.operations.{LiftPipeline, MagnetF}
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
 package object fsm {
 
-  implicit class StatefulOps[A, F[_], Ex <: Execution](
+  implicit class StatefulOps[A, F[_], Ex <: Environment](
     val self: DataPipelineT[F, A, Ex]
   ) extends AnyVal {
 

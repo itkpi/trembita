@@ -13,14 +13,14 @@ import scala.reflect.ClassTag
 object PhantomSource {
   def apply[R: ClassTag, T <: Table[T, R]](connection: CassandraConnection)(
     query: SelectQuery[T, R, _, _, _, _, _]
-  ): DataPipeline[R, Execution.Sequential] = {
+  ): DataPipeline[R, Environment.Sequential] = {
     implicit val session: Session = connection.session
     CassandraSource
       .rows(connection.session, query.executableQuery.statement())
       .mapImpl(row => query.fromRow(new PhantomRow(row, ProtocolVersion.V5)))
   }
 
-  def applyF[R: ClassTag, T <: Table[T, R], F[_], Ex <: Execution](
+  def applyF[R: ClassTag, T <: Table[T, R], F[_], Ex <: Environment](
     connection: CassandraConnection
   )(
     query: SelectQuery[T, R, _, _, _, _, _]

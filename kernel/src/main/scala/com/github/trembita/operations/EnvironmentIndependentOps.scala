@@ -1,13 +1,13 @@
-package com.github.trembita
-
+package com.github.trembita.operations
 import cats.{Monad, MonadError, ~>}
 import com.github.trembita.internal._
+import com.github.trembita.{DataPipelineT, Environment}
 
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
-trait ExecutionIndependentOps[F[_], A, Ex <: Execution] extends Any {
+trait EnvironmentIndependentOps[F[_], A, Ex <: Environment] extends Any {
   def `this`: DataPipelineT[F, A, Ex]
 
   def map[B: ClassTag](
@@ -129,27 +129,6 @@ trait ExecutionIndependentOps[F[_], A, Ex <: Execution] extends Any {
   def distinctBy[B: ClassTag](f: A => B)(implicit A: ClassTag[A],
                                          F: Monad[F]): DataPipelineT[F, A, Ex] =
     this.groupBy(f).mapImpl { case (_, group) => group.head }
-
-  /**
-    * Orders elements of the [[DataPipelineT]]
-    * having an [[Ordering]] defined for type [[A]]
-    *
-    * @return - the same pipeline sorted
-    **/
-  def sorted(implicit F: Monad[F],
-             A: ClassTag[A],
-             ordering: Ordering[A]): DataPipelineT[F, A, Ex] =
-    new SortedPipelineT[A, F, Ex](
-      `this`.asInstanceOf[DataPipelineT[F, A, Ex]],
-      F
-    )
-
-  def sortBy[B: Ordering](f: A => B)(implicit A: ClassTag[A],
-                                     F: Monad[F]): DataPipelineT[F, A, Ex] =
-    new SortedPipelineT[A, F, Ex](
-      `this`.asInstanceOf[DataPipelineT[F, A, Ex]],
-      F
-    )(Ordering.by(f), A)
 
   def zip[B: ClassTag](
     that: DataPipelineT[F, B, Ex]

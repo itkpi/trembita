@@ -1,4 +1,5 @@
-package com.github.trembita.internal
+package com.github.trembita.operations
+
 import scala.collection.parallel.immutable.ParVector
 import scala.language.higherKinds
 

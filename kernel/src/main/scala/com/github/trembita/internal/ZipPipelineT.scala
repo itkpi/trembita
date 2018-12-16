@@ -2,10 +2,12 @@ package com.github.trembita.internal
 
 import cats.Monad
 import com.github.trembita._
+import com.github.trembita.operations.CanJoin
+
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
-protected[trembita] class ZipPipelineT[F[_], A, B, Ex <: Execution](
+protected[trembita] class ZipPipelineT[F[_], A, B, Ex <: Environment](
   left: DataPipelineT[F, A, Ex],
   right: DataPipelineT[F, B, Ex]
 )(implicit A: ClassTag[A], F: Monad[F], B: ClassTag[B])
@@ -20,7 +22,7 @@ protected[trembita] class ZipPipelineT[F[_], A, B, Ex <: Execution](
     }
 }
 
-protected[trembita] class ConcatPipelineT[F[_], A, Ex <: Execution](
+protected[trembita] class ConcatPipelineT[F[_], A, Ex <: Environment](
   left: DataPipelineT[F, A, Ex],
   right: DataPipelineT[F, A, Ex]
 )(implicit F: Monad[F], A: ClassTag[A])
@@ -35,7 +37,7 @@ protected[trembita] class ConcatPipelineT[F[_], A, Ex <: Execution](
     }
 }
 
-protected[trembita] class JoinPipelineT[F[_], A, B, Ex <: Execution](
+protected[trembita] class JoinPipelineT[F[_], A, B, Ex <: Environment](
   left: DataPipelineT[F, A, Ex],
   right: DataPipelineT[F, B, Ex],
   on: (A, B) => Boolean
@@ -55,7 +57,7 @@ protected[trembita] class JoinPipelineT[F[_], A, B, Ex <: Execution](
     }
 }
 
-protected[trembita] class JoinLeftPipelineT[F[_], A, B, Ex <: Execution](
+protected[trembita] class JoinLeftPipelineT[F[_], A, B, Ex <: Environment](
   left: DataPipelineT[F, A, Ex],
   right: DataPipelineT[F, B, Ex],
   on: (A, B) => Boolean
@@ -75,7 +77,7 @@ protected[trembita] class JoinLeftPipelineT[F[_], A, B, Ex <: Execution](
     }
 }
 
-protected[trembita] class JoinRightPipelineT[F[_], A, B, Ex <: Execution](
+protected[trembita] class JoinRightPipelineT[F[_], A, B, Ex <: Environment](
   left: DataPipelineT[F, A, Ex],
   right: DataPipelineT[F, B, Ex],
   on: (A, B) => Boolean

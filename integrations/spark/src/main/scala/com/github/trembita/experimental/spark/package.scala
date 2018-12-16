@@ -2,11 +2,14 @@ package com.github.trembita.experimental
 
 import cats.effect.IO
 import cats.{Eval, StackSafeMonad, ~>}
+import com.github.trembita.operations.{CanSort, InjectTaggedK, MagnetF}
+
 import scala.language.experimental.macros
 import scala.language.{higherKinds, implicitConversions}
-import com.github.trembita.{DataPipelineT, InjectTaggedK, MagnetF}
+import com.github.trembita.DataPipelineT
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
+
 import scala.collection.parallel.immutable.ParVector
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
@@ -104,4 +107,8 @@ package object spark {
       def coflatMap[A, B](fa: Future[A])(f: Future[A] => B): Future[B] =
         Future(f(fa))
     }
+
+  implicit val canSortRDD: CanSort[RDD] = new CanSort[RDD] {
+    def sorted[A: Ordering: ClassTag](fa: RDD[A]): RDD[A] = fa.sortBy(identity)
+  }
 }

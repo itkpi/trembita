@@ -27,7 +27,7 @@ trait trembitaqlForPipeline[A,
                             T <: AggDecl,
                             R <: AggRes,
                             Comb,
-                            Ex <: Execution] {
+                            Ex <: Environment] {
   def applyWithoutTopTotals[F[_]](
     pipeline: DataPipelineT[F, A, Ex],
     queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb]
@@ -220,7 +220,7 @@ object trembitaqlForPipeline {
            T <: AggDecl: c.WeakTypeTag,
            R <: AggRes: c.WeakTypeTag,
            Comb: c.WeakTypeTag,
-           Ex <: Execution: c.WeakTypeTag](
+           Ex <: Environment: c.WeakTypeTag](
     c: blackbox.Context
   ): c.Expr[trembitaqlForPipeline[A, G, T, R, Comb, Ex]] = {
 

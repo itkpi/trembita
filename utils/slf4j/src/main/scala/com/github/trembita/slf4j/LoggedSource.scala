@@ -7,7 +7,7 @@ import com.github.trembita._
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
-protected[trembita] class LoggedSource[F[_], +A, Ex <: Execution](
+protected[trembita] class LoggedSource[F[_], +A, Ex <: Environment](
   logger: Logger,
   source: DataPipelineT[F, A, Ex],
 ) extends DataPipelineT[F, A, Ex] {
@@ -71,7 +71,7 @@ protected[trembita] class LoggedSource[F[_], +A, Ex <: Execution](
 }
 
 object LoggedSource {
-  def apply[F[_], A, Ex <: Execution](
+  def apply[F[_], A, Ex <: Environment](
     logger: Logger
   )(pipeline: DataPipelineT[F, A, Ex]): DataPipelineT[F, A, Ex] =
     new LoggedSource[F, A, Ex](logger, pipeline)

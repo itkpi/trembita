@@ -1,6 +1,6 @@
 package com.github.trembita
 
-import cats.{Applicative, Eval}
+import cats.{Applicative, Eval, Functor, Id, Monad, ~>}
 
 import scala.language.higherKinds
 import cats.implicits._
@@ -13,27 +13,51 @@ trait ApplicativeFlatMap[F[_]] extends Serializable {
   def flatMap[A, B: ClassTag](fa: F[A])(f: A => F[B]): F[B]
   def flatten[A: ClassTag](ffa: F[F[A]]): F[A] = flatMap(ffa)(identity)
 }
+object ApplicativeFlatMap {
+  val id: ApplicativeFlatMap[Id] = new ApplicativeFlatMap[Id] {
+    def map[A, B: ClassTag](fa: Id[A])(f: A => B): Id[B] = f(fa)
+    def flatMap[A, B: ClassTag](fa: Id[A])(f: A => Id[B]): Id[B] = f(fa)
+  }
+}
 trait TraverseTag[F[_], Run[_[_]]] extends Serializable {
-  def traverse[G[_], A, B: ClassTag](fa: F[A])(f: A => G[B])(implicit G: Run[G]): G[F[B]]
+  def traverse[G[_], A, B: ClassTag](fa: F[A])(f: A => G[B])(
+    implicit G: Run[G]
+  ): G[F[B]]
   def sequence[G[_]: Run, A: ClassTag](fga: F[G[A]]): G[F[A]] =
     traverse(fga)(ga => ga)
+
+  def traverse_[G[_], A](
+    fa: F[A]
+  )(f: A => G[Unit])(implicit G: Run[G], G0: Functor[G]): G[Unit] =
+    G0.map(traverse(fa)(f))(_ => {})
 }
 
-trait Execution extends Serializable {
-  type Repr[X] <: Serializable
+trait Environment extends Serializable {
+  type Repr[X]
   type Run[G[_]] <: Serializable
-  val ApplicativeFlatMap: ApplicativeFlatMap[Repr]
-  val Traverse: TraverseTag[Repr, Run]
+  type Result[X]
+  type ResultRepr[X] = Result[Repr[X]]
 
-  def toVector[A](repr: Repr[A]): Vector[A]
+  def absorbF[F[_], A](rfa: Result[F[A]])(implicit F: Monad[F],
+                                          arrow: Result ~> F): F[A] =
+    F.flatten(arrow(rfa))
+
+  val FlatMapResult: ApplicativeFlatMap[Result]
+  val FlatMapRepr: ApplicativeFlatMap[Repr]
+  val TraverseRepr: TraverseTag[Repr, Run]
+
+  def toVector[A](repr: Repr[A]): Result[Vector[A]]
+
+  def foreach[A](repr: Repr[A])(f: A => Unit): Result[Unit]
+
+  def foreachF[F[_], A](repr: Repr[A])(f: A => F[Unit])(implicit Run: Run[F], F: Functor[F]): F[Unit] =
+    TraverseRepr.traverse_[F, A](repr)(f)
 
   def groupBy[A, K: ClassTag](vs: Repr[A])(f: A => K): Repr[(K, Iterable[A])]
 
   def collect[A, B: ClassTag](repr: Repr[A])(pf: PartialFunction[A, B]): Repr[B]
 
   def distinctKeys[A: ClassTag, B: ClassTag](repr: Repr[(A, B)]): Repr[(A, B)]
-
-  def sorted[A: Ordering: ClassTag](repr: Repr[A]): Repr[A]
 
   def concat[A](xs: Repr[A], ys: Repr[A]): Repr[A]
 
@@ -42,13 +66,16 @@ trait Execution extends Serializable {
   def memoize[A: ClassTag](xs: Repr[A]): Repr[A]
 }
 
-object Execution {
-  type RunAux[Run0[_[_]]] = Execution { type Run[G[_]] = Run0[G] }
-  sealed trait Sequential extends Execution {
+object Environment {
+  type ReprAux[Repr0[_]] = Environment { type Repr[X] = Repr0[X] }
+  type RunAux[Run0[_[_]]] = Environment { type Run[G[_]] = Run0[G] }
+
+  sealed trait Sequential extends Environment {
     type Repr[+X] = Vector[X]
     type Run[G[_]] = Applicative[G]
+    type Result[X] = X
 
-    def toVector[A](repr: Vector[A]): Vector[A] = repr
+    def toVector[A](repr: Vector[A]): Result[Vector[A]] = repr
 
     def collect[A, B: ClassTag](
       repr: Vector[A]
@@ -66,10 +93,10 @@ object Execution {
     )(f: A => K): Vector[(K, Iterable[A])] =
       vs.groupBy(f).toVector
 
-    def distinctKeys[A: ClassTag, B: ClassTag](repr: Repr[(A, B)]): Repr[(A, B)] =
+    def distinctKeys[A: ClassTag, B: ClassTag](
+      repr: Repr[(A, B)]
+    ): Repr[(A, B)] =
       repr.groupBy(_._1).mapValues(_.head._2).toVector
-
-    def sorted[A: Ordering: ClassTag](vs: Vector[A]): Vector[A] = vs.sorted
 
     def concat[A](xs: Vector[A], ys: Vector[A]): Vector[A] = xs ++ ys
 
@@ -78,13 +105,21 @@ object Execution {
 
     def memoize[A: ClassTag](xs: Vector[A]): Vector[A] = xs
 
-    val ApplicativeFlatMap: ApplicativeFlatMap[Vector] = new ApplicativeFlatMap[Vector] {
-      def pure[A: ClassTag](a: A): Vector[A] = Vector(a)
-      def map[A, B: ClassTag](fa: Vector[A])(f: A => B): Vector[B] = fa.map(f)
-      def flatMap[A, B: ClassTag](fa: Vector[A])(f: A => Vector[B]): Vector[B] =
-        fa.flatMap(f)
-    }
-    val Traverse: TraverseTag[Vector, Applicative] =
+    def foreach[A](repr: Repr[A])(f: A => Unit): Result[Unit] =
+      repr.foreach(f)
+
+    val FlatMapResult: ApplicativeFlatMap[Id] = ApplicativeFlatMap.id
+
+    val FlatMapRepr: ApplicativeFlatMap[Vector] =
+      new ApplicativeFlatMap[Vector] {
+        def pure[A: ClassTag](a: A): Vector[A] = Vector(a)
+        def map[A, B: ClassTag](fa: Vector[A])(f: A => B): Vector[B] = fa.map(f)
+        def flatMap[A, B: ClassTag](
+          fa: Vector[A]
+        )(f: A => Vector[B]): Vector[B] =
+          fa.flatMap(f)
+      }
+    val TraverseRepr: TraverseTag[Vector, Applicative] =
       new TraverseTag[Vector, Applicative] {
         type Run[G[_]] = Applicative[G]
         def traverse[G[_], A, B: ClassTag](fa: Vector[A])(f: A => G[B])(
@@ -93,11 +128,12 @@ object Execution {
       }
   }
 
-  sealed trait Parallel extends Execution {
+  sealed trait Parallel extends Environment {
     type Repr[+X] = ParVector[X]
     type Run[G[_]] = Applicative[G]
+    type Result[X] = X
 
-    def toVector[A](repr: ParVector[A]): Vector[A] = repr.seq
+    def toVector[A](repr: ParVector[A]): Result[Vector[A]] = repr.seq
 
     def fromVector[A: ClassTag](vs: Vector[A]): ParVector[A] = vs.par
 
@@ -109,29 +145,33 @@ object Execution {
       pf: PartialFunction[A, B]
     ): ParVector[B] = repr.collect(pf)
 
-    def sorted[A: Ordering: ClassTag](vs: ParVector[A]): ParVector[A] =
-      vs.seq.sorted.par
-
     def concat[A](xs: ParVector[A], ys: ParVector[A]): ParVector[A] = xs ++ ys
 
     def zip[A, B: ClassTag](xs: ParVector[A],
                             ys: ParVector[B]): ParVector[(A, B)] =
       xs.zip(ys)
 
-    def distinctKeys[A: ClassTag, B: ClassTag](repr: Repr[(A, B)]): Repr[(A, B)] =
+    def distinctKeys[A: ClassTag, B: ClassTag](
+      repr: Repr[(A, B)]
+    ): Repr[(A, B)] =
       repr.groupBy(_._1).mapValues(_.head._2).to[ParVector]
 
-    val ApplicativeFlatMap: ApplicativeFlatMap[ParVector] = new ApplicativeFlatMap[ParVector] {
-      def pure[A: ClassTag](a: A): ParVector[A] = ParVector(a)
+    def absorb[F[_], A](fa: Result[F[A]]): F[A] = fa
 
-      def flatMap[A, B: ClassTag](
-        fa: ParVector[A]
-      )(f: A => ParVector[B]): ParVector[B] =
-        fa.flatMap(f)
+    val FlatMapResult: ApplicativeFlatMap[Id] = ApplicativeFlatMap.id
 
-      def map[A, B: ClassTag](fa: ParVector[A])(f: A => B): ParVector[B] =
-        fa.map(f)
-    }
+    val FlatMapRepr: ApplicativeFlatMap[ParVector] =
+      new ApplicativeFlatMap[ParVector] {
+        def pure[A: ClassTag](a: A): ParVector[A] = ParVector(a)
+
+        def flatMap[A, B: ClassTag](
+          fa: ParVector[A]
+        )(f: A => ParVector[B]): ParVector[B] =
+          fa.flatMap(f)
+
+        def map[A, B: ClassTag](fa: ParVector[A])(f: A => B): ParVector[B] =
+          fa.map(f)
+      }
 
     def groupBy[A, K: ClassTag](
       vs: ParVector[A]
@@ -140,7 +180,7 @@ object Execution {
 
     def memoize[A: ClassTag](xs: ParVector[A]): ParVector[A] = xs
 
-    val Traverse: TraverseTag[ParVector, Applicative] =
+    val TraverseRepr: TraverseTag[ParVector, Applicative] =
       new TraverseTag[ParVector, Applicative] {
         def traverse[G[_], A, B: ClassTag](
           fa: ParVector[A]
@@ -160,6 +200,9 @@ object Execution {
           f: (A, Eval[B]) => Eval[B]
         ): Eval[B] = fa.foldRight(lb)(f)
       }
+
+    def foreach[A](repr: Repr[A])(f: A => Unit): Result[Unit] =
+      repr.foreach(f)
   }
 
   implicit val Parallel: Parallel = new Parallel {}

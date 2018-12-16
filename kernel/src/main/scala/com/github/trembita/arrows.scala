@@ -1,7 +1,10 @@
 package com.github.trembita
+
 import cats.arrow.FunctionK
 import cats.effect.IO
-import cats.{MonadError, ~>}
+import cats.{Applicative, Id, MonadError, ~>}
+import cats.syntax.applicative._
+
 import scala.concurrent.Future
 import scala.language.higherKinds
 import scala.util.{Failure, Success, Try}
@@ -20,4 +23,7 @@ trait arrows {
 
   implicit val ioToTry: IO ~> Try =
     λ[IO[?] ~> Try[?]](ioa => Try { ioa.unsafeRunSync() })
+
+  implicit def idToAnyApplicative[F[_]: Applicative]: Id ~> F =
+    λ[Id[?] ~> F[?]](_.pure[F])
 }
