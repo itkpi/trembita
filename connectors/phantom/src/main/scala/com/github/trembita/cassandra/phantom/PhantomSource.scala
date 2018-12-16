@@ -24,10 +24,10 @@ object PhantomSource {
     connection: CassandraConnection
   )(
     query: SelectQuery[T, R, _, _, _, _, _]
-  )(implicit F: Sync[F]): DataPipelineT[F, R, Ex] = {
+  )(implicit F: Sync[F]): DataPipelineT[F, R, Sequential] = {
     implicit val session: Session = connection.session
     CassandraSource
-      .rowsF[F, Ex](connection.session, query.executableQuery.statement())
+      .rowsF[F](connection.session, query.executableQuery.statement())
       .map(row => query.fromRow(new PhantomRow(row, ProtocolVersion.V5)))
   }
 }

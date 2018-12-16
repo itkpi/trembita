@@ -46,7 +46,10 @@ trait DataPipelineT[F[_], +A, Ex <: Execution] extends Serializable {
     * @param p - predicate
     * @return - filtered [[DataPipelineT]]
     **/
-  def filter(p: A => Boolean)(implicit F: Monad[F]): DataPipelineT[F, A, Ex]
+  def filter[AA >: A](
+    p: A => Boolean
+  )(implicit F: Monad[F], A: ClassTag[AA]): DataPipelineT[F, AA, Ex] =
+    collect[AA]({ case a if p(a) => a })
 
   /**
     * Applies a [[PartialFunction]] to the [[DataPipelineT]]
@@ -64,15 +67,18 @@ trait DataPipelineT[F[_], +A, Ex <: Execution] extends Serializable {
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
     collect(pf).flatten
 
-  protected[trembita] def mapMImpl[AA >: A, B: ClassTag](f: A => F[B])(implicit F: Monad[F]): DataPipelineT[F, B, Ex]
+  protected[trembita] def mapMImpl[AA >: A, B: ClassTag](
+    f: A => F[B]
+  )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
+    new MapMonadicPipelineT[F, A, B, Ex](f, this)(F)
 
   def handleError[B >: A: ClassTag](f: Throwable => B)(
     implicit F: MonadError[F, Throwable]
   ): DataPipelineT[F, B, Ex]
 
-  def handleErrorWith[B >: A: ClassTag](f: Throwable => DataPipelineT[F, B, Ex])(
-    implicit F: MonadError[F, Throwable]
-  ): DataPipelineT[F, B, Ex]
+//  def handleErrorWith[B >: A: ClassTag](f: Throwable => DataPipelineT[F, B, Ex])(
+//    implicit F: MonadError[F, Throwable]
+//  ): DataPipelineT[F, B, Ex]
 
   /**
     * Forces evaluation of [[DataPipelineT]]
@@ -80,19 +86,21 @@ trait DataPipelineT[F[_], +A, Ex <: Execution] extends Serializable {
     *
     * @return - collected data
     **/
-  protected[trembita] def evalFunc[B >: A](Ex: Ex)(implicit run: Ex.Run[F]): F[Ex.Repr[B]]
+  protected[trembita] def evalFunc[B >: A](Ex: Ex)(
+    implicit run: Ex.Run[F]
+  ): F[Ex.Repr[B]]
 }
 
 object DataPipelineT {
   def apply[F[_], A: ClassTag](
     xs: A*
   )(implicit F: Monad[F]): DataPipelineT[F, A, Execution.Sequential] =
-    new StrictSource[F, A, Execution.Sequential](xs.toIterator.pure[F], F)
+    new StrictSource[F, A](xs.toIterator.pure[F], F)
 
   def liftF[F[_], A: ClassTag, Ex <: Execution](
     fa: F[Iterable[A]]
-  )(implicit F: Monad[F]): DataPipelineT[F, A, Ex] =
-    new StrictSource[F, A, Ex](fa.map(_.toIterator), F)
+  )(implicit liftPipeline: LiftPipeline[F, Ex]): DataPipelineT[F, A, Ex] =
+    liftPipeline.liftIterableF(fa)
 
   /**
     * @return - an empty [[DataPipelineT]]
@@ -100,7 +108,7 @@ object DataPipelineT {
   def empty[F[_], A: ClassTag](
     implicit F: Monad[F]
   ): DataPipelineT[F, A, Execution.Sequential] =
-    new StrictSource[F, A, Execution.Sequential](F.pure(Iterator.empty), F)
+    new StrictSource[F, A](F.pure(Iterator.empty), F)
 
   /**
     * Creates a [[DataPipelineT]]

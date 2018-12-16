@@ -92,16 +92,6 @@ protected[trembita] class BaseMapPipelineT[F[_], K, V, Ex <: Execution](
         .asInstanceOf[DataPipelineT[F, (K, V), Ex]],
       F
     )
-
-  override def handleErrorWith[B >: (K, V): ClassTag](
-    f: Throwable => DataPipelineT[F, B, Ex]
-  )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
-    new BaseMapPipelineT[F, K, V, Ex](
-      source
-        .handleErrorWith(f)
-        .asInstanceOf[DataPipelineT[F, (K, V), Ex]],
-      F
-    )
 }
 
 /**

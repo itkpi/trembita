@@ -8,8 +8,7 @@ import cats.implicits._
 import scala.collection.parallel.immutable.ParVector
 import scala.reflect.ClassTag
 
-trait MonadTag[F[_]] extends Serializable {
-  def pure[A: ClassTag](a: A): F[A]
+trait ApplicativeFlatMap[F[_]] extends Serializable {
   def map[A, B: ClassTag](fa: F[A])(f: A => B): F[B]
   def flatMap[A, B: ClassTag](fa: F[A])(f: A => F[B]): F[B]
   def flatten[A: ClassTag](ffa: F[F[A]]): F[A] = flatMap(ffa)(identity)
@@ -23,16 +22,10 @@ trait TraverseTag[F[_], Run[_[_]]] extends Serializable {
 trait Execution extends Serializable {
   type Repr[X] <: Serializable
   type Run[G[_]] <: Serializable
-  val Monad: MonadTag[Repr]
+  val ApplicativeFlatMap: ApplicativeFlatMap[Repr]
   val Traverse: TraverseTag[Repr, Run]
 
   def toVector[A](repr: Repr[A]): Vector[A]
-
-  def fromVector[A: ClassTag](vs: Vector[A]): Repr[A]
-
-  def fromIterable[A: ClassTag](vs: Iterable[A]): Repr[A]
-
-  def fromIterator[A: ClassTag](vs: Iterator[A]): Repr[A]
 
   def groupBy[A, K: ClassTag](vs: Repr[A])(f: A => K): Repr[(K, Iterable[A])]
 
@@ -81,7 +74,7 @@ object Execution {
     def zip[A, B: ClassTag](xs: Vector[A], ys: Vector[B]): Vector[(A, B)] =
       xs.zip(ys)
 
-    val Monad: MonadTag[Vector] = new MonadTag[Vector] {
+    val ApplicativeFlatMap: ApplicativeFlatMap[Vector] = new ApplicativeFlatMap[Vector] {
       def pure[A: ClassTag](a: A): Vector[A] = Vector(a)
       def map[A, B: ClassTag](fa: Vector[A])(f: A => B): Vector[B] = fa.map(f)
       def flatMap[A, B: ClassTag](fa: Vector[A])(f: A => Vector[B]): Vector[B] =
@@ -124,7 +117,7 @@ object Execution {
     def distinctKeys[A: ClassTag, B: ClassTag](repr: Repr[(A, B)]): Repr[(A, B)] =
       repr.groupBy(_._1).mapValues(_.head._2).to[ParVector]
 
-    val Monad: MonadTag[ParVector] = new MonadTag[ParVector] {
+    val ApplicativeFlatMap: ApplicativeFlatMap[ParVector] = new ApplicativeFlatMap[ParVector] {
       def pure[A: ClassTag](a: A): ParVector[A] = ParVector(a)
 
       def flatMap[A, B: ClassTag](

@@ -7,16 +7,11 @@ import scala.language.higherKinds
 import scala.reflect.ClassTag
 
 sealed trait Spark extends Execution {
-  protected def sc: SparkContext
   final type Repr[X] = RDD[X]
   type Run[G[_]] = RunOnSpark[G]
 
   def toVector[A](repr: RDD[A]): Vector[A] = repr.collect().toVector
-  def fromVector[A: ClassTag](vs: Vector[A]): Repr[A] = sc.parallelize(vs)
-  def fromIterable[A: ClassTag](vs: Iterable[A]): Repr[A] =
-    sc.parallelize(vs.toSeq)
-  def fromIterator[A: ClassTag](vs: Iterator[A]): Repr[A] =
-    sc.parallelize(vs.toSeq)
+
   def groupBy[A, K: ClassTag](vs: Repr[A])(f: A => K): Repr[(K, Iterable[A])] =
     vs.groupBy(f)
   def collect[A, B: ClassTag](
@@ -28,15 +23,16 @@ sealed trait Spark extends Execution {
   def concat[A](xs: Repr[A], ys: Repr[A]): Repr[A] = xs union ys
   def zip[A, B: ClassTag](xs: Repr[A], ys: Repr[B]): Repr[(A, B)] = xs zip ys
 
-  def distinctKeys[A: ClassTag, B: ClassTag](repr: RDD[(A, B)]): RDD[(A, B)] = repr.reduceByKey((a, b) => a)
+  def distinctKeys[A: ClassTag, B: ClassTag](repr: RDD[(A, B)]): RDD[(A, B)] =
+    repr.reduceByKey((a, b) => a)
 
-  val Monad: MonadTag[RDD] = new MonadTag[RDD] {
-    def pure[A: ClassTag](x: A): RDD[A] = sc.parallelize(Seq(x))
-    def flatMap[A, B: ClassTag](fa: RDD[A])(f: A => RDD[B]): RDD[B] =
-      fa.flatMap(f(_).collect())
+  val ApplicativeFlatMap: ApplicativeFlatMap[RDD] =
+    new ApplicativeFlatMap[RDD] {
+      def flatMap[A, B: ClassTag](fa: RDD[A])(f: A => RDD[B]): RDD[B] =
+        fa.flatMap(f(_).collect())
 
-    def map[A, B: ClassTag](fa: RDD[A])(f: A => B): RDD[B] = fa.map(f)
-  }
+      def map[A, B: ClassTag](fa: RDD[A])(f: A => B): RDD[B] = fa.map(f)
+    }
 
   val Traverse: TraverseTag[RDD, RunOnSpark] =
     new TraverseTag[RDD, RunOnSpark] {
@@ -49,7 +45,5 @@ sealed trait Spark extends Execution {
 }
 
 object Spark {
-  def derive(_sc: SparkContext): Spark = new Spark {
-    val sc = _sc
-  }
+  implicit val spark: Spark = new Spark {}
 }

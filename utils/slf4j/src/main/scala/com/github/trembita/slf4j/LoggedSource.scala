@@ -22,10 +22,10 @@ protected[trembita] class LoggedSource[F[_], +A, Ex <: Execution](
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
     new LoggedSource[F, B, Ex](logger, source.flatMap(f))
 
-  override def filter(
+  override def filter[AA >: A](
     p: A => Boolean
-  )(implicit F: Monad[F]): DataPipelineT[F, A, Ex] =
-    new LoggedSource[F, A, Ex](logger, source.filter(p))
+  )(implicit F: Monad[F], A: ClassTag[AA]): DataPipelineT[F, AA, Ex] =
+    new LoggedSource[F, AA, Ex](logger, source.filter[AA](p))
 
   override def collect[B: ClassTag](
     pf: PartialFunction[A, B]
@@ -54,15 +54,15 @@ protected[trembita] class LoggedSource[F[_], +A, Ex <: Execution](
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
     new LoggedSource[F, B, Ex](logger, source.handleError(f))
 
-  def handleErrorWith[B >: A: ClassTag](
-    f: Throwable => DataPipelineT[F, B, Ex]
-  )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
-    new LoggedSource[F, B, Ex](logger, source.handleErrorWith(f))
+//  def handleErrorWith[B >: A: ClassTag](
+//    f: Throwable => DataPipelineT[F, B, Ex]
+//  )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
+//    new LoggedSource[F, B, Ex](logger, source.handleErrorWith(f))
 
   protected[trembita] def evalFunc[B >: A](Ex: Ex)(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
     source.evalFunc[B](Ex)
 
-  def mapMImpl[AA >: A, B: ClassTag](f: A => F[B])(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
+  override def mapMImpl[AA >: A, B: ClassTag](f: A => F[B])(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
     new LoggedSource[F, B, Ex](logger, source.mapMImpl[AA, B](f))
 }
 

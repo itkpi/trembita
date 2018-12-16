@@ -86,13 +86,13 @@ package object trembita extends standardMagnets with arrows with injections {
   /** Implicit conversions */
   implicit def iterable2DataPipeline[A: ClassTag, F[_], Ex <: Execution](
     iterable: Iterable[A]
-  )(implicit F: Monad[F]): DataPipelineT[F, A, Ex] =
-    DataPipelineT.liftF[F, A, Ex](iterable.pure[F])
+  )(implicit liftPipeline: LiftPipeline[F, Ex]): DataPipelineT[F, A, Ex] =
+    liftPipeline.liftIterable(iterable)
 
   implicit def array2DataPipeline[A: ClassTag, F[_], Ex <: Execution](
     array: Array[A]
-  )(implicit F: Monad[F]): DataPipelineT[F, A, Ex] =
-    DataPipelineT.liftF[F, A, Ex]((array: Iterable[A]).pure[F])
+  )(implicit liftPipeline: LiftPipeline[F, Ex]): DataPipelineT[F, A, Ex] =
+    liftPipeline.liftIterable(array.toIterable)
 
   type Sequential = Execution.Sequential
   type Parallel = Execution.Parallel

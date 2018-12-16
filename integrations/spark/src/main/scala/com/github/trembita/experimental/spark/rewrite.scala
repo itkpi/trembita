@@ -17,7 +17,7 @@ class rewrite(val c: whitebox.Context) {
   private val serializable = typeOf[java.io.Serializable]
 
   private val debug: Boolean = sys.env
-    .get("trembita.spark.debug")
+    .get("trembita_spark_debug")
     .flatMap(str => scala.util.Try { str.toBoolean }.toOption)
     .getOrElse(false)
 
