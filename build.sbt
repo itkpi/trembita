@@ -2,7 +2,7 @@ import xerial.sbt.Sonatype._
 
 lazy val snapshot: Boolean = true
 lazy val v: String = {
-  val vv = "0.2.0"
+  val vv = "0.3.0"
   if (!snapshot) vv
   else vv + "-SNAPSHOT"
 }
@@ -183,7 +183,8 @@ lazy val root = Project(id = "trembita", base = file("."))
     slf4j,
     cassandra_connector,
     cassandra_connector_phantom,
-    trembita_circe
+    trembita_circe,
+    trembita_spark
   )
   .settings(
     name := "trembita",
