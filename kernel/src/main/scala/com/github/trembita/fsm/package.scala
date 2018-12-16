@@ -27,7 +27,7 @@ package object fsm {
       **/
     def fsm[N, D, B: ClassTag](initial: InitialState[N, D, F])(
       fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
-    )(implicit canFSM: CanFSM[F, E]): DataPipelineT[F, B, E] =
+    )(implicit canFSM: CanFSM[F, E], A: ClassTag[A]): DataPipelineT[F, B, E] =
       canFSM.fsm[A, N, D, B](self)(initial)(fsmF)
   }
 }

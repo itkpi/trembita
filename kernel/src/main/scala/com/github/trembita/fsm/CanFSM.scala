@@ -13,7 +13,7 @@ import scala.language.higherKinds
 import scala.reflect.ClassTag
 
 trait CanFSM[F[_], E <: Environment] {
-  def fsm[A, N, D, B: ClassTag](
+  def fsm[A: ClassTag, N, D, B: ClassTag](
     pipeline: DataPipelineT[F, A, E]
   )(initial: InitialState[N, D, F])(
     fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
@@ -39,7 +39,7 @@ object CanFSM {
 }
 
 class FromIdSeq extends CanFSM[Id, Sequential] {
-  def fsm[A, N, D, B: ClassTag](
+  def fsm[A: ClassTag, N, D, B: ClassTag](
     pipeline: DataPipelineT[Id, A, Sequential]
   )(initial: InitialState[N, D, Id])(
     fsmF: FSM.Empty[Id, N, D, A, B] => FSM.Func[Id, N, D, A, B]
@@ -71,7 +71,7 @@ class FromIdSeq extends CanFSM[Id, Sequential] {
 }
 
 class FromIdParallel extends CanFSM[Id, Parallel] {
-  def fsm[A, N, D, B: ClassTag](
+  def fsm[A: ClassTag, N, D, B: ClassTag](
     pipeline: DataPipelineT[Id, A, Parallel]
   )(initial: InitialState[N, D, Id])(
     fsmF: FSM.Empty[Id, N, D, A, B] => FSM.Func[Id, N, D, A, B]
@@ -105,7 +105,7 @@ class FromIdParallel extends CanFSM[Id, Parallel] {
 
 class FromSyncSequential[F[_]](implicit F: Sync[F])
     extends CanFSM[F, Sequential] {
-  def fsm[A, N, D, B: ClassTag](
+  def fsm[A: ClassTag, N, D, B: ClassTag](
     pipeline: DataPipelineT[F, A, Sequential]
   )(initial: InitialState[N, D, F])(
     fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
@@ -139,7 +139,7 @@ class FromSyncSequential[F[_]](implicit F: Sync[F])
 }
 
 class FromSyncParallel[F[_]](implicit F: Sync[F]) extends CanFSM[F, Parallel] {
-  def fsm[A, N, D, B: ClassTag](
+  def fsm[A: ClassTag, N, D, B: ClassTag](
     pipeline: DataPipelineT[F, A, Parallel]
   )(initial: InitialState[N, D, F])(
     fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
