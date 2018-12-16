@@ -38,6 +38,8 @@ trait Execution extends Serializable {
   def concat[A](xs: Repr[A], ys: Repr[A]): Repr[A]
 
   def zip[A, B: ClassTag](xs: Repr[A], ys: Repr[B]): Repr[(A, B)]
+
+  def memoize[A: ClassTag](xs: Repr[A]): Repr[A]
 }
 
 object Execution {
@@ -73,6 +75,8 @@ object Execution {
 
     def zip[A, B: ClassTag](xs: Vector[A], ys: Vector[B]): Vector[(A, B)] =
       xs.zip(ys)
+
+    def memoize[A: ClassTag](xs: Vector[A]): Vector[A] = xs
 
     val ApplicativeFlatMap: ApplicativeFlatMap[Vector] = new ApplicativeFlatMap[Vector] {
       def pure[A: ClassTag](a: A): Vector[A] = Vector(a)
@@ -133,6 +137,8 @@ object Execution {
       vs: ParVector[A]
     )(f: A => K): ParVector[(K, Iterable[A])] =
       vs.groupBy(f).mapValues(_.seq).toVector.par
+
+    def memoize[A: ClassTag](xs: ParVector[A]): ParVector[A] = xs
 
     val Traverse: TraverseTag[ParVector, Applicative] =
       new TraverseTag[ParVector, Applicative] {

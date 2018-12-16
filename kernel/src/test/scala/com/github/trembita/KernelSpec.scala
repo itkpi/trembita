@@ -9,31 +9,31 @@ import scala.util.Try
 class KernelSpec extends FlatSpec {
   "DataPipeline operations" should "not be executed until 'eval'" in {
     val list = DataPipeline(1, 2, 3)
-    list.map(_ => throw new Exception("Bang"))
+    list.mapImpl(_ => throw new Exception("Bang"))
     assert(true)
   }
 
   "DataPipeline.map(square)" should "be mapped squared" in {
     val list = DataPipeline(1, 2, 3)
-    val res: Vector[Int] = list.map(i => i * i).eval
+    val res: Vector[Int] = list.mapImpl(i => i * i).eval
     assert(res == Vector(1, 4, 9))
   }
 
   "DataPipeline.map(square).evalAs[List]" should "produce a list of squares" in {
     val list = DataPipeline(1, 2, 3)
-    val res: List[Int] = list.map(i => i * i).evalAs[List]
+    val res: List[Int] = list.mapImpl(i => i * i).evalAs[List]
     assert(res == List(1, 4, 9))
   }
 
   "DataPipeline.filter(isEven)" should "contain only even numbers" in {
     val list = DataPipeline(1, 2, 3)
-    val res: List[Int] = list.filter(_ % 2 == 0).evalAs[List]
+    val res: List[Int] = list.filterImpl(_ % 2 == 0).evalAs[List]
     assert(res == List(2))
   }
 
   "DataPipeline.collect(toInt)" should "be DataPipeline[Int]" in {
     val list = DataPipeline("1", "2", "3", "abc")
-    val res = list.collect {
+    val res = list.collectImpl {
       case str if str.forall(_.isDigit) => str.toInt
     }.eval
     assert(res == Vector(1, 2, 3))
@@ -45,14 +45,14 @@ class KernelSpec extends FlatSpec {
       .mapM { str: String =>
         Try(str.toInt)
       }
-      .handleError { case e: NumberFormatException => -10 }
+      .handleErrorImpl { case e: NumberFormatException => -10 }
       .eval
     assert(res.get == Vector(1, 2, 3, -10))
   }
 
   "DataPipeline.flatMap(getWords)" should "be a list of words" in {
     val list = DataPipeline("Hello world", "hello you to")
-    val res = list.flatMap(_.split("\\s")).eval
+    val res = list.flatMapImpl(_.split("\\s")).eval
     assert(res == Vector("Hello", "world", "hello", "you", "to"))
   }
 
@@ -115,7 +115,7 @@ class KernelSpec extends FlatSpec {
 
   "DataPipeline operations" should "be executed on each force" in {
     var x: Int = 0
-    val list = DataPipeline(1, 2, 3).map { i =>
+    val list = DataPipeline(1, 2, 3).mapImpl { i =>
       x += 1; i
     }
     val res1 = list.eval
@@ -195,7 +195,7 @@ class KernelSpec extends FlatSpec {
       )
       .reduceByKey
       .mapValues(_ * 10)
-      .map { case (k, v) => s"{key=$k, value=$v}" }
+      .mapImpl { case (k, v) => s"{key=$k, value=$v}" }
       .sorted
       .eval
       .map(_.toList.mkString(", "))

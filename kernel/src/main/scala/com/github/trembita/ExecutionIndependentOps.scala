@@ -1,21 +1,84 @@
 package com.github.trembita
 
-import cats.{Monad, ~>}
+import cats.{Monad, MonadError, ~>}
 import com.github.trembita.internal._
 
 import scala.language.higherKinds
 import scala.reflect.ClassTag
+import scala.util.control.NonFatal
 
 trait ExecutionIndependentOps[F[_], A, Ex <: Execution] extends Any {
   def `this`: DataPipelineT[F, A, Ex]
 
+  def map[B: ClassTag](
+    magnet: Magnet[A, B, Ex]
+  )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
+    `this`.mapImpl[B](magnet.prepared)
+
+  def flatMap[B: ClassTag](
+    magnet: Magnet[A, DataPipelineT[F, B, Ex], Ex]
+  )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
+    `this`.flatMapImpl[B](magnet.prepared)
+
+  def collect[B: ClassTag](
+    partialMagnet: PartialMagnet[A, B, Ex]
+  )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
+    `this`.collectImpl[B](partialMagnet.prepared)
+
+  def flatCollect[B: ClassTag](
+    partialMagnet: PartialMagnet[A, DataPipelineT[F, B, Ex], Ex]
+  )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
+    collect(partialMagnet).flatten
+
+  def flatten[B: ClassTag](implicit ev: A <:< DataPipelineT[F, B, Ex],
+                           F: Monad[F]): DataPipelineT[F, B, Ex] =
+    `this`.flatMapImpl(ev)
+
+  def handleError(magnet: Magnet[Throwable, A, Ex])(
+    implicit F: MonadError[F, Throwable],
+    A: ClassTag[A]
+  ): DataPipelineT[F, A, Ex] = `this`.handleErrorImpl[A](magnet.prepared)
+
+  def recover(magnet: PartialMagnet[Throwable, A, Ex])(
+    implicit F: MonadError[F, Throwable],
+    A: ClassTag[A]
+  ): DataPipelineT[F, A, Ex] =
+    `this`.handleErrorImpl[A](
+      magnet.prepared.applyOrElse(_, (e: Throwable) => throw e)
+    )
+
+  def recoverNonFatal(magnet: Magnet[Throwable, A, Ex])(
+    implicit F: MonadError[F, Throwable],
+    A: ClassTag[A]
+  ): DataPipelineT[F, A, Ex] =
+    `this`.handleErrorImpl {
+      case NonFatal(e) => magnet.prepared(e)
+      case other       => throw other
+    }
+
+  def handleErrorWith(magnet: MagnetF[F, Throwable, A, Ex])(
+    implicit F: MonadError[F, Throwable],
+    A: ClassTag[A]
+  ): DataPipelineT[F, A, Ex] = `this`.handleErrorWithImpl[A](magnet.prepared)
+
+  def recoverWith(magnet: PartialMagnetF[F, Throwable, A, Ex])(
+    implicit F: MonadError[F, Throwable],
+    A: ClassTag[A]
+  ): DataPipelineT[F, A, Ex] =
+    `this`.handleErrorWithImpl[A](
+      magnet.prepared.applyOrElse(_, e => F.raiseError[A](e))
+    )
+
+  def memoize()(implicit A: ClassTag[A], F: Monad[F]): DataPipelineT[F, A, Ex] =
+    new MemoizedPipelineT[F, A, Ex](`this`, F)
+
   def mapM[B: ClassTag](
-    magnet: MagnetM[F, A, B, Ex]
+    magnet: MagnetF[F, A, B, Ex]
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
     `this`.mapMImpl[A, B](magnet.prepared)
 
   def mapG[B: ClassTag, G[_]](
-    magnet: MagnetM[G, A, B, Ex]
+    magnet: MagnetF[G, A, B, Ex]
   )(implicit funcK: G ~> F, F: Monad[F]): DataPipelineT[F, B, Ex] =
     `this`.mapMImpl[A, B] { a =>
       val gb = magnet.prepared(a)
@@ -65,7 +128,7 @@ trait ExecutionIndependentOps[F[_], A, Ex <: Execution] extends Any {
     **/
   def distinctBy[B: ClassTag](f: A => B)(implicit A: ClassTag[A],
                                          F: Monad[F]): DataPipelineT[F, A, Ex] =
-    this.groupBy(f).map { case (_, group) => group.head }
+    this.groupBy(f).mapImpl { case (_, group) => group.head }
 
   /**
     * Orders elements of the [[DataPipelineT]]
@@ -124,10 +187,18 @@ trait ExecutionIndependentOps[F[_], A, Ex <: Execution] extends Any {
   def cartesian[B](
     that: DataPipelineT[F, B, Ex]
   )(implicit F: Monad[F]): DataPipelineT[F, (A, B), Ex] =
-    for {
-      a <- `this`
-      b <- that
-    } yield a -> b
+    `this`.flatMapImpl { a =>
+      that.mapImpl(b => a -> b)
+    }
+
+  def mapConcat[B, Repr[_]](magnet: Magnet[A, Repr[B], Ex])(
+    implicit F: Monad[F],
+    B: ClassTag[B],
+    ev: Repr[B] => DataPipelineT[F, B, Ex]
+  ): DataPipelineT[F, B, Ex] =
+    `this`.flatMapImpl { a =>
+      ev(magnet.prepared(a))
+    }
 
   /**
     * Prints each element of the pipeline
@@ -138,7 +209,7 @@ trait ExecutionIndependentOps[F[_], A, Ex <: Execution] extends Any {
   def log(
     toString: A => String = (b: A) => b.toString
   )(implicit F: Monad[F], A: ClassTag[A]): DataPipelineT[F, A, Ex] =
-    `this`.map { a =>
+    `this`.mapImpl { a =>
       println(toString(a)); a
     }
 }

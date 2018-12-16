@@ -1,10 +1,9 @@
 package com.github.trembita.experimental
 
-import cats.instances.FutureCoflatMap
-import cats.{CoflatMap, Eval, Monad, MonadError, StackSafeMonad}
+import cats.{Eval, StackSafeMonad, ~>}
 import scala.language.experimental.macros
-import scala.language.implicitConversions
-import com.github.trembita.{InjectTaggedK, MagnetM}
+import scala.language.{higherKinds, implicitConversions}
+import com.github.trembita.{DataPipelineT, InjectTaggedK, MagnetF}
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import scala.collection.parallel.immutable.ParVector
@@ -18,9 +17,13 @@ package object spark {
   implicit def runFutureOnSpark(implicit timeout: Timeout): RunOnSpark[Future] =
     new RunFutureOnSpark(timeout)
 
+  implicit class SparkOps[F[_], A](val `this`: DataPipelineT[F, A, Spark])
+      extends AnyVal
+      with MagnetlessSparkBasicOps[F, A]
+
   implicit def materializeFuture[A, B](
     f: A => Future[B]
-  ): MagnetM[Future, A, B, Spark] = macro rewrite.materializeFutureImpl[A, B]
+  ): MagnetF[Future, A, B, Spark] = macro rewrite.materializeFutureImpl[A, B]
 
   implicit def turnVectorIntoRDD(
     implicit sc: SparkContext
@@ -29,9 +32,9 @@ package object spark {
   }
 
   implicit val turnRDDIntoVector: InjectTaggedK[RDD, Vector] =
-    new InjectTaggedK[RDD, Vector] {
-      def apply[A: ClassTag](fa: RDD[A]): Vector[A] = fa.collect().toVector
-    }
+    InjectTaggedK.fromArrow[RDD, Vector](
+      λ[RDD[?] ~> Vector[?]](_.collect().toVector)
+    )
 
   implicit def turnParVectorIntoRDD(
     implicit sc: SparkContext
@@ -40,10 +43,9 @@ package object spark {
   }
 
   implicit val turnRDDIntoParVector: InjectTaggedK[RDD, ParVector] =
-    new InjectTaggedK[RDD, ParVector] {
-      def apply[A: ClassTag](fa: RDD[A]): ParVector[A] =
-        fa.collect().toVector.par
-    }
+    InjectTaggedK.fromArrow[RDD, ParVector](
+      λ[RDD[?] ~> ParVector[?]](_.collect().toVector.par)
+    )
 
   @transient implicit lazy val globalSafeEc: ExecutionContext =
     ExecutionContext.global

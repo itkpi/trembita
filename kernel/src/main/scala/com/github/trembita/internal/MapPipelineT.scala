@@ -67,7 +67,7 @@ protected[trembita] class BaseMapPipelineT[F[_], K, V, Ex <: Execution](
   def filterKeys(
     p: K => Boolean
   )(implicit F: Monad[F]): MapPipelineT[F, K, V, Ex] =
-    new BaseMapPipelineT[F, K, V, Ex](source.collect {
+    new BaseMapPipelineT[F, K, V, Ex](source.collectImpl {
       case (k, v) if p(k) => (k, v)
     }, F)
 
@@ -83,12 +83,12 @@ protected[trembita] class BaseMapPipelineT[F[_], K, V, Ex <: Execution](
         .evalFunc[(K, V)](Ex)
     )(vs => Ex.distinctKeys(vs).asInstanceOf[Ex.Repr[B]])
 
-  override def handleError[B >: (K, V): ClassTag](
+  override def handleErrorImpl[B >: (K, V): ClassTag](
     f: Throwable => B
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
     new BaseMapPipelineT[F, K, V, Ex](
       source
-        .handleError(f)
+        .handleErrorImpl(f)
         .asInstanceOf[DataPipelineT[F, (K, V), Ex]],
       F
     )

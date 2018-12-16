@@ -23,7 +23,9 @@ trait DataPipelineT[F[_], +A, Ex <: Execution] extends Serializable {
     * @param f - transformation function
     * @return - transformed [[DataPipelineT]]
     **/
-  def map[B: ClassTag](f: A => B)(implicit F: Monad[F]): DataPipelineT[F, B, Ex]
+  protected[trembita] def mapImpl[B: ClassTag](f: A => B)(
+    implicit F: Monad[F]
+  ): DataPipelineT[F, B, Ex]
 
   /**
     * Monad.flatMap
@@ -32,12 +34,9 @@ trait DataPipelineT[F[_], +A, Ex <: Execution] extends Serializable {
     * @param f - transformation function from [[A]] into {{{DataPipeline[B]}}}
     * @return - transformed [[DataPipelineT]]
     **/
-  def flatMap[B: ClassTag](f: A => DataPipelineT[F, B, Ex])(
-    implicit F: Monad[F]
-  ): DataPipelineT[F, B, Ex]
-
-  def flatten[B: ClassTag](implicit ev: A <:< DataPipelineT[F, B, Ex],
-                           F: Monad[F]): DataPipelineT[F, B, Ex] = flatMap(ev)
+  protected[trembita] def flatMapImpl[B: ClassTag](
+    f: A => DataPipelineT[F, B, Ex]
+  )(implicit F: Monad[F]): DataPipelineT[F, B, Ex]
 
   /**
     * Guarantees that [[DataPipelineT]]
@@ -46,10 +45,10 @@ trait DataPipelineT[F[_], +A, Ex <: Execution] extends Serializable {
     * @param p - predicate
     * @return - filtered [[DataPipelineT]]
     **/
-  def filter[AA >: A](
+  protected[trembita] def filterImpl[AA >: A](
     p: A => Boolean
   )(implicit F: Monad[F], A: ClassTag[AA]): DataPipelineT[F, AA, Ex] =
-    collect[AA]({ case a if p(a) => a })
+    collectImpl[AA]({ case a if p(a) => a })
 
   /**
     * Applies a [[PartialFunction]] to the [[DataPipelineT]]
@@ -58,27 +57,22 @@ trait DataPipelineT[F[_], +A, Ex <: Execution] extends Serializable {
     * @param pf - partial function
     * @return - transformed [[DataPipelineT]]
     **/
-  def collect[B: ClassTag](pf: PartialFunction[A, B])(
+  protected[trembita] def collectImpl[B: ClassTag](pf: PartialFunction[A, B])(
     implicit F: Monad[F]
   ): DataPipelineT[F, B, Ex]
-
-  def flatCollect[B: ClassTag](
-    pf: PartialFunction[A, DataPipelineT[F, B, Ex]]
-  )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
-    collect(pf).flatten
 
   protected[trembita] def mapMImpl[AA >: A, B: ClassTag](
     f: A => F[B]
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
     new MapMonadicPipelineT[F, A, B, Ex](f, this)(F)
 
-  def handleError[B >: A: ClassTag](f: Throwable => B)(
+  protected[trembita] def handleErrorImpl[B >: A: ClassTag](f: Throwable => B)(
     implicit F: MonadError[F, Throwable]
   ): DataPipelineT[F, B, Ex]
 
-//  def handleErrorWith[B >: A: ClassTag](f: Throwable => DataPipelineT[F, B, Ex])(
-//    implicit F: MonadError[F, Throwable]
-//  ): DataPipelineT[F, B, Ex]
+  protected[trembita] def handleErrorWithImpl[B >: A: ClassTag](
+    f: Throwable => F[B]
+  )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex]
 
   /**
     * Forces evaluation of [[DataPipelineT]]

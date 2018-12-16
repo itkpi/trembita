@@ -2,7 +2,6 @@ package com.github
 
 import scala.language.{higherKinds, implicitConversions}
 import cats._
-import cats.implicits._
 import com.github.trembita.internal._
 import scala.reflect.ClassTag
 
@@ -20,6 +19,14 @@ package object trembita extends standardMagnets with arrows with injections {
   )(implicit ex: Ex): ExecutionDependentOps[F, A, Ex] =
     new ExecutionDependentOps(self)(ex)
 
+  implicit class SeqOps[F[_], A](val `this`: DataPipelineT[F, A, Sequential])
+      extends AnyVal
+      with MagnetlessOps[F, A, Sequential]
+
+  implicit class ParOps[F[_], A](val `this`: DataPipelineT[F, A, Parallel])
+      extends AnyVal
+      with MagnetlessOps[F, A, Parallel]
+
   type PairPipelineT[F[_], K, V, Ex <: Execution] = DataPipelineT[F, (K, V), Ex]
 
   /**
@@ -31,15 +38,15 @@ package object trembita extends standardMagnets with arrows with injections {
   ) extends AnyVal {
     def mapValues[W](
       f: V => W
-    )(implicit F: Monad[F]): PairPipelineT[F, K, W, Ex] = self.map {
+    )(implicit F: Monad[F]): PairPipelineT[F, K, W, Ex] = self.mapImpl {
       case (k, v) => (k, f(v))
     }
 
     def keys(implicit F: Monad[F], K: ClassTag[K]): DataPipelineT[F, K, Ex] =
-      self.map(_._1)
+      self.mapImpl(_._1)
 
     def values(implicit F: Monad[F], V: ClassTag[V]): DataPipelineT[F, V, Ex] =
-      self.map(_._2)
+      self.mapImpl(_._2)
 
     /**
       * Merges all values [[V]]

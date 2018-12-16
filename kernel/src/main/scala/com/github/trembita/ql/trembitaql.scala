@@ -26,8 +26,9 @@ trait trembitaqlForPipeline[A,
                             G <: GroupingCriteria,
                             T <: AggDecl,
                             R <: AggRes,
-                            Comb] {
-  def applyWithoutTopTotals[F[_], Ex <: Execution](
+                            Comb,
+                            Ex <: Execution] {
+  def applyWithoutTopTotals[F[_]](
     pipeline: DataPipelineT[F, A, Ex],
     queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb]
   )(implicit F: MonadError[F, Throwable],
@@ -161,6 +162,7 @@ object trembitaql {
       case List(gHx, gTx) =>
         c.Expr[trembitaql[A, G, T, R, Comb]](q"""
           import QueryBuilder._, QueryResult._, cats.data.NonEmptyList, shapeless._, GroupingCriteria._, AggDecl._, AggRes._
+          import com.github.trembita._
           new trembitaql[$A, $G, $T, $R, $Comb] {
             def apply(records: Seq[$A], qb: QueryBuilder.Empty[$A] => Query[$A, $G, $T, $R, $Comb])
             : QueryResult[$A, $G, AggFunc.Result[$T, $R, $Comb]] = {
@@ -217,9 +219,10 @@ object trembitaqlForPipeline {
            G <: GroupingCriteria: c.WeakTypeTag,
            T <: AggDecl: c.WeakTypeTag,
            R <: AggRes: c.WeakTypeTag,
-           Comb: c.WeakTypeTag](
+           Comb: c.WeakTypeTag,
+           Ex <: Execution: c.WeakTypeTag](
     c: blackbox.Context
-  ): c.Expr[trembitaqlForPipeline[A, G, T, R, Comb]] = {
+  ): c.Expr[trembitaqlForPipeline[A, G, T, R, Comb, Ex]] = {
 
     import c.universe._
 
@@ -228,6 +231,7 @@ object trembitaqlForPipeline {
     val R = weakTypeOf[R].dealias
     val A = weakTypeOf[A].dealias
     val Comb = weakTypeOf[Comb].dealias
+    val Ex = weakTypeOf[Ex].dealias
     val gnil = typeOf[GroupingCriteria.GNil].dealias
 
     @tailrec def criteriasTypes(acc: List[(Type, Type)],
@@ -334,15 +338,15 @@ object trembitaqlForPipeline {
 
     G.typeArgs match {
       case List(gHx, gTx) =>
-        val expr = c.Expr[trembitaqlForPipeline[A, G, T, R, Comb]](q"""
+        val expr = c.Expr[trembitaqlForPipeline[A, G, T, R, Comb, Ex]](q"""
           import QueryBuilder._, QueryResult._, cats.data.NonEmptyList, shapeless._, GroupingCriteria._, AggDecl._, AggRes._
-          new trembitaqlForPipeline[$A, $G, $T, $R, $Comb] {
-            def applyWithoutTopTotals[F[_], Ex <: Execution]
-            (pipeline  : DataPipelineT[F, $A,  Ex],
+          new trembitaqlForPipeline[$A, $G, $T, $R, $Comb, $Ex] {
+            def applyWithoutTopTotals[F[_]]
+            (pipeline  : DataPipelineT[F, $A,  $Ex],
              qb        : QueryBuilder.Empty[$A] => Query[$A, $G, $T, $R, $Comb])
             (implicit F: cats.MonadError[F, Throwable],
-            ex: Ex)
-            : DataPipelineT[F, QueryResult[$A, $G, AggFunc.Result[$T, $R, $Comb]], Ex] = {
+            ex: $Ex)
+            : DataPipelineT[F, QueryResult[$A, $G, AggFunc.Result[$T, $R, $Comb]], $Ex] = {
                val query: Query[$A, $G, $T, $R, $Comb] = qb(new QueryBuilder.Empty[$A])
                import query._
 
@@ -373,10 +377,21 @@ object trembitaqlForPipeline {
     }
   }
 
-  implicit def deriveQuery[A,
-                           G <: GroupingCriteria,
-                           T <: AggDecl,
-                           R <: AggRes,
-                           Comb]: trembitaqlForPipeline[A, G, T, R, Comb] =
-    macro impl[A, G, T, R, Comb]
+  implicit def deriveQuerySeq[
+    A,
+    G <: GroupingCriteria,
+    T <: AggDecl,
+    R <: AggRes,
+    Comb
+  ]: trembitaqlForPipeline[A, G, T, R, Comb, Sequential] =
+    macro impl[A, G, T, R, Comb, Sequential]
+
+  implicit def deriveQueryPar[
+    A,
+    G <: GroupingCriteria,
+    T <: AggDecl,
+    R <: AggRes,
+    Comb
+  ]: trembitaqlForPipeline[A, G, T, R, Comb, Parallel] =
+    macro impl[A, G, T, R, Comb, Parallel]
 }

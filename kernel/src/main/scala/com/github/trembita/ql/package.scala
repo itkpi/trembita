@@ -85,7 +85,7 @@ package object ql
   ) extends AnyVal {
     def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
       queryF: Empty[A] => Query[A, G, T, R, Comb]
-    )(implicit trembitaql: trembitaqlForPipeline[A, G, T, R, Comb],
+    )(implicit trembitaql: trembitaqlForPipeline[A, G, T, R, Comb, Ex],
       ex: Ex,
       F: MonadError[F, Throwable])
       : DataPipelineT[F, QueryResult[A, G, AggFunc.Result[T, R, Comb]], Ex] =
@@ -97,7 +97,7 @@ package object ql
   ) extends AnyVal {
     def as[R: ClassTag](implicit ev: ToCaseClass.Aux[A, G, T, R],
                         F: Monad[F]): DataPipelineT[F, ev.Out, Ex] =
-      self.map(_.as[R])
+      self.mapImpl(_.as[R])
   }
 
   /**

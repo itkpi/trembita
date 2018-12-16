@@ -94,7 +94,7 @@ class rewrite(val c: whitebox.Context) {
     val freshMagnetName = TermName(c.freshName(s"MagnetMSparkFuture"))
     val magnetExpr =
       q"""
-          object $freshMagnetName extends MagnetM[$Future, $A, $B, $Spark] {
+          object $freshMagnetName extends MagnetF[$Future, $A, $B, $Spark] {
             object $freshObjectName {
               ..$initAllEc
             }
@@ -102,7 +102,7 @@ class rewrite(val c: whitebox.Context) {
               $updatedF
             }
           }
-          ($freshMagnetName: MagnetM[$Future, $A, $B, $Spark])
+          ($freshMagnetName: MagnetF[$Future, $A, $B, $Spark])
       """
     ifDebug {
       println("--- Rewritten ---")

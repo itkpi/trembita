@@ -24,10 +24,10 @@ object CassandraSource {
   def apply[A: ClassTag](session: Session, statement: Statement)(
     extractor: Row => A
   ): DataPipeline[A, Execution.Sequential] =
-    rows(session, statement).map(extractor)
+    rows(session, statement).mapImpl(extractor)
 
   def applyF[F[_], A: ClassTag](session: Session, statement: Statement)(
     extractor: Row => A
   )(implicit F: Sync[F]): DataPipelineT[F, A, Sequential] =
-    rowsF[F](session, statement).map(extractor)
+    rowsF[F](session, statement).mapImpl(extractor)
 }

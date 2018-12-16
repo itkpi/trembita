@@ -16,7 +16,7 @@ object Basic extends IOApp {
       .to[Parallel]
       .flatMap(_.split(" "))
       .map(_.toInt)
-      .handleError { case NonFatal(_) => -100 }
+      .recoverNonFatal(_ => -100)
 
     val result1: IO[String] =
       numbers.eval.map(_.mkString(", ")).flatTap(putStrLn)
@@ -26,15 +26,15 @@ object Basic extends IOApp {
       .map(_ + 1)
       .to[Parallel]
       .flatMap(i => i :: (48 + i) :: Nil)
-      .mapM { i: Int =>
+      .mapM { i =>
         putStrLn("mapM is working") *>
           IO { i * 12 }
       }
       .collect {
         case i if i % 2 == 0 => s"I'm an even number: $i"
       }
-      .mapG((str: String) => Try { str + "/Try" })
-      .mapM((str: String) => IO { str + "/IO" })
+      .mapG(str => Try { str + "/Try" })
+      .mapM(str => IO { str + "/IO" })
 
     val result2: IO[Vector[String]] = strings.eval
 

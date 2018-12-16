@@ -26,6 +26,8 @@ sealed trait Spark extends Execution {
   def distinctKeys[A: ClassTag, B: ClassTag](repr: RDD[(A, B)]): RDD[(A, B)] =
     repr.reduceByKey((a, b) => a)
 
+  def memoize[A: ClassTag](xs: RDD[A]): RDD[A] = xs.persist()
+
   val ApplicativeFlatMap: ApplicativeFlatMap[RDD] =
     new ApplicativeFlatMap[RDD] {
       def flatMap[A, B: ClassTag](fa: RDD[A])(f: A => RDD[B]): RDD[B] =

@@ -17,8 +17,9 @@ object InjectTaggedK {
 }
 
 trait injections {
-  implicit val turnVectorIntoPar: InjectTaggedK[Vector, ParVector] =
+  implicit val injectVectorIntoPar: InjectTaggedK[Vector, ParVector] =
     InjectTaggedK.fromArrow(λ[Vector[?] ~> ParVector[?]](_.par))
-  implicit val turnParVectorIntoSeq: InjectTaggedK[ParVector, Vector] =
+
+  implicit val injectParVectorIntoSeq: InjectTaggedK[ParVector, Vector] =
     InjectTaggedK.fromArrow(λ[ParVector[?] ~> Vector[?]](_.seq))
 }

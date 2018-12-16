@@ -17,7 +17,7 @@ object PhantomSource {
     implicit val session: Session = connection.session
     CassandraSource
       .rows(connection.session, query.executableQuery.statement())
-      .map(row => query.fromRow(new PhantomRow(row, ProtocolVersion.V5)))
+      .mapImpl(row => query.fromRow(new PhantomRow(row, ProtocolVersion.V5)))
   }
 
   def applyF[R: ClassTag, T <: Table[T, R], F[_], Ex <: Execution](
@@ -28,6 +28,6 @@ object PhantomSource {
     implicit val session: Session = connection.session
     CassandraSource
       .rowsF[F](connection.session, query.executableQuery.statement())
-      .map(row => query.fromRow(new PhantomRow(row, ProtocolVersion.V5)))
+      .mapImpl(row => query.fromRow(new PhantomRow(row, ProtocolVersion.V5)))
   }
 }
