@@ -96,6 +96,7 @@ Happy to say that using `cats.effect.IO` on spark is also supported =)
 ### Limitations
  - Be careful not to make closures against the `SparkContext` because it will fall in runtime
  - Other non-serializable resources also will fail in runtime. This will be adapted later
+ - QL for spark is in progress. It would be a type-safe wrapper for native [Spark SQL](http://spark.apache.org/docs/latest/sql-programming-guide.html)
 
 ### Examples
 You can find full example [here](./examples/src/main/scala/com/examples/spark/Main.scala).
