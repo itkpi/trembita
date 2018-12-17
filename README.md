@@ -90,19 +90,62 @@ By default a special macro detects all references to `ExecutionContext` within l
 All `ExecutionContext`'s should be globally accessable (e.g. need to be `def` or `val` in some object).
 If not - your code won't compile with appropriate error.
 If everyting is ok - macro creates helper object with references to all found `ExecutionContext`s making them `@transient lazy val` (well known technique) and rewrites your lambda so that all async transformations references to fields in that object.
+You can find full example [here](./examples/src/main/scala/com/examples/spark/Main.scala).
 
 Happy to say that using `cats.effect.IO` on spark is also supported =)
-
+### FSM on Spark Datasets
+You can now define stateful transformations on Spark Dataset using Finite State Machines.
+It's implemented using `Dataset.mapWithState`.
+Defining FSM for Spark is as simple as defining FSM for regular pipeline except of state is preserved only at level for specific `key` (due to `mapWithState` limitation).
+To do so, use `fsmByKey`:
+```scala
+val pipeline: DataPipelineT[F, A, Spark] = ???
+pipeline.fsmByKey(getKey = ???)(... /* your FSM definition here */)
+```
+Full example can be found [here](./examples/src/main/scala/com/examples/spark/FSMSample.scala).
 ### Limitations
  - Be careful not to make closures against the `SparkContext` because it will fall in runtime
  - Other non-serializable resources also will fail in runtime. This will be adapted later
  - QL for spark is in progress. It would be a type-safe wrapper for native [Spark SQL](http://spark.apache.org/docs/latest/sql-programming-guide.html)
 
 ### Examples
-You can find full example [here](./examples/src/main/scala/com/examples/spark/Main.scala).
-You can also find a script to run the example on spark cluster within docker:
+You can find a script to run the example on spark cluster within docker:
 ```bash
 # in project root
 sbt trembita-examples/assembly # prepare fat jar for spark-submit
 sh examples/src/main/resources/spark/cluster/run.sh
 ```
+To run Spark FSM example in docker use the following script:
+```bash
+# in project root
+sbt trembita-examples/assembly # prepare fat jar for spark-submit
+sh examples/src/main/resources/spark/cluster/run_fsm.sh
+```
+
+## Experimental: Akka streams support
+Trembita now supports running a part of your transformations on [akka-streams](https://doc.akka.io/docs/akka/current/stream/).
+To use it, add the following dependency:
+```scala
+libraryDependencies += "com.github.vitaliihonta.trembita" %% "trembita-akka-streams" % trembitaV
+```
+
+You can run existing pipeline throught akka stream or create a pipeline from source directly:
+```scala
+import akka.stream.scaladsl._
+import com.github.trembita.experimental.akka._
+
+val fileLines =
+  DataPipelineT
+    .fromReprF[IO, ByteString, Akka](IO {
+      FileIO
+        .fromPath(Paths.get(getClass.getResource("/words.txt").toURI))
+        .mapMaterializedValue(_ => NotUsed)
+    })
+```
+
+Akka streaming pipelines also support `FSM` using custom graph state:
+```scala
+val pipeline: DataPipelineT[IO, Int, Akka] = ???
+val stateful = pipeline.fsm(/* your FSM definition here */)
+```
+You can find full examples [here](./examples/src/main/scala/com/examples/akka)
