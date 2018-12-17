@@ -3,7 +3,9 @@ package com.github.trembita.ql
 import cats.Monoid
 import java.time._
 import scala.annotation.implicitNotFound
-@implicitNotFound("""
+
+@implicitNotFound(
+  """
 No found implicit value: Default[${A}]
 Please add imports:
 {{{
@@ -16,18 +18,24 @@ trait Default[A] {
   def get: A
 }
 
-object Default {
+trait LowPriorityDefaults {
   implicit def defaultFromMonoid[A](implicit A: Monoid[A]): Default[A] =
     new Default[A] {
       val get: A = A.empty
     }
+
   implicit object DefaultDate extends Default[LocalDate] {
     val get: LocalDate = LocalDate.MIN
   }
+
   implicit object DefaultTime extends Default[LocalTime] {
     val get: LocalTime = LocalTime.MIN
   }
+
   implicit object DefaultDateTime extends Default[LocalDateTime] {
     val get: LocalDateTime = LocalDateTime.MIN
   }
+
 }
+
+object Default extends LowPriorityDefaults

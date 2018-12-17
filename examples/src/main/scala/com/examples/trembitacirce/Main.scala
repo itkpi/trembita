@@ -5,10 +5,7 @@ import com.github.trembita.ql.show._
 import com.github.trembita.circe._
 import io.circe._
 import io.circe.syntax._
-import cats._
 import cats.implicits._
-import spire.implicits._
-import QueryResult._
 import GroupingCriteria._
 import AggRes._
 import AggDecl._

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+sbt examples/assembly
 docker exec -it spark-master rm -f /spark/trembita-spark.jar
 docker exec -it spark-worker-1 rm -f /spark/trembita-spark.jar
 docker cp examples/target/scala-2.12/trembita-spark.jar spark-master:/spark/

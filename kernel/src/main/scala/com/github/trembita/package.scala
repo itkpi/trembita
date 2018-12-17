@@ -13,12 +13,8 @@ package object trembita extends standardMagnets with arrows {
   implicit class CommonOps[F[_], A, Ex <: Environment](
     val `this`: DataPipelineT[F, A, Ex]
   ) extends AnyVal
-      with EnvironmentIndependentOps[F, A, Ex] {}
-
-  implicit def liftOps[F[_], A, Ex <: Environment](
-    self: DataPipelineT[F, A, Ex]
-  )(implicit ex: Ex): EnvironmentDependentOps[F, A, Ex] =
-    new EnvironmentDependentOps(ex)(self)
+      with EnvironmentIndependentOps[F, A, Ex]
+      with EnvironmentDependentOps[F, A, Ex]
 
   implicit class SeqOps[F[_], A](val `this`: DataPipelineT[F, A, Sequential])
       extends AnyVal

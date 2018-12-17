@@ -1,16 +1,18 @@
 package com.github.trembita.experimental
 
 import cats.effect.IO
-import cats.{Eval, Functor, Id, StackSafeMonad, ~>}
+import cats.{Eval, Functor, Id, Monad, StackSafeMonad, ~>}
 import com.github.trembita.operations.{CanSort, InjectTaggedK, MagnetF}
 
 import scala.language.experimental.macros
 import scala.language.{higherKinds, implicitConversions}
 import com.github.trembita.DataPipelineT
 import com.github.trembita.fsm.{FSM, InitialState}
+import com.github.trembita.ql.QueryBuilder.Query
+import com.github.trembita.ql.{AggDecl, AggRes, GroupingCriteria, QueryBuilder}
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.Encoder
+import org.apache.spark.sql._
 
 import scala.reflect.runtime.universe.TypeTag
 import scala.collection.parallel.immutable.ParVector
@@ -21,7 +23,9 @@ import scala.util.control.NonFatal
 package object spark {
   implicit val runIdOnSpark: RunOnSpark[cats.Id] = new RunIdOnSpark
 
-  implicit def runFutureOnSpark(implicit timeout: AsyncTimeout): RunOnSpark[Future] =
+  implicit def runFutureOnSpark(
+    implicit timeout: AsyncTimeout
+  ): RunOnSpark[Future] =
     new RunFutureOnSpark(timeout)
 
   implicit def runIOOnSpark(implicit timeout: AsyncTimeout): RunOnSpark[IO] =
@@ -32,6 +36,14 @@ package object spark {
       with MagnetlessSparkBasicOps[F, A] {
     def evalWith(run: Spark#Run[F])(implicit F: Functor[F]): F[Vector[A]] =
       `this`.eval(F, run)
+
+    def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
+      queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb]
+    )(implicit trembitaqlForSpark: trembitaqlForSpark[A, G, T, R, Comb],
+      run: Spark#Run[F],
+      F: Monad[F],
+      A: ClassTag[A]): DataPipelineT[F, Row, Spark] =
+      `this`.mapRepr[Row](trembitaqlForSpark.apply(_, queryF))
   }
 
   implicit class SparkIOOps[A](val `this`: DataPipelineT[IO, A, Spark])
@@ -47,6 +59,10 @@ package object spark {
   ): InjectTaggedK[Vector, RDD] = new InjectTaggedK[Vector, RDD] {
     def apply[A: ClassTag](fa: Vector[A]): RDD[A] = sc.parallelize(fa)
   }
+
+  implicit def turnVectorIntoRDD2(
+    implicit spark: SparkSession
+  ): InjectTaggedK[Vector, RDD] = turnVectorIntoRDD(spark.sparkContext)
 
   implicit val turnRDDIntoVector: InjectTaggedK[RDD, Vector] =
     InjectTaggedK.fromArrow[RDD, Vector](
@@ -138,4 +154,20 @@ package object spark {
 
   implicit def runIODsl(timeout: AsyncTimeout): RunOnSpark[IO] =
     new RunIOOnSpark(timeout)
+
+  private val productAgg = new ProductAggregate
+  private val rsmAgg = new RMSAggregate
+
+  def product(e: Column): Column = productAgg(e)
+  def random(e: Column): Column = new RandomAggregate(e.expr)()
+  def rsm(e: Column): Column = rsmAgg(e)
+
+  implicit class DatasetOps[A](private val self: Dataset[A]) extends AnyVal {
+    def filterIf(cond: Boolean)(p: Column): Dataset[A] =
+      if (cond) self.filter(p)
+      else self
+
+    def filterMany(cond0: Column, rest: Column*): Dataset[A] =
+      rest.foldLeft(self.filter(cond0))(_ filter _)
+  }
 }

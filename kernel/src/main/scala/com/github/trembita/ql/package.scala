@@ -2,7 +2,6 @@ package com.github.trembita
 
 import cats._
 import cats.implicits._
-
 import language.{higherKinds, implicitConversions}
 import language.experimental.macros
 import shapeless._
@@ -10,14 +9,13 @@ import ql.AggRes._
 import ql.AggDecl._
 import ql.QueryBuilder._
 import ql.GroupingCriteria._
-import shapeless.ops.hlist.Tupler
-
 import scala.reflect.ClassTag
 
 package object ql
     extends orderingInstances
     with aggregationInstances
-    with monoidInstances {
+    with monoidInstances
+    with spire.std.AnyInstances {
 
   implicit class TaggingSyntax[A](private val self: A) extends AnyVal {
     def as[T]: A :@ T = new :@[A, T](self)
@@ -69,27 +67,18 @@ package object ql
     def random: TaggedAgg[A, U, AggFunc.Type.Random] = TaggedAgg(self)
   }
 
-  /** Trembita QL for [[Seq]] */
-  implicit class TrembitaQL[A](private val self: Seq[A]) extends AnyVal {
-    def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
-      queryF: Empty[A] => Query[A, G, T, R, Comb]
-    )(
-      implicit trembitaql: trembitaql[A, G, T, R, Comb]
-    ): QueryResult[A, G, AggFunc.Result[T, R, Comb]] =
-      trembitaql(self, queryF)
-  }
-
   /** Trembita QL for [[DataPipelineT]] */
   implicit class TrembitaQLForPipeline[A, F[_], Ex <: Environment](
     private val self: DataPipelineT[F, A, Ex]
   ) extends AnyVal {
     def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
       queryF: Empty[A] => Query[A, G, T, R, Comb]
-    )(implicit trembitaql: trembitaqlForPipeline[A, G, T, R, Comb, Ex],
+    )(implicit trembitaql: trembitaql[A, G, T, R, Comb, Ex],
       ex: Ex,
+      run: Ex#Run[F],
       F: MonadError[F, Throwable])
-      : DataPipelineT[F, QueryResult[A, G, AggFunc.Result[T, R, Comb]], Ex] =
-      trembitaql.applyWithoutTopTotals(self, queryF)
+      : DataPipelineT[F, QueryResult[A, G, R], Ex] =
+      trembitaql.apply(self, queryF)
   }
 
   implicit class AsOps[F[_], Ex <: Environment, A, G <: GroupingCriteria, T](

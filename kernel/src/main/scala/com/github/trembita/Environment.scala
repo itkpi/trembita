@@ -26,9 +26,8 @@ trait TraverseTag[F[_], Run[_[_]]] extends Serializable {
   def sequence[G[_]: Run, A: ClassTag](fga: F[G[A]]): G[F[A]] =
     traverse(fga)(ga => ga)
 
-  def traverse_[G[_], A](
-    fa: F[A]
-  )(f: A => G[Unit])(implicit G: Run[G], G0: Functor[G]): G[Unit] =
+  def traverse_[G[_], A](fa: F[A])(f: A => G[Unit])(implicit G: Run[G],
+                                                    G0: Functor[G]): G[Unit] =
     G0.map(traverse(fa)(f))(_ => {})
 }
 
@@ -50,7 +49,9 @@ trait Environment extends Serializable {
 
   def foreach[A](repr: Repr[A])(f: A => Unit): Result[Unit]
 
-  def foreachF[F[_], A](repr: Repr[A])(f: A => F[Unit])(implicit Run: Run[F], F: Functor[F]): F[Unit] =
+  def foreachF[F[_], A](
+    repr: Repr[A]
+  )(f: A => F[Unit])(implicit Run: Run[F], F: Functor[F]): F[Unit] =
     TraverseRepr.traverse_[F, A](repr)(f)
 
   def groupBy[A, K: ClassTag](vs: Repr[A])(f: A => K): Repr[(K, Iterable[A])]
