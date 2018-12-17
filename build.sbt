@@ -123,6 +123,7 @@ lazy val trembita_spark =
         val sparkV = "2.4.0"
         Seq(
           "org.apache.spark" %% "spark-core" % sparkV % "provided",
+          "org.apache.spark" %% "spark-sql" % sparkV % "provided",
           "org.scalamacros" %% "resetallattrs" % "1.0.0"
         )
       }
@@ -177,7 +178,8 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
         "com.datastax.cassandra" % "cassandra-driver-core" % "3.6.0",
         "com.datastax.cassandra" % "cassandra-driver-extras" % "3.6.0",
         "com.outworkers" %% "phantom-jdk8" % "2.29.0",
-        "org.apache.spark" %% "spark-core" % sparkV % "provided"
+        "org.apache.spark" %% "spark-core" % sparkV % "provided",
+        "org.apache.spark" %% "spark-sql" % sparkV % "provided"
       ).map(_ exclude ("org.slf4j", "log4j-over-slf4j"))
     },
     test in assembly := {},
