@@ -2,7 +2,7 @@ import xerial.sbt.Sonatype._
 
 lazy val snapshot: Boolean = true
 lazy val v: String = {
-  val vv = "0.3.0"
+  val vv = "0.4.0"
   if (!snapshot) vv
   else vv + "-SNAPSHOT"
 }
