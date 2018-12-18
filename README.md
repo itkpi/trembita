@@ -11,7 +11,7 @@ Trembita allows you to make complecated transformation pipelines where some of t
 ```scala
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 libraryDependencies ++= {
-  val trembitaV = "0.3.0-SNAPSHOT"
+  val trembitaV = "0.5.0-SNAPSHOT"
   Seq(
     "com.github.vitaliihonta.trembita" %% "trembita-kernel" % trembitaV, // kernel,
     
@@ -19,12 +19,15 @@ libraryDependencies ++= {
     
     "com.github.vitaliihonta.trembita" %% "trembita-cassandra-connector-phantom" % trembitaV, // phantom
     
-    "com.github.vitaliihonta.trembita" %% "trembita-slf4j" % trembitaV, // slf4j, for logging
-    
-    "com.github.vitaliihonta.trembita" %% "trembita-circe" % trembitaV // circe, for transforming query results into json
+    "com.github.vitaliihonta.trembita" %% "trembita-slf4j" % trembitaV // slf4j, for logging    
   )
 }
 ```
+
+## Core features
+
+- [Typesafe querying dsl](./examples/src/main/scala/com/examples/kernel/QLSample.scala) for data pipelines provides a unified model and typechecking for various data sources (including collections and Spark RDD)
+- [Purely functional stateful transformations using Finite State Machines](./examples/src/main/scala/com/examples/kernel/FSMSample.scala) provides dsl for defining FSM that can be run on various data source (collections, Spark Datasets, Akka Streams...) 
 
 
 ## Processing modules
@@ -34,10 +37,11 @@ libraryDependencies ++= {
  - Any `Iterable` - just wrap your collection into `DataPipeline`
  - [cassandra connector](./cassandra_connector) - fetch rows from your `Cassandra` database with `CassandraSource`
  - [cassandra phantom](./cassandra_connector_phantom) - provides [Phantom](https://github.com/outworkers/phantom) library support
+ - [akka stream](./integrations/akka/streams) - allows to make pipeline from akka stream (e.g. from any data source compatible with akka)
+ - [spark RDD / DataSet](./integrations/spark/core) - allows to make pipeline from RDD / DataSet (e.g. from any non-streaming data source compatible with Spark)
  
 ## Miscelone
  - [trembita slf4j](./trembita-slf4j) - provides [slf4j](https://www.slf4j.org/) logging support. Use it with any compatible logging backend ([logback](https://logback.qos.ch/), [log4j](https://logging.apache.org/log4j/2.x/))
- - [trembita circe](./serialization/circe) - allows to convert aggregation results directly into JSON using [Circe](https://github.com/circe/circe)
  
  ## Experimental: Spark support
  ### Introducing spark pipelines 
@@ -103,10 +107,11 @@ val pipeline: DataPipelineT[F, A, Spark] = ???
 pipeline.fsmByKey(getKey = ???)(... /* your FSM definition here */)
 ```
 Full example can be found [here](./examples/src/main/scala/com/examples/spark/FSMSample.scala).
+### Typesafe QL on RDD
+See the full example [here](./examples/src/main/scala/com/examples/spark/QLExample.scala)
 ### Limitations
- - Be careful not to make closures against the `SparkContext` because it will fall in runtime
+ - Be careful not to make closures against the `SparkContext` or `SparkSession` because it will fall in runtime
  - Other non-serializable resources also will fail in runtime. This will be adapted later
- - QL for spark is in progress. It would be a type-safe wrapper for native [Spark SQL](http://spark.apache.org/docs/latest/sql-programming-guide.html)
 
 ### Examples
 You can find a script to run the example on spark cluster within docker:
@@ -122,6 +127,12 @@ sbt trembita-examples/assembly # prepare fat jar for spark-submit
 sh examples/src/main/resources/spark/cluster/run_fsm.sh
 ```
 
+To run Spark QL example in docker use the following script:
+```bash
+# in project root
+sbt trembita-examples/assembly # prepare fat jar for spark-submit
+sh examples/src/main/resources/spark/cluster/run_ql.sh
+```
 ## Experimental: Akka streams support
 Trembita now supports running a part of your transformations on [akka-streams](https://doc.akka.io/docs/akka/current/stream/).
 To use it, add the following dependency:
@@ -149,3 +160,8 @@ val pipeline: DataPipelineT[IO, Int, Akka] = ???
 val stateful = pipeline.fsm(/* your FSM definition here */)
 ```
 You can find full examples [here](./examples/src/main/scala/com/examples/akka)
+
+
+### To be done
+- caching
+- integration with distributed streaming frameworks

@@ -11,18 +11,14 @@ package object trembita extends standardMagnets with arrows {
   type DataPipeline[A, Ex <: Environment] = DataPipelineT[Id, A, Ex]
 
   implicit class CommonOps[F[_], A, Ex <: Environment](
-    val `this`: DataPipelineT[F, A, Ex]
+      val `this`: DataPipelineT[F, A, Ex]
   ) extends AnyVal
       with EnvironmentIndependentOps[F, A, Ex]
       with EnvironmentDependentOps[F, A, Ex]
 
-  implicit class SeqOps[F[_], A](val `this`: DataPipelineT[F, A, Sequential])
-      extends AnyVal
-      with MagnetlessOps[F, A, Sequential]
+  implicit class SeqOps[F[_], A](val `this`: DataPipelineT[F, A, Sequential]) extends AnyVal with MagnetlessOps[F, A, Sequential]
 
-  implicit class ParOps[F[_], A](val `this`: DataPipelineT[F, A, Parallel])
-      extends AnyVal
-      with MagnetlessOps[F, A, Parallel]
+  implicit class ParOps[F[_], A](val `this`: DataPipelineT[F, A, Parallel]) extends AnyVal with MagnetlessOps[F, A, Parallel]
 
   type PairPipelineT[F[_], K, V, Ex <: Environment] =
     DataPipelineT[F, (K, V), Ex]
@@ -32,10 +28,10 @@ package object trembita extends standardMagnets with arrows {
     * (NOT [[MapPipelineT]])
     **/
   implicit class PairPipelineOps[F[_], K, V, Ex <: Environment](
-    val self: PairPipelineT[F, K, V, Ex]
+      val self: PairPipelineT[F, K, V, Ex]
   ) extends AnyVal {
     def mapValues[W](
-      f: V => W
+        f: V => W
     )(implicit F: Monad[F]): PairPipelineT[F, K, W, Ex] = self.mapImpl {
       case (k, v) => (k, f(v))
     }
@@ -47,9 +43,7 @@ package object trembita extends standardMagnets with arrows {
       self.mapImpl(_._2)
 
     /** @return - [[MapPipelineT]] */
-    def toMapPipeline(implicit K: ClassTag[K],
-                      V: ClassTag[V],
-                      F: Monad[F]): MapPipelineT[F, K, V, Ex] =
+    def toMapPipeline(implicit K: ClassTag[K], V: ClassTag[V], F: Monad[F]): MapPipelineT[F, K, V, Ex] =
       new BaseMapPipelineT[F, K, V, Ex](
         self.asInstanceOf[DataPipelineT[F, (K, V), Ex]],
         F
@@ -57,5 +51,5 @@ package object trembita extends standardMagnets with arrows {
   }
 
   type Sequential = Environment.Sequential
-  type Parallel = Environment.Parallel
+  type Parallel   = Environment.Parallel
 }

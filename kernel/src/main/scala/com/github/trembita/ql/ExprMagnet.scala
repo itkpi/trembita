@@ -2,6 +2,7 @@ package com.github.trembita.ql
 
 import com.github.trembita.ql.AggDecl.{%::, DNil}
 import com.github.trembita.ql.GroupingCriteria.{&::, GNil}
+import scala.annotation.implicitNotFound
 import scala.language.implicitConversions
 
 trait ExprMagnet[T] extends Serializable {
@@ -11,6 +12,10 @@ trait ExprMagnet[T] extends Serializable {
 }
 
 object ExprMagnet {
+  @implicitNotFound("""
+      Unable to make expression ${Out0} from ${T}.
+      In most cases it means that you messed up with your query
+    """)
   type Aux[T, Out0] = ExprMagnet[T] { type Out = Out0 }
 
   def apply[T](implicit ev: ExprMagnet[T]): Aux[T, ev.Out] = ev

@@ -2,7 +2,7 @@ package com.github.trembita
 
 import cats.arrow.FunctionK
 import cats.effect.IO
-import cats.{Applicative, Id, MonadError, ~>}
+import cats.{~>, Applicative, Id, MonadError}
 import cats.syntax.applicative._
 
 import scala.concurrent.Future

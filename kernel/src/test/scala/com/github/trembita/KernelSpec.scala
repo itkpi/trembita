@@ -15,13 +15,13 @@ class KernelSpec extends FlatSpec {
   }
 
   "DataPipeline.map(square)" should "be mapped squared" in {
-    val pipeline = DataPipeline(1, 2, 3)
+    val pipeline         = DataPipeline(1, 2, 3)
     val res: Vector[Int] = pipeline.map(i => i * i).eval
     assert(res == Vector(1, 4, 9))
   }
 
   "DataPipeline.filter(isEven)" should "contain only even numbers" in {
-    val pipeline = DataPipeline(1, 2, 3)
+    val pipeline         = DataPipeline(1, 2, 3)
     val res: Vector[Int] = pipeline.filter(_ % 2 == 0).eval
     assert(res == Vector(2))
   }
@@ -47,19 +47,19 @@ class KernelSpec extends FlatSpec {
 
   "DataPipeline.flatMap(getWords)" should "be a pipeline of words" in {
     val pipeline = DataPipeline("Hello world", "hello you to")
-    val res = pipeline.flatMap(_.split("\\s")).eval
+    val res      = pipeline.flatMap(_.split("\\s")).eval
     assert(res == Vector("Hello", "world", "hello", "you", "to"))
   }
 
   "DataPipeline.sorted" should "be sorted" in {
     val pipeline = DataPipeline(5, 4, 3, 1)
-    val sorted = pipeline.sorted
+    val sorted   = pipeline.sorted
     assert(sorted.eval == Vector(1, 3, 4, 5))
   }
 
   "DataPipeline.sortBy(_.length)" should "be sorted by length" in {
     val pipeline = DataPipeline("a", "abcd", "bcd")
-    val res = pipeline.sortBy(_.length)
+    val res      = pipeline.sortBy(_.length)
     assert(res.eval == Vector("a", "bcd", "abcd"))
   }
 
@@ -78,19 +78,19 @@ class KernelSpec extends FlatSpec {
   }
 
   "DataPipeline.reduceOpt" should "work" in {
-    val pipeline = DataPipeline(1, 2, 3)
+    val pipeline         = DataPipeline(1, 2, 3)
     val res: Option[Int] = pipeline.reduceOpt(_ + _)
     assert(res.contains(6))
   }
 
   "DataPipeline.reduceOpt" should "produce None on empty pipeline" in {
-    val pipeline = DataPipelineT.empty[Id, Int]
+    val pipeline         = DataPipelineT.empty[Id, Int]
     val res: Option[Int] = pipeline.reduceOpt(_ + _)
     assert(res.isEmpty)
   }
 
   "DataPipeline.size" should "return pipeline size" in {
-    val pipeline = DataPipeline(1, 2, 3)
+    val pipeline  = DataPipeline(1, 2, 3)
     val size: Int = pipeline.size
     assert(size == 3)
   }
@@ -123,20 +123,20 @@ class KernelSpec extends FlatSpec {
   }
 
   "split(n)" should "produce collection with n subcollections" in {
-    val list = List(1, 2, 3, 4, 5, 6, 7, 8)
+    val list    = List(1, 2, 3, 4, 5, 6, 7, 8)
     val grouped = ListUtils.batch(4)(list).map(_.toList).toList
     assert(grouped == List(List(1, 2), List(3, 4), List(5, 6), List(7, 8)))
-    val list2 = List(1, 2)
+    val list2    = List(1, 2)
     val grouped2 = ListUtils.batch(4)(list2).map(_.toList).toList
     assert(grouped2 == List(List(1, 2)))
-    val list3 = Nil
+    val list3    = Nil
     val grouped3 = ListUtils.batch(2)(list3).map(_.toList).toList
     assert(grouped3 == Nil)
   }
 
   "PairPipeline transformations" should "work correctly" in {
     val pipeline = DataPipeline("a" → 1, "b" → 2, "c" → 3)
-    val result1 = pipeline.mapValues(_ + 1).eval
+    val result1  = pipeline.mapValues(_ + 1).eval
     assert(result1 == Vector("a" → 2, "b" → 3, "c" → 4))
 
     val result2 = pipeline.keys.eval
@@ -147,34 +147,34 @@ class KernelSpec extends FlatSpec {
   }
 
   "DataPipeline.zip" should "work correctly for pipelines" in {
-    val p1 = DataPipeline(1, 2, 3, 4)
-    val p2 = DataPipeline("a", "b", "c")
+    val p1     = DataPipeline(1, 2, 3, 4)
+    val p2     = DataPipeline("a", "b", "c")
     val result = p1.zip(p2).eval
     assert(result == Vector(1 -> "a", 2 -> "b", 3 -> "c"))
   }
 
   "DataPipeline.++" should "work correctly for pipelines" in {
-    val p1 = DataPipeline(1, 2, 3, 4)
-    val p2 = DataPipeline(5, 6, 7)
+    val p1     = DataPipeline(1, 2, 3, 4)
+    val p2     = DataPipeline(5, 6, 7)
     val result = (p1 ++ p2).sorted
     assert(result.eval == Vector(1, 2, 3, 4, 5, 6, 7))
   }
 
   "DataPipeline.take" should "work correctly" in {
     val pipeline = DataPipeline(1, 2, 3, 4)
-    val result = pipeline.take(2)
+    val result   = pipeline.take(2)
     assert(result.eval == Vector(1, 2))
   }
 
   "DataPipeline.drop" should "work correctly" in {
     val pipeline = DataPipeline(1, 2, 3, 4)
-    val result = pipeline.drop(2)
+    val result   = pipeline.drop(2)
     assert(result.eval == Vector(3, 4))
   }
 
   "DataPipeline.slice" should "work correctly" in {
     val pipeline = DataPipeline(1, 2, 3, 4, 5)
-    val result = pipeline.slice(1, 4)
+    val result   = pipeline.slice(1, 4)
     assert(result.eval == Vector(2, 3, 4))
   }
 

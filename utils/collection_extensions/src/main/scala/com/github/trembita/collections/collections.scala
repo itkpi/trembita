@@ -22,22 +22,21 @@ package object collections {
 
       self.foldLeft((self.head, self.head)) {
         case ((min, max), elem) =>
-          val felem = f(elem)
-          val fmin = f(min)
-          val fmax = f(max)
+          val felem  = f(elem)
+          val fmin   = f(min)
+          val fmax   = f(max)
           val newMin = if (cmp.gt(fmin, felem)) elem else min
           val newMax = if (cmp.lt(fmax, felem)) elem else max
           (newMin, newMax)
       }
     }
 
-    def minMaxByOpt[U](f: A => U)(implicit cmp: Ordering[U]): Option[(A, A)] = {
+    def minMaxByOpt[U](f: A => U)(implicit cmp: Ordering[U]): Option[(A, A)] =
       if (self.isEmpty) None
       else Some(self.minMaxBy(f))
-    }
 
     def mergeConcat[K, V](
-      rhs: Map[K, V]
+        rhs: Map[K, V]
     )(concatOp: (V, V) => V)(implicit ev: A <:< (K, V)): Map[K, V] = {
       val lfs = self.toMap[K, V]
       lfs
@@ -49,7 +48,7 @@ package object collections {
     }
 
     def merge[K, V: Monoid](
-      rhs: Map[K, V]
+        rhs: Map[K, V]
     )(implicit ev: A <:< (K, V)): Map[K, V] = {
       val lfs = self.toMap[K, V]
       lfs

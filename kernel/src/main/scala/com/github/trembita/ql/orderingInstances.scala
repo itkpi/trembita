@@ -22,8 +22,8 @@ trait orderingInstances extends Serializable {
     def compare(x: GNil, y: GNil): Int = 0
   }
   implicit def groupingCriteriaOrdering[GH <: :@[_, _], GT <: GroupingCriteria](
-    implicit GH: Ordering[GH],
-    GT: Ordering[GT]
+      implicit GH: Ordering[GH],
+      GT: Ordering[GT]
   ): Ordering[GH &:: GT] = new Ordering[GH &:: GT] {
     def compare(x: GH &:: GT, y: GH &:: GT): Int =
       GH.compare(x.head, y.head) match {
@@ -36,8 +36,8 @@ trait orderingInstances extends Serializable {
     def compare(x: RNil, y: RNil): Int = 0
   }
   implicit def aggResOrdering[RH <: :@[_, _], RT <: AggRes](
-    implicit GH: Ordering[RH],
-    GT: Ordering[RT]
+      implicit GH: Ordering[RH],
+      GT: Ordering[RT]
   ): Ordering[RH *:: RT] = new Ordering[RH *:: RT] {
     def compare(x: RH *:: RT, y: RH *:: RT): Int =
       GH.compare(x.head, y.head) match {

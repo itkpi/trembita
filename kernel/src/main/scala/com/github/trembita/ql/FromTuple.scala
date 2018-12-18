@@ -2,6 +2,7 @@ package com.github.trembita.ql
 
 import shapeless._
 import shapeless.ops.hlist._
+import scala.annotation.implicitNotFound
 
 trait FromTuple[T] extends DepFn1[T] with Serializable
 
@@ -14,6 +15,7 @@ object composePoly extends Poly2 with Serializable {
 }
 
 object FromTuple {
+  @implicitNotFound("Unable to build ${Out0} from tuple ${T}")
   type Aux[T, Out0] = FromTuple[T] { type Out = Out0 }
   def apply[T](implicit ev: FromTuple[T]): FromTuple.Aux[T, ev.Out] = ev
 

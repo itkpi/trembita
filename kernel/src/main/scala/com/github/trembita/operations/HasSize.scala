@@ -1,9 +1,14 @@
 package com.github.trembita.operations
 
 import cats.Id
+import scala.annotation.implicitNotFound
 import scala.collection.parallel.immutable.ParVector
 import scala.language.higherKinds
 
+@implicitNotFound("""
+    ${F} does not provide an efficient way to calculate its size.
+    Please provide an implicit instance in scope if necessary
+    """)
 trait HasSize[F[_]] {
   type Result[_]
   def size[A](fa: F[A]): Result[Int]

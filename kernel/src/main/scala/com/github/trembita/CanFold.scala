@@ -1,10 +1,15 @@
 package com.github.trembita
 
 import cats.Id
+import scala.annotation.implicitNotFound
 import scala.collection.parallel.immutable.ParVector
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
+@implicitNotFound("""
+    ${F} does not support fold operation or it is not efficient.
+    If you want to fold ${F}, please provide an implicit instance in scope
+  """)
 trait CanFold[F[_]] {
   type Result[_]
   def fold[A: ClassTag](fa: F[A])(zero: A)(f: (A, A) => A): Result[A] =
@@ -15,7 +20,7 @@ trait CanFold[F[_]] {
   def reduce[A: ClassTag](fa: F[A])(f: (A, A) => A): Result[A]
 
   def foldLeft[A: ClassTag, B: ClassTag](fa: F[A])(zero: B)(
-    f: (B, A) => B
+      f: (B, A) => B
   ): Result[B]
 }
 
@@ -26,11 +31,11 @@ object CanFold {
     type Result[X] = X
 
     def foldLeft[A: ClassTag, B: ClassTag](fa: Vector[A])(zero: B)(
-      f: (B, A) => B
+        f: (B, A) => B
     ): B = fa.foldLeft[B](zero)(f)
 
     def reduceOpt[A: ClassTag](
-      fa: Vector[A]
+        fa: Vector[A]
     )(f: (A, A) => A): Result[Option[A]] =
       fa.reduceOption(f)
 
@@ -43,11 +48,11 @@ object CanFold {
       type Result[X] = X
 
       def foldLeft[A: ClassTag, B: ClassTag](fa: ParVector[A])(zero: B)(
-        f: (B, A) => B
+          f: (B, A) => B
       ): B = fa.foldLeft(zero)(f)
 
       def reduceOpt[A: ClassTag](
-        fa: ParVector[A]
+          fa: ParVector[A]
       )(f: (A, A) => A): Result[Option[A]] =
         fa.reduceOption(f)
 

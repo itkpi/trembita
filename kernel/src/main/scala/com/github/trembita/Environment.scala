@@ -1,10 +1,9 @@
 package com.github.trembita
 
-import cats.{Applicative, Eval, Functor, Id, Monad, ~>}
-
+import cats.{~>, Applicative, Eval, Functor, Id, Monad}
 import scala.language.higherKinds
 import cats.implicits._
-
+import scala.annotation.implicitNotFound
 import scala.collection.parallel.immutable.ParVector
 import scala.reflect.ClassTag
 
@@ -15,30 +14,33 @@ trait ApplicativeFlatMap[F[_]] extends Serializable {
 }
 object ApplicativeFlatMap {
   val id: ApplicativeFlatMap[Id] = new ApplicativeFlatMap[Id] {
-    def map[A, B: ClassTag](fa: Id[A])(f: A => B): Id[B] = f(fa)
+    def map[A, B: ClassTag](fa: Id[A])(f: A => B): Id[B]         = f(fa)
     def flatMap[A, B: ClassTag](fa: Id[A])(f: A => Id[B]): Id[B] = f(fa)
   }
 }
 trait TraverseTag[F[_], Run[_[_]]] extends Serializable {
   def traverse[G[_], A, B: ClassTag](fa: F[A])(f: A => G[B])(
-    implicit G: Run[G]
+      implicit G: Run[G]
   ): G[F[B]]
   def sequence[G[_]: Run, A: ClassTag](fga: F[G[A]]): G[F[A]] =
     traverse(fga)(ga => ga)
 
-  def traverse_[G[_], A](fa: F[A])(f: A => G[Unit])(implicit G: Run[G],
-                                                    G0: Functor[G]): G[Unit] =
+  def traverse_[G[_], A](fa: F[A])(f: A => G[Unit])(implicit G: Run[G], G0: Functor[G]): G[Unit] =
     G0.map(traverse(fa)(f))(_ => {})
 }
 
 trait Environment extends Serializable {
   type Repr[X]
+  @implicitNotFound("""
+    Pipeline you defined requires implicit typeclass for ${G} to be evaluated.
+    Please ensure appropriate implicits are present in scope.
+    For more information see Environment definition for your pipeline
+    """)
   type Run[G[_]] <: Serializable
   type Result[X]
   type ResultRepr[X] = Result[Repr[X]]
 
-  def absorbF[F[_], A](rfa: Result[F[A]])(implicit F: Monad[F],
-                                          arrow: Result ~> F): F[A] =
+  def absorbF[F[_], A](rfa: Result[F[A]])(implicit F: Monad[F], arrow: Result ~> F): F[A] =
     F.flatten(arrow(rfa))
 
   val FlatMapResult: ApplicativeFlatMap[Result]
@@ -50,7 +52,7 @@ trait Environment extends Serializable {
   def foreach[A](repr: Repr[A])(f: A => Unit): Result[Unit]
 
   def foreachF[F[_], A](
-    repr: Repr[A]
+      repr: Repr[A]
   )(f: A => F[Unit])(implicit Run: Run[F], F: Functor[F]): F[Unit] =
     TraverseRepr.traverse_[F, A](repr)(f)
 
@@ -68,18 +70,18 @@ trait Environment extends Serializable {
 }
 
 object Environment {
-  type ReprAux[Repr0[_]] = Environment { type Repr[X] = Repr0[X] }
+  type ReprAux[Repr0[_]]  = Environment { type Repr[X]   = Repr0[X] }
   type RunAux[Run0[_[_]]] = Environment { type Run[G[_]] = Run0[G] }
 
   sealed trait Sequential extends Environment {
-    type Repr[+X] = Vector[X]
+    type Repr[+X]  = Vector[X]
     type Run[G[_]] = Applicative[G]
     type Result[X] = X
 
     def toVector[A](repr: Vector[A]): Result[Vector[A]] = repr
 
     def collect[A, B: ClassTag](
-      repr: Vector[A]
+        repr: Vector[A]
     )(pf: PartialFunction[A, B]): Vector[B] =
       repr.collect(pf)
 
@@ -90,12 +92,12 @@ object Environment {
     def fromIterator[A: ClassTag](vs: Iterator[A]): Repr[A] = vs.toVector
 
     def groupBy[A, K: ClassTag](
-      vs: Vector[A]
+        vs: Vector[A]
     )(f: A => K): Vector[(K, Iterable[A])] =
       vs.groupBy(f).toVector
 
     def distinctKeys[A: ClassTag, B: ClassTag](
-      repr: Repr[(A, B)]
+        repr: Repr[(A, B)]
     ): Repr[(A, B)] =
       repr.groupBy(_._1).mapValues(_.head._2).toVector
 
@@ -113,10 +115,10 @@ object Environment {
 
     val FlatMapRepr: ApplicativeFlatMap[Vector] =
       new ApplicativeFlatMap[Vector] {
-        def pure[A: ClassTag](a: A): Vector[A] = Vector(a)
+        def pure[A: ClassTag](a: A): Vector[A]                       = Vector(a)
         def map[A, B: ClassTag](fa: Vector[A])(f: A => B): Vector[B] = fa.map(f)
         def flatMap[A, B: ClassTag](
-          fa: Vector[A]
+            fa: Vector[A]
         )(f: A => Vector[B]): Vector[B] =
           fa.flatMap(f)
       }
@@ -124,13 +126,13 @@ object Environment {
       new TraverseTag[Vector, Applicative] {
         type Run[G[_]] = Applicative[G]
         def traverse[G[_], A, B: ClassTag](fa: Vector[A])(f: A => G[B])(
-          implicit G: Run[G]
+            implicit G: Run[G]
         ): G[Vector[B]] = cats.Traverse[Vector].traverse(fa)(f)
       }
   }
 
   sealed trait Parallel extends Environment {
-    type Repr[+X] = ParVector[X]
+    type Repr[+X]  = ParVector[X]
     type Run[G[_]] = Applicative[G]
     type Result[X] = X
 
@@ -143,17 +145,16 @@ object Environment {
     def fromIterator[A: ClassTag](vs: Iterator[A]): Repr[A] = vs.to[ParVector]
 
     def collect[A, B: ClassTag](repr: ParVector[A])(
-      pf: PartialFunction[A, B]
+        pf: PartialFunction[A, B]
     ): ParVector[B] = repr.collect(pf)
 
     def concat[A](xs: ParVector[A], ys: ParVector[A]): ParVector[A] = xs ++ ys
 
-    def zip[A, B: ClassTag](xs: ParVector[A],
-                            ys: ParVector[B]): ParVector[(A, B)] =
+    def zip[A, B: ClassTag](xs: ParVector[A], ys: ParVector[B]): ParVector[(A, B)] =
       xs.zip(ys)
 
     def distinctKeys[A: ClassTag, B: ClassTag](
-      repr: Repr[(A, B)]
+        repr: Repr[(A, B)]
     ): Repr[(A, B)] =
       repr.groupBy(_._1).mapValues(_.head._2).to[ParVector]
 
@@ -166,7 +167,7 @@ object Environment {
         def pure[A: ClassTag](a: A): ParVector[A] = ParVector(a)
 
         def flatMap[A, B: ClassTag](
-          fa: ParVector[A]
+            fa: ParVector[A]
         )(f: A => ParVector[B]): ParVector[B] =
           fa.flatMap(f)
 
@@ -175,7 +176,7 @@ object Environment {
       }
 
     def groupBy[A, K: ClassTag](
-      vs: ParVector[A]
+        vs: ParVector[A]
     )(f: A => K): ParVector[(K, Iterable[A])] =
       vs.groupBy(f).mapValues(_.seq).toVector.par
 
@@ -184,21 +185,20 @@ object Environment {
     val TraverseRepr: TraverseTag[ParVector, Applicative] =
       new TraverseTag[ParVector, Applicative] {
         def traverse[G[_], A, B: ClassTag](
-          fa: ParVector[A]
-        )(f: A => G[B])(implicit G: Run[G]): G[ParVector[B]] = {
+            fa: ParVector[A]
+        )(f: A => G[B])(implicit G: Run[G]): G[ParVector[B]] =
           foldRight[A, G[ParVector[B]]](
             fa,
             Eval.always(G.pure(ParVector.empty))
           ) { (a, lgvb) =>
             G.map2Eval(f(a), lgvb)(_ +: _)
           }.value
-        }
 
 //      def foldLeft[A, B](fa: ParVector[A], b: B)(f: (B, A) => B): B =
 //        fa.foldLeft(b)(f)
 
         def foldRight[A, B](fa: ParVector[A], lb: Eval[B])(
-          f: (A, Eval[B]) => Eval[B]
+            f: (A, Eval[B]) => Eval[B]
         ): Eval[B] = fa.foldRight(lb)(f)
       }
 
@@ -206,6 +206,6 @@ object Environment {
       repr.foreach(f)
   }
 
-  implicit val Parallel: Parallel = new Parallel {}
+  implicit val Parallel: Parallel     = new Parallel   {}
   implicit val Sequential: Sequential = new Sequential {}
 }

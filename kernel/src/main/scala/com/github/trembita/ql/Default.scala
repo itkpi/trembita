@@ -4,8 +4,7 @@ import cats.Monoid
 import java.time._
 import scala.annotation.implicitNotFound
 
-@implicitNotFound(
-  """
+@implicitNotFound("""
 No found implicit value: Default[${A}]
 Please add imports:
 {{{

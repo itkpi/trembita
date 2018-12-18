@@ -17,7 +17,7 @@ object ListUtils {
     * @param iterable - collection to split
     * @return - iterable divided on {{{ parts }}} parts
     **/
-  def batch[A](parts: Int)(iterable: Iterable[A]): Iterable[Iterable[A]] = {
+  def batch[A](parts: Int)(iterable: Iterable[A]): Iterable[Iterable[A]] =
     iterable.size match {
       case 0                    => Nil
       case size if size < parts => List(iterable)
@@ -25,5 +25,4 @@ object ListUtils {
         val groupSize = size / parts
         iterable.grouped(groupSize).toIterable
     }
-  }
 }

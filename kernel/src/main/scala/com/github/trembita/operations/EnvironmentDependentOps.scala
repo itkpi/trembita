@@ -10,22 +10,20 @@ import scala.reflect.ClassTag
 trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
   def `this`: DataPipelineT[F, A, Ex]
 
-  def eval(implicit F: Functor[F],
-           Ex: Ex,
-           run: Ex#Run[F]): F[Ex.Result[Vector[A]]] =
+  def eval(implicit F: Functor[F], Ex: Ex, run: Ex#Run[F]): F[Ex.Result[Vector[A]]] =
     `this`
       .evalFunc[A](Ex)(widen(run)(Ex))
       .map(repr => Ex.toVector(repr))
 
   def foreach(
-    f: A => Unit
+      f: A => Unit
   )(implicit Ex: Ex, run: Ex#Run[F], F: Functor[F]): F[Ex.Result[Unit]] =
     `this`
       .evalFunc[A](Ex)(widen(run)(Ex))
       .map(Ex.foreach(_)(f))
 
   def foreachF(
-    f: A => F[Unit]
+      f: A => F[Unit]
   )(implicit Ex: Ex, run: Ex#Run[F], F: Monad[F]): F[Unit] =
     `this`
       .evalFunc[A](Ex)(widen(run)(Ex))
@@ -35,15 +33,15 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
     `this`.evalFunc[A](Ex)(widen(run)(Ex))
 
   private def mapEvaledRepr[B](
-    f: Ex#Repr[A] => B
+      f: Ex#Repr[A] => B
   )(implicit Ex: Ex, run: Ex#Run[F], F: Functor[F]): F[B] =
     evalRepr.map(f)
 
   private def mapEvaled[B](f: Vector[A] => B)(
-    implicit Ex: Ex,
-    run: Ex#Run[F],
-    F: Functor[F],
-    Result: Functor[Ex#Result]
+      implicit Ex: Ex,
+      run: Ex#Run[F],
+      F: Functor[F],
+      Result: Functor[Ex#Result]
   ): F[Ex.Result[B]] =
     eval.map(widen(Result)(Ex).map(_)(f))
 
@@ -73,11 +71,9 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
     * @param f - reducing function
     * @return - combined elements
     **/
-  def reduce(f: (A, A) => A)(implicit Ex: Ex,
-                             run: Ex#Run[F],
-                             F: Functor[F],
-                             canFold: CanFold[Ex#Repr],
-                             A: ClassTag[A]): F[canFold.Result[A]] =
+  def reduce(
+      f: (A, A) => A
+  )(implicit Ex: Ex, run: Ex#Run[F], F: Functor[F], canFold: CanFold[Ex#Repr], A: ClassTag[A]): F[canFold.Result[A]] =
     mapEvaledRepr(canFold.reduce(_)(f))
 
   /**
@@ -87,11 +83,9 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
     * @param f - reducing function
     * @return - combined elements
     **/
-  def reduceOpt(f: (A, A) => A)(implicit Ex: Ex,
-                                run: Ex#Run[F],
-                                F: Functor[F],
-                                canFold: CanFold[Ex#Repr],
-                                A: ClassTag[A]): F[canFold.Result[Option[A]]] =
+  def reduceOpt(
+      f: (A, A) => A
+  )(implicit Ex: Ex, run: Ex#Run[F], F: Functor[F], canFold: CanFold[Ex#Repr], A: ClassTag[A]): F[canFold.Result[Option[A]]] =
     mapEvaledRepr(canFold.reduceOpt(_)(f))
 
   /**
@@ -104,22 +98,18 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
     * @return - a single instance of the combiner [[C]]
     **/
   def foldLeft[C: ClassTag](zero: C)(f: (C, A) => C)(
-    implicit Ex: Ex,
-    run: Ex#Run[F],
-    F: Functor[F],
-    canFold: CanFold[Ex#Repr],
-    A: ClassTag[A]
+      implicit Ex: Ex,
+      run: Ex#Run[F],
+      F: Functor[F],
+      canFold: CanFold[Ex#Repr],
+      A: ClassTag[A]
   ): F[canFold.Result[C]] =
     mapEvaledRepr(canFold.foldLeft(_)(zero)(f))
 
   /**
     * @return - size of the [[DataPipelineT]]
     **/
-  def size(implicit F: Functor[F],
-           Ex: Ex,
-           run: Ex#Run[F],
-           Result: Functor[Ex#Result],
-           hasSize: HasSize[Ex#Repr]): F[hasSize.Result[Int]] =
+  def size(implicit F: Functor[F], Ex: Ex, run: Ex#Run[F], Result: Functor[Ex#Result], hasSize: HasSize[Ex#Repr]): F[hasSize.Result[Int]] =
     mapEvaledRepr(hasSize.size(_))
 
   /**
@@ -128,14 +118,10 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
     * @param n - number of elements to take
     * @return - first N elements
     **/
-  def take(n: Int)(implicit F: Monad[F],
-                   canTake: CanTake[Ex#Repr],
-                   A: ClassTag[A],
-                   Ex: Ex,
-                   Run: Ex#Run[F]): DataPipelineT[F, A, Ex] =
+  def take(n: Int)(implicit F: Monad[F], canTake: CanTake[Ex#Repr], A: ClassTag[A], Ex: Ex, Run: Ex#Run[F]): DataPipelineT[F, A, Ex] =
     new SeqSource[F, A, Ex](F) {
       protected[trembita] def evalFunc[B >: A](
-        ex0: Ex
+          ex0: Ex
       )(implicit run: ex0.Run[F]): F[ex0.Repr[B]] =
         F.map(`this`.evalFunc[B](Ex)(widen(Run)(Ex)))(canTake.take(_, n))
           .asInstanceOf[F[ex0.Repr[B]]]
@@ -149,27 +135,20 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
   //    * @param n - number of elements to drop
   //    * @return - all elements with first N dropped
   //    **/
-  def drop(n: Int)(implicit F: Monad[F],
-                   canDrop: CanDrop[Ex#Repr],
-                   A: ClassTag[A],
-                   Ex: Ex,
-                   Run: Ex#Run[F]): DataPipelineT[F, A, Ex] =
+  def drop(n: Int)(implicit F: Monad[F], canDrop: CanDrop[Ex#Repr], A: ClassTag[A], Ex: Ex, Run: Ex#Run[F]): DataPipelineT[F, A, Ex] =
     new SeqSource[F, A, Ex](F) {
       protected[trembita] def evalFunc[B >: A](
-        ex0: Ex
+          ex0: Ex
       )(implicit run: ex0.Run[F]): F[ex0.Repr[B]] =
         F.map(`this`.evalFunc[B](Ex)(widen(Run)(Ex)))(canDrop.drop(_, n))
           .asInstanceOf[F[ex0.Repr[B]]]
     }
 
-  def slice(from: Int, to: Int)(implicit F: Monad[F],
-                                canSlice: CanSlice[Ex#Repr],
-                                A: ClassTag[A],
-                                Ex: Ex,
-                                Run: Ex#Run[F]): DataPipelineT[F, A, Ex] =
+  def slice(from: Int,
+            to: Int)(implicit F: Monad[F], canSlice: CanSlice[Ex#Repr], A: ClassTag[A], Ex: Ex, Run: Ex#Run[F]): DataPipelineT[F, A, Ex] =
     new SeqSource[F, A, Ex](F) {
       protected[trembita] def evalFunc[B >: A](
-        ex0: Ex
+          ex0: Ex
       )(implicit run: ex0.Run[F]): F[ex0.Repr[B]] =
         F.map(
             `this`
@@ -184,11 +163,7 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
     *
     * @return - first element of the pipeline
     **/
-  def head(implicit Ex: Ex,
-           run: Ex#Run[F],
-           F: Functor[F],
-           canTake: CanTake[Ex#Repr],
-           Result: Functor[Ex#Result]): F[Ex.Result[A]] =
+  def head(implicit Ex: Ex, run: Ex#Run[F], F: Functor[F], canTake: CanTake[Ex#Repr], Result: Functor[Ex#Result]): F[Ex.Result[A]] =
     headOption.map(widen(Result)(Ex).map(_)(_.get))
 
   /**
@@ -206,11 +181,11 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
     )
 
   def to[Ex2 <: Environment](
-    implicit Ex: Ex,
-    run1: Ex#Run[F],
-    A: ClassTag[A],
-    F: Monad[F],
-    injectK: InjectTaggedK[Ex#Repr, Ex2#Repr]
+      implicit Ex: Ex,
+      run1: Ex#Run[F],
+      A: ClassTag[A],
+      F: Monad[F],
+      injectK: InjectTaggedK[Ex#Repr, Ex2#Repr]
   ): DataPipelineT[F, A, Ex2] =
     BridgePipelineT.make[F, A, Ex, Ex2](`this`, Ex, F)(
       A,
@@ -218,10 +193,7 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
       injectK.asInstanceOf[InjectTaggedK[Ex.Repr, Ex2#Repr]]
     )
 
-  def mapK[G[_]](arrow: F ~> G)(implicit G: Monad[G],
-                                Ex: Ex,
-                                run0: Ex#Run[F],
-                                A: ClassTag[A]): DataPipelineT[G, A, Ex] =
+  def mapK[G[_]](arrow: F ~> G)(implicit G: Monad[G], Ex: Ex, run0: Ex#Run[F], A: ClassTag[A]): DataPipelineT[G, A, Ex] =
     MapKPipelineT.make[F, G, A, Ex](`this`, Ex, arrow, G)(A, widen(run0)(Ex))
 
   /**
@@ -230,10 +202,7 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
     *
     * @return - the same pipeline sorted
     **/
-  def sorted(implicit F: Monad[F],
-             A: ClassTag[A],
-             ordering: Ordering[A],
-             canSort: CanSort[Ex#Repr]): DataPipelineT[F, A, Ex] =
+  def sorted(implicit F: Monad[F], A: ClassTag[A], ordering: Ordering[A], canSort: CanSort[Ex#Repr]): DataPipelineT[F, A, Ex] =
     new SortedPipelineT[A, F, Ex](
       `this`,
       F,
@@ -241,9 +210,9 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
     )
 
   def sortBy[B: Ordering](f: A => B)(
-    implicit A: ClassTag[A],
-    F: Monad[F],
-    canSort: CanSort[Ex#Repr]
+      implicit A: ClassTag[A],
+      F: Monad[F],
+      canSort: CanSort[Ex#Repr]
   ): DataPipelineT[F, A, Ex] =
     new SortedPipelineT[A, F, Ex](
       `this`,
@@ -252,10 +221,10 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
     )(Ordering.by(f), A)
 
   def mapRepr[B: ClassTag](f: Ex#Repr[A] => Ex#Repr[B])(
-    implicit F: Monad[F],
-    Ex: Ex,
-    run: Ex#Run[F],
-    A: ClassTag[A]
+      implicit F: Monad[F],
+      Ex: Ex,
+      run: Ex#Run[F],
+      A: ClassTag[A]
   ): DataPipelineT[F, B, Ex] =
     MapReprPipeline.make[F, A, B, Ex](`this`, Ex)(
       widen(f)(Ex),
@@ -267,14 +236,14 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
     run.asInstanceOf[ex.Run[F]]
 
   private def widen(f: Functor[Ex#Result])(
-    implicit ex: Ex
+      implicit ex: Ex
   ): Functor[ex.Result] = f.asInstanceOf[Functor[ex.Result]]
 
   private def widen[x](repr: Ex#Repr[x])(implicit ex: Ex): ex.Repr[x] =
     repr.asInstanceOf[ex.Repr[x]]
 
   private def widen[x, y](
-    f: Ex#Repr[x] => Ex#Repr[y]
+      f: Ex#Repr[x] => Ex#Repr[y]
   )(implicit ex: Ex): ex.Repr[x] => ex.Repr[y] =
     f.asInstanceOf[ex.Repr[x] => ex.Repr[y]]
 }

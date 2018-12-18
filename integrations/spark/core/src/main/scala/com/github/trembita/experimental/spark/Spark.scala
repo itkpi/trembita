@@ -9,18 +9,18 @@ import scala.reflect.ClassTag
 
 sealed trait Spark extends Environment {
   final type Repr[X] = RDD[X]
-  type Run[G[_]] = RunOnSpark[G]
-  type Result[X] = X
+  type Run[G[_]]     = RunOnSpark[G]
+  type Result[X]     = X
 
   def toVector[A](repr: RDD[A]): Vector[A] = repr.collect().toVector
 
   def groupBy[A, K: ClassTag](vs: Repr[A])(f: A => K): Repr[(K, Iterable[A])] =
     vs.groupBy(f)
   def collect[A, B: ClassTag](
-    repr: Repr[A]
+      repr: Repr[A]
   )(pf: PartialFunction[A, B]): Repr[B] =
     repr.collect(pf)
-  def concat[A](xs: Repr[A], ys: Repr[A]): Repr[A] = xs union ys
+  def concat[A](xs: Repr[A], ys: Repr[A]): Repr[A]                = xs union ys
   def zip[A, B: ClassTag](xs: Repr[A], ys: Repr[B]): Repr[(A, B)] = xs zip ys
 
   def distinctKeys[A: ClassTag, B: ClassTag](repr: RDD[(A, B)]): RDD[(A, B)] =
@@ -43,7 +43,7 @@ sealed trait Spark extends Environment {
   val TraverseRepr: TraverseTag[RDD, RunOnSpark] =
     new TraverseTag[RDD, RunOnSpark] {
       def traverse[G[_], A, B: ClassTag](
-        fa: RDD[A]
+          fa: RDD[A]
       )(f: A => G[B])(implicit G: RunOnSpark[G]): G[RDD[B]] = G.lift {
         G.traverse(fa)(f)
       }

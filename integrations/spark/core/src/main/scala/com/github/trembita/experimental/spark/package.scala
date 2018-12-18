@@ -1,7 +1,7 @@
 package com.github.trembita.experimental
 
 import cats.effect.IO
-import cats.{Eval, Functor, Id, Monad, StackSafeMonad, ~>}
+import cats.{~>, Eval, Functor, Id, Monad, StackSafeMonad}
 import com.github.trembita.operations.{CanSort, InjectTaggedK, MagnetF}
 
 import scala.language.experimental.macros
@@ -147,13 +147,6 @@ package object spark {
 
   implicit def runIODsl(timeout: AsyncTimeout): RunOnSpark[IO] =
     new RunIOOnSpark(timeout)
-
-  private val productAgg = new ProductAggregate
-  private val rsmAgg     = new RMSAggregate
-
-  def product(e: Column): Column = productAgg(e)
-  def random(e: Column): Column  = new RandomAggregate(e.expr)()
-  def rms(e: Column): Column     = rsmAgg(e)
 
   implicit class DatasetOps[A](private val self: Dataset[A]) extends AnyVal {
     def filterIf(cond: Boolean)(p: Column): Dataset[A] =

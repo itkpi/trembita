@@ -13,10 +13,10 @@ import scala.language.{higherKinds, implicitConversions}
 import scala.reflect.macros.blackbox
 
 final class SizedAtLeast[A, AtLeast <: Nat, Repr[X] <: immutable.Seq[X]](
-  val unsized: Repr[A]
+    val unsized: Repr[A]
 ) {
   def :+(elem: A)(
-    implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]]
+      implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]]
   ): SizedAtLeast[A, AtLeast, Repr] = {
     val builder = cbf()
     builder ++= unsized
@@ -26,8 +26,8 @@ final class SizedAtLeast[A, AtLeast <: Nat, Repr[X] <: immutable.Seq[X]](
 //  def +:(elem: A)(implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]]): SizedAtLeast[A, AtLeast, Repr] = this.:+(elem)
 
   def addGrow(elem: A)(
-    implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]],
-    sum: nat.Sum[AtLeast, _1]
+      implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]],
+      sum: nat.Sum[AtLeast, _1]
   ): SizedAtLeast[A, sum.Out, Repr] = {
     val builder = cbf()
     builder ++= unsized
@@ -36,7 +36,7 @@ final class SizedAtLeast[A, AtLeast <: Nat, Repr[X] <: immutable.Seq[X]](
   }
 
   def ++(elems: TraversableOnce[A])(
-    implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]]
+      implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]]
   ): SizedAtLeast[A, AtLeast, Repr] = {
     val builder = cbf()
     builder ++= unsized
@@ -45,13 +45,13 @@ final class SizedAtLeast[A, AtLeast <: Nat, Repr[X] <: immutable.Seq[X]](
   }
 
   def ++(elems: SizedAtLeast[A, AtLeast, Repr])(
-    implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]]
+      implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]]
   ): SizedAtLeast[A, AtLeast, Repr] =
     this ++ elems.unsized
 
   def concatCrow[N <: Nat](elems: Sized[Repr[A], N])(
-    implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]],
-    sum: nat.Sum[AtLeast, N]
+      implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]],
+      sum: nat.Sum[AtLeast, N]
   ): SizedAtLeast[A, sum.Out, Repr] = {
     val builder = cbf()
     builder ++= unsized
@@ -59,8 +59,7 @@ final class SizedAtLeast[A, AtLeast <: Nat, Repr[X] <: immutable.Seq[X]](
     new SizedAtLeast[A, sum.Out, Repr](builder.result())
   }
 
-  def apply(n: Nat)(implicit ev: nat.LT[n.N, AtLeast],
-                    toInt: nat.ToInt[n.N]): A = unsized(toInt())
+  def apply(n: Nat)(implicit ev: nat.LT[n.N, AtLeast], toInt: nat.ToInt[n.N]): A = unsized(toInt())
 
   override def toString: String = s"SizedAtLeast($unsized)"
   override def equals(obj: scala.Any): Boolean = obj match {
@@ -71,7 +70,7 @@ final class SizedAtLeast[A, AtLeast <: Nat, Repr[X] <: immutable.Seq[X]](
 
 object SizedAtLeast {
   def apply[A, N <: Nat, Repr[X] <: immutable.Seq[X]](
-    sized: Sized[Repr[A], N]
+      sized: Sized[Repr[A], N]
   ): SizedAtLeast[A, N, Repr] =
     new SizedAtLeast[A, N, Repr](sized.unsized)
 
@@ -80,23 +79,23 @@ object SizedAtLeast {
 
   trait Wrap[A, AtLeast <: Nat] {
     def to[Repr[X] <: immutable.Seq[X]](
-      implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]]
+        implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]]
     ): SizedAtLeast[A, AtLeast, Repr] = apply[Repr]
     def apply[Repr[X] <: immutable.Seq[X]](
-      implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]]
+        implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]]
     ): SizedAtLeast[A, AtLeast, Repr]
   }
 
   def wrapImpl[A: c.WeakTypeTag, AtLeast <: Nat: c.WeakTypeTag](
-    c: blackbox.Context
+      c: blackbox.Context
   )(n: c.Expr[AtLeast])(xs: c.Expr[A]*): c.Tree = {
     import c.universe._
 
-    val A = weakTypeOf[A].dealias
+    val A       = weakTypeOf[A].dealias
     val AtLeast = weakTypeOf[AtLeast].dealias
 
     val natRegex = "shapeless.nat._([1-9][0-9]*)".r
-    val succ = typeOf[Succ[_]].typeConstructor
+    val succ     = typeOf[Succ[_]].typeConstructor
 
     def atLeast(tpe: Type, acc: Int): Int = tpe.typeConstructor match {
       case `succ` =>
@@ -110,7 +109,7 @@ object SizedAtLeast {
     }
 
     val minSize = atLeast(AtLeast, 0)
-    var build = q""
+    var build   = q""
     for (x <- xs) build = q"$build; builder += $x"
 
     xs match {
@@ -143,7 +142,7 @@ object SizedAtLeast {
   }
 
   implicit def sizedAtLeastEq[A, AtLeast <: Nat, Repr[X] <: immutable.Seq[X]](
-    implicit ev: Eq[Repr[A]]
+      implicit ev: Eq[Repr[A]]
   ): Eq[SizedAtLeast[A, AtLeast, Repr]] =
     Eq.by((_: SizedAtLeast[A, AtLeast, Repr]).unsized)
 
@@ -151,17 +150,15 @@ object SizedAtLeast {
     SizedAtLeast[A, AtLeast, Repr]
   ] = macro showSizedAtLeastImpl[A, AtLeast, Repr]
 
-  def showSizedAtLeastImpl[A: c.WeakTypeTag,
-                           AtLeast <: Nat: c.WeakTypeTag,
-                           Repr[X] <: immutable.Seq[X]](c: blackbox.Context)(
-    implicit repr: c.WeakTypeTag[Repr[_]]
+  def showSizedAtLeastImpl[A: c.WeakTypeTag, AtLeast <: Nat: c.WeakTypeTag, Repr[X] <: immutable.Seq[X]](c: blackbox.Context)(
+      implicit repr: c.WeakTypeTag[Repr[_]]
   ): c.Expr[Show[SizedAtLeast[A, AtLeast, Repr]]] = {
     import c.universe._
 
-    val A = weakTypeOf[A].dealias
-    val N = weakTypeOf[AtLeast]
+    val A       = weakTypeOf[A].dealias
+    val N       = weakTypeOf[AtLeast]
     val AtLeast = N.dealias
-    val Repr = weakTypeOf[Repr[_]].dealias
+    val Repr    = weakTypeOf[Repr[_]].dealias
 
     val natRegex = "shapeless.nat._([1-9][0-9]*)".r
 

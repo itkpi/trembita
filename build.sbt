@@ -2,7 +2,7 @@ import xerial.sbt.Sonatype._
 
 lazy val snapshot: Boolean = true
 lazy val v: String = {
-  val vv = "0.4.0"
+  val vv = "0.5.0"
   if (!snapshot) vv
   else vv + "-SNAPSHOT"
 }
@@ -13,18 +13,18 @@ lazy val scalaReflect = Def.setting {
 
 organization in ThisBuild := "com.github.vitaliihonta.trembita"
 
-val scalaV = "2.12.8"
-val testV = "3.0.4"
+val scalaV       = "2.12.8"
+val testV        = "3.0.4"
 val catsEffectsV = "1.1.0"
-val shapelessV = "2.3.3"
-val spireV = "0.16.0"
+val shapelessV   = "2.3.3"
+val spireV       = "0.16.0"
 
 val commonDeps = Seq(
-  "org.scalactic" %% "scalactic" % testV,
-  "org.scalatest" %% "scalatest" % testV % "test",
+  "org.scalactic" %% "scalactic"   % testV,
+  "org.scalatest" %% "scalatest"   % testV % "test",
   "org.typelevel" %% "cats-effect" % catsEffectsV,
-  "com.chuusai" %% "shapeless" % shapelessV,
-  "org.typelevel" %% "spire" % spireV
+  "com.chuusai"   %% "shapeless"   % shapelessV,
+  "org.typelevel" %% "spire"       % spireV
 )
 
 def sonatypeProject(id: String, base: File) =
@@ -80,8 +80,8 @@ lazy val cassandra_connector_phantom =
     .dependsOn(cassandra_connector)
     .settings(libraryDependencies ++= {
       Seq(
-        "com.outworkers" %% "phantom-jdk8" % "2.29.0" % "provided",
-        "com.datastax.cassandra" % "cassandra-driver-extras" % "3.6.0" % "provided"
+        "com.outworkers"         %% "phantom-jdk8"           % "2.29.0" % "provided",
+        "com.datastax.cassandra" % "cassandra-driver-extras" % "3.6.0"  % "provided"
       )
     })
 
@@ -93,7 +93,7 @@ lazy val slf4j =
     })
 
 lazy val trembita_spark =
-  sonatypeProject(id = "trembita-spark", base = file("./integrations/spark"))
+  sonatypeProject(id = "trembita-spark", base = file("./integrations/spark/core"))
     .dependsOn(kernel)
     .settings(
       name := "trembita-spark",
@@ -105,9 +105,9 @@ lazy val trembita_spark =
       libraryDependencies ++= {
         val sparkV = "2.4.0"
         Seq(
-          "org.apache.spark" %% "spark-core" % sparkV % "provided",
-          "org.apache.spark" %% "spark-sql" % sparkV % "provided",
-          "org.scalamacros" %% "resetallattrs" % "1.0.0"
+          "org.apache.spark" %% "spark-core"    % sparkV % "provided",
+          "org.apache.spark" %% "spark-sql"     % sparkV % "provided",
+          "org.scalamacros"  %% "resetallattrs" % "1.0.0"
         )
       }
     )
@@ -124,7 +124,7 @@ lazy val trembita_akka_streamns =
       libraryDependencies ++= {
         val akkaV = "2.5.19"
         Seq(
-          "com.typesafe.akka" %% "akka-actor" % akkaV,
+          "com.typesafe.akka" %% "akka-actor"  % akkaV,
           "com.typesafe.akka" %% "akka-stream" % akkaV
         )
       }
@@ -156,13 +156,14 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     libraryDependencies ++= {
       val sparkV = "2.4.0"
       Seq(
-        "io.circe" %% "circe-java8" % "0.10.1",
-        "com.datastax.cassandra" % "cassandra-driver-core" % "3.6.0",
+        "io.circe"               %% "circe-java8"            % "0.10.1",
+        "com.datastax.cassandra" % "cassandra-driver-core"   % "3.6.0",
         "com.datastax.cassandra" % "cassandra-driver-extras" % "3.6.0",
-        "com.outworkers" %% "phantom-jdk8" % "2.29.0",
-        "org.apache.spark" %% "spark-core" % sparkV % "provided",
-        "org.apache.spark" %% "spark-sql" % sparkV % "provided",
-        "com.github.gvolpe" %% "console4cats" % "0.5"
+        "com.outworkers"         %% "phantom-jdk8"           % "2.29.0",
+        "org.apache.spark"       %% "spark-core"             % sparkV % "provided",
+        "org.apache.spark"       %% "spark-sql"              % sparkV % "provided",
+        "org.apache.spark"       %% "spark-streaming"        % sparkV % "provided",
+        "com.github.gvolpe"      %% "console4cats"           % "0.5"
       ).map(_ exclude ("org.slf4j", "log4j-over-slf4j"))
     },
     test in assembly := {},

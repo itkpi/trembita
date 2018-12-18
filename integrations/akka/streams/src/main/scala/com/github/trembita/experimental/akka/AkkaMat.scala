@@ -2,19 +2,21 @@ package com.github.trembita.experimental.akka
 
 import akka.NotUsed
 import akka.stream.Materializer
-
 import scala.language.{existentials, higherKinds}
 import com.github.trembita._
 import com.github.trembita.collections._
 import akka.stream.scaladsl._
-import cats.effect.IO
-import cats.{Functor, Monad, ~>}
-
+import cats.{~>, Functor, Monad}
+import scala.annotation.implicitNotFound
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
 
+@implicitNotFound("""
+    Operation you're performing requires implicit AkkaMat[${Mat}] in the scope.
+    Please try to define implicit ExecutionContext and Materializer in the scope
+  """)
 sealed trait AkkaMat[Mat] extends Environment {
-  final type Repr[X] = Source[X, Mat]
+  final type Repr[X]   = Source[X, Mat]
   final type Run[G[_]] = RunAkka[G]
   final type Result[X] = Future[X]
 
@@ -27,7 +29,7 @@ sealed trait AkkaMat[Mat] extends Environment {
         fa.map(f)
 
       def flatMap[A, B: ClassTag](
-        fa: Source[A, Mat]
+          fa: Source[A, Mat]
       )(f: A => Source[B, Mat]): Source[B, Mat] =
         fa.flatMapConcat(f)
     }
@@ -41,13 +43,13 @@ sealed trait AkkaMat[Mat] extends Environment {
 
   val TraverseRepr: TraverseTag[Repr, Run] = new TraverseTag[Repr, Run] {
     def traverse[G[_], A, B: ClassTag](
-      fa: Source[A, Mat]
+        fa: Source[A, Mat]
     )(f: A => G[B])(implicit G: Run[G]): G[Source[B, Mat]] =
       G.lift(G.traverse(fa)(f))
   }
 
   override def foreachF[F[_], A](
-    repr: Source[A, Mat]
+      repr: Source[A, Mat]
   )(f: A => F[Unit])(implicit Run: RunAkka[F], F: Functor[F]): F[Unit] =
     Run.traverse_(repr)(f)
 
@@ -55,7 +57,7 @@ sealed trait AkkaMat[Mat] extends Environment {
     repr.runWith(Sink.collection[A, Vector[A]])
 
   def groupBy[A, K: ClassTag](
-    vs: Repr[A]
+      vs: Repr[A]
   )(f: A => K): Repr[(K, Iterable[A])] = {
     val groupFlow: Flow[(K, A), (K, Iterable[A]), NotUsed] = Flow[(K, A)]
       .fold(Map.empty[K, Vector[A]]) {
@@ -69,7 +71,7 @@ sealed trait AkkaMat[Mat] extends Environment {
   }
 
   def collect[A, B: ClassTag](
-    repr: Repr[A]
+      repr: Repr[A]
   )(pf: PartialFunction[A, B]): Repr[B] =
     repr.collect(pf)
 
@@ -101,6 +103,6 @@ object AkkaMat {
   def akka[Mat](ec: ExecutionContext, mat: Materializer): AkkaMat[Mat] =
     new {
       implicit val executionContext: ExecutionContext = ec
-      implicit val materializer: Materializer = mat
+      implicit val materializer: Materializer         = mat
     } with AkkaMat[Mat]
 }

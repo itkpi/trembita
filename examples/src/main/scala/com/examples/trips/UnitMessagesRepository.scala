@@ -13,11 +13,11 @@ abstract class UnitMessages extends Table[UnitMessages, UnitMessage] {
   object driverId extends OptionalStringColumn {
     override val name = "driver_id"
   }
-  object latitude extends DoubleColumn
-  object longitude extends DoubleColumn
-  object address extends OptionalStringColumn
-  object ignitionOn extends BooleanColumn { override val name = "ignition_on" }
-  object speed extends DoubleColumn
+  object latitude    extends DoubleColumn
+  object longitude   extends DoubleColumn
+  object address     extends OptionalStringColumn
+  object ignitionOn  extends BooleanColumn { override val name = "ignition_on" }
+  object speed       extends DoubleColumn
   object odometerKms extends DoubleColumn { override val name = "odometer_kms" }
   object tripType extends EnumColumn[TripType.Value] {
     override val name = "trip_type"
@@ -27,12 +27,11 @@ abstract class UnitMessages extends Table[UnitMessages, UnitMessage] {
   }
 }
 
-class UnitMessagesRepository(connector: CassandraConnection)
-    extends Database[UnitMessagesRepository](connector) {
+class UnitMessagesRepository(connector: CassandraConnection) extends Database[UnitMessagesRepository](connector) {
 
   object unitMessages extends UnitMessages with Connector
 
-  private def insertStatement(e: UnitMessage) = {
+  private def insertStatement(e: UnitMessage) =
     unitMessages.insert
       .value(_.unitId, e.unitId)
       .value(_.timestamp, e.timestamp)
@@ -45,25 +44,18 @@ class UnitMessagesRepository(connector: CassandraConnection)
       .value(_.odometerKms, e.odometerKms)
       .value(_.tripType, e.tripType)
       .value(_.fuelLevel, e.fuelLevel)
-  }
 
-  def selectByUnits(unitIds: List[String],
-                    fromDate: JLocalDateTime,
-                    toDate: JLocalDateTime) = {
+  def selectByUnits(unitIds: List[String], fromDate: JLocalDateTime, toDate: JLocalDateTime) =
     unitMessages.select
       .where(_.unitId in unitIds)
       .and(_.timestamp gte fromDate)
       .and(_.timestamp lte toDate)
-  }
 
-  def selectByUnit(unitId: String,
-                   fromDate: JLocalDateTime,
-                   toDate: JLocalDateTime) = {
+  def selectByUnit(unitId: String, fromDate: JLocalDateTime, toDate: JLocalDateTime) =
     unitMessages.select
       .where(_.unitId eqs unitId)
       .and(_.timestamp gte fromDate)
       .and(_.timestamp lte toDate)
-  }
 
   def selectAllStatement = unitMessages.select
 }

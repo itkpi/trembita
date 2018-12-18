@@ -4,13 +4,14 @@ import com.github.trembita.ql.AggDecl.{%::, DNil}
 import com.github.trembita.ql.AggRes.{*::, RNil}
 import com.github.trembita.ql.GroupingCriteria.{&::, GNil}
 import shapeless._
-
+import scala.annotation.implicitNotFound
 import scala.language.experimental.macros
 
-trait ToHList[A] extends DepFn1[A] with Serializable
+@implicitNotFound("""Unable to convert ${A} to HList""")
+trait ToHList[A] extends DepFn1[A] with Serializable { type Out <: HList }
 
 object ToHList {
-  type Aux[A, Out0] = ToHList[A] { type Out = Out0 }
+  type Aux[A, Out0 <: HList] = ToHList[A] { type Out = Out0 }
   def apply[A](implicit ev: ToHList[A]): Aux[A, ev.Out] = ev
 
   implicit val gnilToHList: ToHList.Aux[GNil, HNil] = new ToHList[GNil] {
@@ -51,6 +52,7 @@ object ToHList {
 trait FromHList[A <: HList] extends DepFn1[A] with Serializable
 
 object FromHList {
+  @implicitNotFound("""Unable to create ${Out0} from ${A}""")
   type Aux[A <: HList, Out0] = FromHList[A] { type Out = Out0 }
   def apply[A <: HList](implicit ev: FromHList[A]): Aux[A, ev.Out] = ev
 

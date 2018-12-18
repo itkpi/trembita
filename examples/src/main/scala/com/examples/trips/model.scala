@@ -22,9 +22,7 @@ case class UnitMessage(unitId: String,
   def ignitionOff: Boolean = !ignitionOn
 }
 
-case class LocationInfo(latitude: Double,
-                        longitude: Double,
-                        address: Option[String])
+case class LocationInfo(latitude: Double, longitude: Double, address: Option[String])
 
 case class DrivingActivity(unitId: String,
                            driverId: Option[String],
@@ -38,23 +36,22 @@ case class DrivingActivity(unitId: String,
                            tripType: TripType.Value,
                            startFuelLevel: Option[Double],
                            endFuelLevel: Option[Double]) {
-  def coveredDistance: Double = endOdometer - startOdometer
+  def coveredDistance: Double          = endOdometer - startOdometer
   def activityDuration: FiniteDuration = startDate until endDate
   def fuelConsumption: Option[Double] =
     for {
-      endLevel <- endFuelLevel
+      endLevel   <- endFuelLevel
       startLevel <- startFuelLevel
     } yield endLevel - startLevel
 }
 object DrivingActivity {
 
   implicit object ShowActivity extends Show[DrivingActivity] {
-    def show(t: DrivingActivity): String = {
+    def show(t: DrivingActivity): String =
       s"""
          |Main info: unit: ${t.unitId}| driver: ${t.driverId}|
          |${if (t.ignitionOn) "Trip" else "Idle"} info: trip_type: ${t.tripType} from: ${t.startDate}| to: ${t.endDate}, start_location: ${t.startLocation}, end_location: ${t.endLocation}
          |Metrics: covered distance: ${t.coveredDistance}, duration: ${t.activityDuration}, fuel_consumption: ${t.fuelConsumption}
        """.stripMargin
-    }
   }
 }

@@ -12,9 +12,8 @@ package object trips {
     def isBetween(start: LocalDateTime, end: LocalDateTime): Boolean =
       ldt.isAfter(start) && ldt.isBefore(end)
 
-    def until(other: LocalDateTime): FiniteDuration = {
+    def until(other: LocalDateTime): FiniteDuration =
       (other.getMillis - ldt.getMillis).millis
-    }
 
     def toUtilDate: java.util.Date =
       java.util.Date.from(Instant.ofEpochMilli(ldt.getMillis))
@@ -36,9 +35,8 @@ package object trips {
   implicit class DateOps(ld: LocalDate) {
     def getMillis: Long = ld.atTime(LocalTime.MIN).getMillis
 
-    def diff(other: LocalDate): FiniteDuration = {
+    def diff(other: LocalDate): FiniteDuration =
       (ld.getMillis - other.getMillis).millis
-    }
 
     def minus(duration: FiniteDuration): LocalDate =
       ld.minusDays(duration.toDays)

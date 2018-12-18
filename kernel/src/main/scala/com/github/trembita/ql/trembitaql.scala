@@ -1,15 +1,22 @@
 package com.github.trembita.ql
 
-import scala.annotation.tailrec
+import scala.annotation.implicitNotFound
 import scala.language.experimental.macros
 import scala.language.higherKinds
-import scala.reflect.macros.blackbox
 import com.github.trembita._
 import QueryBuilder._
 import cats.Monad
 import com.github.trembita.operations.CanSort
 import scala.reflect.ClassTag
 
+@implicitNotFound("""
+    Aggregation upon ${A}
+      - with grouping ${G}
+      - aggregations ${T}
+      - and expected result ${R}
+    cannot be performed in ${Ex}.
+    In most cases it means that ${Ex} does not support an efficient data querying
+  """)
 trait trembitaql[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb, Ex <: Environment] extends Serializable {
   def apply[F[_]](pipeline: DataPipelineT[F, A, Ex], queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb])(
       implicit F: Monad[F],

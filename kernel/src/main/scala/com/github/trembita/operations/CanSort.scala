@@ -1,10 +1,14 @@
 package com.github.trembita.operations
 
+import scala.annotation.implicitNotFound
 import scala.collection.parallel.immutable.ParVector
 import scala.language.higherKinds
 import scala.reflect.ClassTag
-import scala.collection.JavaConverters._
 
+@implicitNotFound("""
+    ${F} does not support sorting natively.
+    Please provide an implicit instance in scope if necessary
+    """)
 trait CanSort[F[_]] {
   def sorted[A: Ordering: ClassTag](fa: F[A]): F[A]
   def sortedBy[A: ClassTag, B: Ordering: ClassTag](fa: F[A])(f: A => B): F[A]
