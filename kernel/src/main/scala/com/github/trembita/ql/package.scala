@@ -1,7 +1,6 @@
 package com.github.trembita
 
 import cats._
-import com.github.trembita.ql.AggFunc
 import language.{higherKinds, implicitConversions}
 import language.experimental.macros
 import shapeless._
@@ -11,17 +10,8 @@ import ql.QueryBuilder._
 import ql.GroupingCriteria._
 import shapeless.syntax.SingletonOps
 import scala.reflect.ClassTag
-import shapeless.{Widen, Witness}
 
-package object ql
-    extends orderingInstances
-    with aggregationInstances
-    with monoidInstances
-    with spire.std.AnyInstances
-    with AggFunc.types
-    with exprMagnets
-    with GroupingCriteriaFromTuple
-    with AggDeclFromTuple {
+package object ql extends orderingInstances with aggregationInstances with monoidInstances with spire.std.AnyInstances with AggFunc.types {
 
   implicit class TaggingSyntax[A](private val self: A) extends AnyVal {
     def tagAs[T]: A :@ T = self.:@[T]

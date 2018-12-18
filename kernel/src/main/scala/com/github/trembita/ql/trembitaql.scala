@@ -10,37 +10,29 @@ import cats.Monad
 import com.github.trembita.operations.CanSort
 import scala.reflect.ClassTag
 
-trait trembitaql[A,
-                 G <: GroupingCriteria,
-                 T <: AggDecl,
-                 R <: AggRes,
-                 Comb,
-                 Ex <: Environment] {
-  def apply[F[_]](pipeline: DataPipelineT[F, A, Ex],
-                  queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb])(
-    implicit F: Monad[F],
-    ex: Ex,
-    run: Ex#Run[F]
+trait trembitaql[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb, Ex <: Environment] {
+  def apply[F[_]](pipeline: DataPipelineT[F, A, Ex], queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb])(
+      implicit F: Monad[F],
+      ex: Ex,
+      run: Ex#Run[F]
   ): DataPipelineT[F, QueryResult[A, G, R], Ex]
 }
 
-trait LowPriorityTrembitaQl {
-  implicit def derive[A: ClassTag,
-                      G <: GroupingCriteria: ClassTag,
-                      T <: AggDecl: ClassTag,
-                      R <: AggRes: ClassTag,
-                      Comb: ClassTag,
-                      Ex <: Environment: ClassTag](
-    implicit canSort: CanSort[Ex#Repr]
+object trembitaql {
+  def derive[A: ClassTag,
+             G <: GroupingCriteria: ClassTag,
+             T <: AggDecl: ClassTag,
+             R <: AggRes: ClassTag,
+             Comb: ClassTag,
+             Ex <: Environment: ClassTag](
+      implicit canSort: CanSort[Ex#Repr]
   ): trembitaql[A, G, T, R, Comb, Ex] =
     new trembitaql[A, G, T, R, Comb, Ex] {
       type QueryRes = QueryResult[A, G, R]
       override def apply[F[_]](
-        pipeline: DataPipelineT[F, A, Ex],
-        queryF: Empty[A] => Query[A, G, T, R, Comb]
-      )(implicit F: Monad[F],
-        ex: Ex,
-        run: Ex#Run[F]): DataPipelineT[F, QueryResult[A, G, R], Ex] = {
+          pipeline: DataPipelineT[F, A, Ex],
+          queryF: Empty[A] => Query[A, G, T, R, Comb]
+      )(implicit F: Monad[F], ex: Ex, run: Ex#Run[F]): DataPipelineT[F, QueryResult[A, G, R], Ex] = {
         val query = queryF(new Empty[A])
         val grouped: DataPipelineT[F, QueryRes, Ex] = pipeline
           .filterImpl[A](query.filterF)
@@ -77,5 +69,12 @@ trait LowPriorityTrembitaQl {
         orderedByG
       }
     }
+
+  implicit def sequentialQL[A: ClassTag, G <: GroupingCriteria: ClassTag, T <: AggDecl: ClassTag, R <: AggRes: ClassTag, Comb: ClassTag](
+      implicit canSort: CanSort[Sequential#Repr]
+  ): trembitaql[A, G, T, R, Comb, Sequential] = derive
+
+  implicit def parallelQL[A: ClassTag, G <: GroupingCriteria: ClassTag, T <: AggDecl: ClassTag, R <: AggRes: ClassTag, Comb: ClassTag](
+      implicit canSort: CanSort[Parallel#Repr]
+  ): trembitaql[A, G, T, R, Comb, Parallel] = derive
 }
-object trembitaql extends LowPriorityTrembitaQl {}

@@ -187,7 +187,6 @@ lazy val root = Project(id = "trembita", base = file("."))
     slf4j,
     cassandra_connector,
     cassandra_connector_phantom,
-    trembita_circe,
     trembita_spark,
     trembita_akka_streamns
   )

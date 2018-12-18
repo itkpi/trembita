@@ -13,7 +13,10 @@ object composePoly extends Poly2 {
     at((f1, f2) => a => f1(a) :: f2(a))
 }
 
-trait GroupingCriteriaFromTuple {
+object FromTuple {
+  type Aux[T, Out0] = FromTuple[T] { type Out = Out0 }
+  def apply[T](implicit ev: FromTuple[T]): FromTuple.Aux[T, ev.Out] = ev
+
   implicit def recCaseGroup[R, L <: HList, A, ROut <: HList, G <: GroupingCriteria](
       implicit gen: Generic.Aux[R, L],
       rightReducer: RightReducer.Aux[L, composePoly.type, A => ROut],
@@ -27,9 +30,7 @@ trait GroupingCriteriaFromTuple {
       fromHList(rout)
     }
   }
-}
 
-trait AggDeclFromTuple {
   implicit def recCaseAggDecl[R, L <: HList, A, ROut <: HList, D <: AggDecl](
       implicit gen: Generic.Aux[R, L],
       rightReducer: RightReducer.Aux[L, composePoly.type, A => ROut],
@@ -43,9 +44,4 @@ trait AggDeclFromTuple {
       fromHList(rout)
     }
   }
-}
-
-object FromTuple {
-  type Aux[T, Out0] = FromTuple[T] { type Out = Out0 }
-  def apply[T](implicit ev: FromTuple[T]): FromTuple.Aux[T, ev.Out] = ev
 }

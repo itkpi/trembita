@@ -310,7 +310,7 @@ object QueryBuilder {
       *
       * @param p - predicate
       **/
-    def filter(p: A => Boolean): Filter[A] = new Filter(p)
+    def where(p: A => Boolean): Where[A] = new Where(p)
 
     /**
       * Like Group By clause in SQL
@@ -322,15 +322,15 @@ object QueryBuilder {
       new GroupBy[A, G](magnet(), None)
   }
 
-  class Filter[A](val p: A => Boolean) extends QueryBuilder[A] {
-    def filter(p2: A => Boolean): Filter[A] =
-      new Filter((a: A) => p(a) && p2(a))
+  class Where[A](val p: A => Boolean) extends QueryBuilder[A] {
+    def filter(p2: A => Boolean): Where[A] =
+      new Where((a: A) => p(a) && p2(a))
 
     def groupBy[T, G <: GroupingCriteria](magnet: ExprMagnet.Aux[T, A => G]): GroupBy[A, G] =
       new GroupBy[A, G](magnet(), Some(this))
   }
 
-  class GroupBy[A, G <: GroupingCriteria](val getG: A => G, val filterOpt: Option[Filter[A]]) extends QueryBuilder[A] {
+  class GroupBy[A, G <: GroupingCriteria](val getG: A => G, val filterOpt: Option[Where[A]]) extends QueryBuilder[A] {
 
     /**
       * An arbitrary aggregation
@@ -350,7 +350,7 @@ object QueryBuilder {
   class Aggregate[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
       val getG: A => G,
       val getT: A => T,
-      val filterOpt: Option[Filter[A]]
+      val filterOpt: Option[Where[A]]
   )(implicit val aggF: AggFunc[T, R, Comb])
       extends QueryBuilder[A] {
 
@@ -480,7 +480,7 @@ object QueryBuilder {
       override val getG: A => G,
       override val getT: A => T,
       val havingF: R => Boolean,
-      override val filterOpt: Option[Filter[A]],
+      override val filterOpt: Option[Where[A]],
       val orderRecords: Option[Ordering[A]],
       val orderGroups: Option[Ordering[G]],
       val orderResults: Option[Ordering[R]]

@@ -1,17 +1,17 @@
 package com.github.trembita.experimental.spark
 
-import com.github.trembita._
 import com.github.trembita.ql.AggDecl.{%::, DNil}
 import com.github.trembita.ql.AggRes.*::
-import com.github.trembita.ql.GroupingCriteria.&::
+import com.github.trembita.ql.GroupingCriteria.{&::, GNil}
 import com.github.trembita.ql.QueryBuilder.Query
-import com.github.trembita.ql.{col => _, stdev => _, rms => _, _}
+import com.github.trembita.ql.{col => _, rms => _, stdev => _, _}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types._
-import shapeless.=:!=
+import shapeless.ops.hlist.Tupler
+import shapeless.{=:!=, HList}
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 import scala.reflect.macros.blackbox
@@ -84,7 +84,7 @@ object ToColumn {
          new ToColumn[$A :@ $U] {
            import $spark.implicits._
            $sparkFunctionsImport
-           def apply(): $Col = col("_2." + $uName).as[$A]
+           def apply(): $Col = col("_1").as[$A].alias($uName)
          }
        """)
     }
@@ -167,47 +167,57 @@ object ToHavingFilter {
   }
 }
 
+trait ToRow[A] {
+  def apply(a: A): Row
+}
+
+object ToRow {
+  def apply[A](implicit ev: ToRow[A]): ToRow[A] = ev
+
+  implicit def stub[A]: ToRow[A] = null
+}
+
 trait ToGroupByAgg[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb] {
   def apply(query: Query[A, G, T, R, Comb]): Dataset[A] => DataFrame
 }
 object ToGroupByAgg {
   implicit def derive[A: Encoder: ClassTag,
-                      G <: GroupingCriteria: ToGroupByQuery: ClassTag,
-                      T <: AggDecl: ToAggregateQuery: ClassTag,
+                      G <: GroupingCriteria: ToGroupByQuery: ToRow: ClassTag,
+                      T <: AggDecl: ToAggregateQuery: ToRow: ClassTag,
                       R <: AggRes: ToHavingFilter: ClassTag,
-                      Comb](implicit spark: SparkSession, ev: T =:!= DNil): ToGroupByAgg[A, G, T, R, Comb] =
+                      Comb](implicit spark: SparkSession,
+                            ev: T =:!= DNil): ToGroupByAgg[A, G, T, R, Comb] =
     new ToGroupByAgg[A, G, T, R, Comb] {
-      implicit val groupingCriteriaEncoder: Encoder[G] = Encoders.kryo[G]
-      implicit val aggDeclEncoder: Encoder[T]          = Encoders.kryo[T]
-      implicit val aggResEncoder: Encoder[R]           = Encoders.kryo[R]
-      implicit val tupleEncoder: Encoder[(A, G, T)]    = Encoders.kryo[(A, G, T)]
       import spark.implicits._
       override def apply(
           query: Query[A, G, T, R, Comb]
       ): Dataset[A] => DataFrame = { da =>
-        val groupByQuery    = ToGroupByQuery[G].apply()
-        val aggregateQuery  = ToAggregateQuery[T].apply()
-        val havingQuery     = ToHavingFilter[R].apply()
-        val having          = query.havingF
-        val orderCriterias  = query.orderCriterias
-        val orderAggregates = query.orderResults
-        val orderRecords    = query.orderRecords
 
-        val orderings: List[Column] =
-          orderRecords.map(_ => col("_1")).toList ++
-            orderCriterias.map(_ => col("_2")) ++
-            orderAggregates.map(_ => col("_3"))
-
-        da.filter(a => query.filterF(a))
-          .map { a =>
-            val G = query.getG(a)
-            val T = query.getT(a)
-            (a, G, T)
-          }
-          .groupBy(groupByQuery: _*)
-          .agg(aggregateQuery.head, aggregateQuery.tail: _*)
-          .filterMany(havingQuery.head, havingQuery.tail: _*)
-          .orderBy(orderings: _*)
+//        val groupByQuery    = ToGroupByQuery[G].apply()
+//        val aggregateQuery  = ToAggregateQuery[T].apply()
+//        val havingQuery     = ToHavingFilter[R].apply()
+//        val having          = query.havingF
+//        val orderCriterias  = query.orderCriterias
+//        val orderAggregates = query.orderResults
+//        val orderRecords    = query.orderRecords
+//
+//        val orderings: List[Column] =
+//          orderRecords.map(_ => col("_1")).toList ++
+//            orderCriterias.map(_ => col("_2")) ++
+//            orderAggregates.map(_ => col("_3"))
+//
+//        da.filter(a => query.filterF(a))
+//          .map { a =>
+//            val G = query.getG(a)
+//            val T = query.getT(a)
+//            (a, G, T)
+//          }
+//          .select($"_1", $"_2.*", $"_3.*")
+//          .groupBy(groupByQuery: _*)
+//          .agg(aggregateQuery.head, aggregateQuery.tail: _*)
+//          .filterMany(havingQuery.head, havingQuery.tail: _*)
+//          .orderBy(orderings: _*)
+        ???
       }
     }
 }

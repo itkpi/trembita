@@ -2,15 +2,12 @@ package com.examples.trips
 
 import java.time._
 import cats.Show
-import io.circe.generic.JsonCodec
-import io.circe.java8.time._
 import scala.concurrent.duration.FiniteDuration
 
 object TripType extends Enumeration {
   val Private, Business, Unknown = Value
 }
 
-@JsonCodec
 case class UnitMessage(unitId: String,
                        driverId: Option[String],
                        timestamp: LocalDateTime,
@@ -25,12 +22,10 @@ case class UnitMessage(unitId: String,
   def ignitionOff: Boolean = !ignitionOn
 }
 
-@JsonCodec
 case class LocationInfo(latitude: Double,
                         longitude: Double,
                         address: Option[String])
 
-@JsonCodec
 case class DrivingActivity(unitId: String,
                            driverId: Option[String],
                            startDate: LocalDateTime,
