@@ -1,6 +1,8 @@
 [![codecov](https://codecov.io/gh/vitaliihonta/trembita/branch/master/graph/badge.svg)](https://codecov.io/gh/vitaliihonta/trembita)
 [![Build Status](https://travis-ci.com/vitaliihonta/trembita.svg?branch=master)](https://travis-ci.com/vitaliihonta/trembita)
 
+![Cats Friendly Badge](https://typelevel.org/cats/img/cats-badge-tiny.png) 
+
 <img src="https://github.com/vitalii-honta/trembita/blob/master/media/trembita-p.png" alt="trembita"/>
  
 ## Description 
@@ -133,6 +135,9 @@ To run Spark QL example in docker use the following script:
 sbt trembita-examples/assembly # prepare fat jar for spark-submit
 sh examples/src/main/resources/spark/cluster/run_ql.sh
 ```
+
+Before running QL please remove [spire](https://github.com/non/spire) jars from spark classpath to avoid dependency conflicts
+
 ## Experimental: Akka streams support
 Trembita now supports running a part of your transformations on [akka-streams](https://doc.akka.io/docs/akka/current/stream/).
 To use it, add the following dependency:

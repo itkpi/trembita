@@ -10,7 +10,8 @@ trait ToCaseClass[A, K <: GroupingCriteria, T] extends DepFn1[QueryResult[A, K, 
 object ToCaseClass {
   @implicitNotFound("""
     Unable to convert querying result upon ${A}
-    with grouping ${K} and aggregate ${T}
+    with grouping ${K}
+    and aggregate ${T}
     into a case class ${Out0}.
     Please ensure right fields order and class signature
   """)
