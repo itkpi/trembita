@@ -3,69 +3,63 @@ package com.github.trembita
 import org.scalatest.FlatSpec
 import ql._
 import GroupingCriteria._
-import AggDecl._
 import AggRes._
 import cats._
-import FromTuple._
 import shapeless.syntax.singleton._
-import shapeless.Witness
-import shapeless.labelled.FieldType
-import shapeless.syntax.SingletonOps
-//import cats.implicits._
 
 class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
-//  "A simple DataPipeline.query(...)" should "produce correct result" in {
-//    val pipeline = DataPipeline[Int](3, 1, 2)
-//    val result =
-//      pipeline
-//        .query(
-//          _.groupBy(expr[Int](_ % 2 == 0) as "divisible by 2")
-//            .aggregate(col[Int] as "sum" agg sum)
-//        )
-//        .eval
-//
-//    assert(
-//      result == Vector(
-//        QueryResult(
-//          :@(false) &:: GNil,
-//          :@(4) *:: RNil,
-//          Vector(3, 1)
-//        ),
-//        QueryResult(
-//          :@(true) &:: GNil,
-//          :@(2) *:: RNil,
-//          Vector(2)
-//        )
-//      )
-//    )
-//  }
-//
-//  "A simple DataPipeline.query(...) with ordering records" should "produce correct result" in {
-//    val pipeline = DataPipeline[Int](3, 1, 2)
-//    val result =
-//      pipeline
-//        .query(
-//          _.groupBy(expr[Int](_ % 2 == 0) as "divisible by 2")
-//            .aggregate(col[Int] as "sum" agg sum)
-//            .orderRecords
-//        )
-//        .eval
-//
-//    assert(
-//      result == Vector(
-//        QueryResult(
-//          :@(false) &:: GNil,
-//          :@(4) *:: RNil,
-//          Vector(1, 3)
-//        ),
-//        QueryResult(
-//          :@(true) &:: GNil,
-//          :@(2) *:: RNil,
-//          Vector(2)
-//        )
-//      )
-//    )
-//  }
+  "A simple DataPipeline.query(...)" should "produce correct result" in {
+    val pipeline = DataPipeline[Int](3, 1, 2)
+    val result =
+      pipeline
+        .query(
+          _.groupBy(expr[Int](_ % 2 == 0) as "divisible by 2")
+            .aggregate(col[Int] agg sum as "sum")
+        )
+        .eval
+
+    assert(
+      result == Vector(
+        QueryResult(
+          :@(false) &:: GNil,
+          :@(4) *:: RNil,
+          Vector(3, 1)
+        ),
+        QueryResult(
+          :@(true) &:: GNil,
+          :@(2) *:: RNil,
+          Vector(2)
+        )
+      )
+    )
+  }
+
+  "A simple DataPipeline.query(...) with ordering records" should "produce correct result" in {
+    val pipeline = DataPipeline[Int](3, 1, 2)
+    val result =
+      pipeline
+        .query(
+          _.groupBy(expr[Int](_ % 2 == 0) as "divisible by 2")
+            .aggregate(col[Int] agg sum as "sum")
+            .orderRecords
+        )
+        .eval
+
+    assert(
+      result == Vector(
+        QueryResult(
+          :@(false) &:: GNil,
+          :@(4) *:: RNil,
+          Vector(1, 3)
+        ),
+        QueryResult(
+          :@(true) &:: GNil,
+          :@(2) *:: RNil,
+          Vector(2)
+        )
+      )
+    )
+  }
 
   "A complicated DataPipeline.query(...)" should "produce correct result" in {
     val pipeline = DataPipeline[Int](3, 1, 8, 2)
@@ -73,17 +67,13 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
       pipeline
         .query(
           _.groupBy(
-            (
-              expr[Int](_ % 2 == 0) as "divisible by 2",
-              expr[Int](_ % 3) as "reminder of 3",
-              expr[Int](_ > 0) as "positive"
-            )
+            expr[Int](_ % 2 == 0) as "divisible by 2",
+            expr[Int](_ % 3) as "reminder of 3",
+            expr[Int](_ > 0) as "positive"
           ).aggregate(
-              (
-                coll$[Int] as "all digits" agg stringAgg,
-                expr$[Int](_.toDouble) as "avg number" agg avg,
-                coll$[Int] as "max integer" agg max
-              )
+              col[Int] agg stringAgg as "all digits",
+              expr[Int](_.toDouble) agg avg as "avg number",
+              col[Int] agg max as "max integer"
             )
             .ordered
         )
@@ -126,18 +116,15 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
       pipeline
         .query(
           _.groupBy(
-            (
-              expr[Int](_ % 2 == 0) as "divisible by 2",
-              expr[Int](_ % 3) as "reminder of 3",
-              expr[Int](_ > 0) as "positive"
-            )
+            expr[Int](_ % 2 == 0) as "divisible by 2",
+            expr[Int](_ % 3) as "reminder of 3",
+            expr[Int](_ > 0) as "positive"
           ).aggregate(
-              (
-                coll$[Int] as "all digits" agg stringAgg,
-                expr$[Int](_.toDouble) as "avg number" agg avg,
-                coll$[Int] as "max integer" agg max
-              )
+              col[Int] agg stringAgg as "all digits",
+              expr[Int](_.toDouble) agg avg as "avg number",
+              col[Int] agg max as "max integer"
             )
+            .having(agg[Int]("max integer")(_ > 0))
             .ordered
         )
         .as[Numbers]

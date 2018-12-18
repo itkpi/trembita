@@ -10,36 +10,39 @@ import ql.AggDecl._
 import ql.QueryBuilder._
 import ql.GroupingCriteria._
 import shapeless.syntax.SingletonOps
-
 import scala.reflect.ClassTag
 import shapeless.{Widen, Witness}
 
-package object ql extends orderingInstances with aggregationInstances with monoidInstances with spire.std.AnyInstances with AggFunc.types {
+package object ql
+    extends orderingInstances
+    with aggregationInstances
+    with monoidInstances
+    with spire.std.AnyInstances
+    with AggFunc.types
+    with exprMagnets
+    with GroupingCriteriaFromTuple
+    with AggDeclFromTuple {
 
   implicit class TaggingSyntax[A](private val self: A) extends AnyVal {
     def tagAs[T]: A :@ T = self.:@[T]
     def :@[T]: A :@ T    = new :@[A, T](self)
   }
 
+  class aggDsl[A, U, AggT <: AggFunc.Type](val `f`: A => U) extends AnyVal {
+    @inline def as(s: SingletonOps): A => TaggedAgg[U, s.T, AggT] = a => TaggedAgg(:@(`f`(a)))
+  }
   class tagDsl[A, U](val `f`: A => U) extends AnyVal {
-    @inline def as(s: SingletonOps): A => :@[U, s.T] = a => :@(`f`(a))
+    @inline def as(s: SingletonOps): A => :@[U, s.T]                      = a => :@(`f`(a))
+    @inline def agg[AggT <: AggFunc.Type](aggT: AggT): aggDsl[A, U, AggT] = new aggDsl[A, U, AggT](`f`)
   }
   class exprDsl[A](val `dummy`: Boolean = false) extends AnyVal {
-    @inline def apply[U](f: A => U) = new tagDsl[A, U](f)
+    @inline def apply[U](f: A => U): tagDsl[A, U] = new tagDsl[A, U](f)
   }
-  class aggDslTag[A, U, T](val `f`: A => :@[U, T]) extends AnyVal {
-    @inline def agg[AggT <: AggFunc.Type](agg: AggT): A => TaggedAgg[U, T, AggT] = a => TaggedAgg(`f`(a))
-  }
-  class aggDsl[A, U](val `f`: A => U) extends AnyVal {
-    @inline def as(s: SingletonOps) = new aggDslTag[A, U, s.T](a => :@(`f`(a)))
-  }
-  class aggExprDsl[A](val `dummy`: Boolean = false) extends AnyVal {
-    @inline def apply[U](f: A => U) = new aggDsl[A, U](f)
-  }
-  @inline def expr[A]  = new exprDsl[A]()
-  @inline def col[A]   = new tagDsl[A, A](identity)
-  @inline def coll$[A] = new aggDsl[A, A](identity)
-  @inline def expr$[A] = new aggExprDsl[A]()
+  class havingDsl[A, T](val `f`: A => Boolean) extends AnyVal
+
+  @inline def expr[A]: exprDsl[A]                                         = new exprDsl[A]()
+  @inline def col[A]: tagDsl[A, A]                                        = new tagDsl[A, A](identity)
+  @inline def agg[A](s: SingletonOps)(f: A => Boolean): havingDsl[A, s.T] = new havingDsl[A, s.T](f)
 
   implicit class GroupingCriteriaOps[G <: GroupingCriteria](private val self: G) extends AnyVal {
     def &::[GH <: :@[_, _]](head: GH): GH &:: G =
@@ -65,24 +68,10 @@ package object ql extends orderingInstances with aggregationInstances with monoi
   implicit class AggResOps[A <: AggRes](val self: A) {
     def *::[H <: :@[_, _]](head: H): H *:: A = AggRes.*::(head, self)
 
-    def apply[U](implicit get: AggRes.Get[A, U]): get.Out = get(self)
+    def apply[U](u: U)(implicit get: AggRes.Get[A, U]): get.Out = get(self)
 
-    def get[U](implicit gget: AggRes.Get[A, U]): gget.Out = gget(self)
+    def get[U](u: U)(implicit gget: AggRes.Get[A, U]): gget.Out = gget(self)
   }
-
-//  implicit class TaggingOps[A, U](val self: A :@ U) extends AnyVal {
-//    def sum: TaggedAgg[A, U, AggFunc.Type.Sum]             = TaggedAgg(self)
-//    def avg: TaggedAgg[A, U, AggFunc.Type.Avg]             = TaggedAgg(self)
-//    def count: TaggedAgg[A, U, AggFunc.Type.Count]         = TaggedAgg(self)
-//    def max: TaggedAgg[A, U, AggFunc.Type.Max]             = TaggedAgg(self)
-//    def min: TaggedAgg[A, U, AggFunc.Type.Min]             = TaggedAgg(self)
-//    def product: TaggedAgg[A, U, AggFunc.Type.Product]     = TaggedAgg(self)
-//    def arr: TaggedAgg[A, U, AggFunc.Type.Arr]             = TaggedAgg(self)
-//    def stringAgg: TaggedAgg[A, U, AggFunc.Type.StringAgg] = TaggedAgg(self)
-//    def deviation: TaggedAgg[A, U, AggFunc.Type.STDEV]     = TaggedAgg(self)
-//    def rms: TaggedAgg[A, U, AggFunc.Type.RMS]             = TaggedAgg(self)
-//    def random: TaggedAgg[A, U, AggFunc.Type.Random]       = TaggedAgg(self)
-//  }
 
   /** Trembita QL for [[DataPipelineT]] */
   implicit class TrembitaQLForPipeline[A, F[_], Ex <: Environment](

@@ -92,23 +92,6 @@ lazy val slf4j =
       Seq("org.slf4j" % "slf4j-api" % "1.7.25")
     })
 
-lazy val trembita_circe =
-  sonatypeProject(id = "trembita-circe", base = file("./serialization/circe"))
-    .dependsOn(kernel)
-    .settings(
-      name := "trembita-circe",
-      version := v,
-      scalacOptions += "-Ypartial-unification",
-      libraryDependencies ++= {
-        val circeV = "0.10.1"
-        Seq(
-          "io.circe" %% "circe-core" % circeV,
-          "io.circe" %% "circe-generic" % circeV,
-          "io.circe" %% "circe-parser" % circeV
-        )
-      }
-    )
-
 lazy val trembita_spark =
   sonatypeProject(id = "trembita-spark", base = file("./integrations/spark"))
     .dependsOn(kernel)
@@ -152,7 +135,6 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     collection_extentions,
     kernel,
     slf4j,
-    trembita_circe,
     cassandra_connector,
     cassandra_connector_phantom,
     trembita_spark,

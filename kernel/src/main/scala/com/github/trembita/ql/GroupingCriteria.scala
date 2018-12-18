@@ -277,7 +277,7 @@ object AggRes {
     implicit def fromHead[A, U, T <: AggRes]: Aux[(A :@ U) *:: T, U, A] =
       new Get[(A :@ U) *:: T, U] {
         type Out = A
-        def apply(t: *::[(A :@ U), T]): Out = t.head.value
+        def apply(t: *::[A :@ U, T]): Out = t.head.value
       }
 
     implicit def fromTail[H <: :@[_, _], T <: AggRes, U, AtOut](
@@ -318,18 +318,16 @@ object QueryBuilder {
       * @tparam G - a grouping criteria
       * @param getG - extract [[G]] from record [[A]]
       **/
-    def groupBy[T, G <: GroupingCriteria](getT: T)(
-        implicit ev: FromTuple.Aux[T, A => G]
-    ): GroupBy[A, G] = new GroupBy[A, G](a => ev(getT)(a), None)
+    def groupBy[T, G <: GroupingCriteria](magnet: ExprMagnet.Aux[T, A => G]): GroupBy[A, G] =
+      new GroupBy[A, G](magnet(), None)
   }
 
   class Filter[A](val p: A => Boolean) extends QueryBuilder[A] {
     def filter(p2: A => Boolean): Filter[A] =
       new Filter((a: A) => p(a) && p2(a))
 
-    def groupBy[T, G <: GroupingCriteria](getT: T)(
-        implicit ev: FromTuple.Aux[T, A => G]
-    ): GroupBy[A, G] = new GroupBy[A, G](a => ev(getT)(a), Some(this))
+    def groupBy[T, G <: GroupingCriteria](magnet: ExprMagnet.Aux[T, A => G]): GroupBy[A, G] =
+      new GroupBy[A, G](magnet(), Some(this))
   }
 
   class GroupBy[A, G <: GroupingCriteria](val getG: A => G, val filterOpt: Option[Filter[A]]) extends QueryBuilder[A] {
@@ -343,11 +341,10 @@ object QueryBuilder {
       * @param getT - get an aggregation declaration from record
       * @param aggF - [[AggFunc]] for types [[T]], [[R]], [[Comb]]
       **/
-    def aggregate[T, D <: AggDecl, R <: AggRes, Comb](getT: T)(
-        implicit ev: FromTuple.Aux[T, A => D],
-        aggF: AggFunc[D, R, Comb]
+    def aggregate[T, D <: AggDecl, R <: AggRes, Comb](magnet: ExprMagnet.Aux[T, A => D])(
+        implicit aggF: AggFunc[D, R, Comb]
     ): Aggregate[A, G, D, R, Comb] =
-      new Aggregate(getG, a => ev(getT)(a), filterOpt)
+      new Aggregate(getG, magnet(), filterOpt)
   }
 
   class Aggregate[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
@@ -362,8 +359,8 @@ object QueryBuilder {
       *
       * @param p - predicate
       **/
-    def having(p: R => Boolean): MaybeOrderedHaving[A, G, T, R, Comb] =
-      new MaybeOrderedHaving(getG, getT, p, filterOpt, None, None, None)
+    def having[U](magnet: ExprMagnet.Aux[U, R => Boolean]): MaybeOrderedHaving[A, G, T, R, Comb] =
+      new MaybeOrderedHaving(getG, getT, magnet(), filterOpt, None, None, None)
 
     /**
       * Like Order By clause in SQL

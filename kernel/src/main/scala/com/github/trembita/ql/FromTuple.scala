@@ -2,8 +2,6 @@ package com.github.trembita.ql
 
 import shapeless._
 import shapeless.ops.hlist._
-import GroupingCriteria._
-import AggDecl._
 
 trait FromTuple[T] extends DepFn1[T]
 
@@ -15,7 +13,7 @@ object composePoly extends Poly2 {
     at((f1, f2) => a => f1(a) :: f2(a))
 }
 
-sealed trait GroupingCriteriaFromTuple {
+trait GroupingCriteriaFromTuple {
   implicit def recCaseGroup[R, L <: HList, A, ROut <: HList, G <: GroupingCriteria](
       implicit gen: Generic.Aux[R, L],
       rightReducer: RightReducer.Aux[L, composePoly.type, A => ROut],
@@ -31,7 +29,7 @@ sealed trait GroupingCriteriaFromTuple {
   }
 }
 
-sealed trait AggDeclFromTuple {
+trait AggDeclFromTuple {
   implicit def recCaseAggDecl[R, L <: HList, A, ROut <: HList, D <: AggDecl](
       implicit gen: Generic.Aux[R, L],
       rightReducer: RightReducer.Aux[L, composePoly.type, A => ROut],
@@ -47,7 +45,7 @@ sealed trait AggDeclFromTuple {
   }
 }
 
-object FromTuple extends GroupingCriteriaFromTuple with AggDeclFromTuple /*with LowPriorityQl*/ {
+object FromTuple {
   type Aux[T, Out0] = FromTuple[T] { type Out = Out0 }
   def apply[T](implicit ev: FromTuple[T]): FromTuple.Aux[T, ev.Out] = ev
 }
