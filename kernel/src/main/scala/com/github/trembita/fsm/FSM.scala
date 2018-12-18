@@ -22,8 +22,7 @@ object InitialState {
     * @tparam D - state data
     * @param f - function to extract the initial state
     **/
-  case class FromFirstElement[A, N, D, F[_]](f: A => FSM.State[N, D, F])
-      extends InitialState[N, D, F]
+  case class FromFirstElement[A, N, D, F[_]](f: A => FSM.State[N, D, F]) extends InitialState[N, D, F]
 
   /**
     * Pure [[InitialState]]
@@ -32,8 +31,7 @@ object InitialState {
     * @tparam D - state data
     * @param state - the initial state itself
     **/
-  case class Pure[N, D, F[_]](state: FSM.State[N, D, F])
-      extends InitialState[N, D, F]
+  case class Pure[N, D, F[_]](state: FSM.State[N, D, F]) extends InitialState[N, D, F]
 
   /**
     * Get the initial state for first element
@@ -45,7 +43,7 @@ object InitialState {
     * @return - initial state
     **/
   def fromFirstElement[A, N, D, F[_]](
-    f: A => FSM.State[N, D, F]
+      f: A => FSM.State[N, D, F]
   ): InitialState[N, D, F] = FromFirstElement(f)
 
   /**
@@ -136,19 +134,19 @@ object FSM {
       * @return - the same state with output value
       **/
     def push[B](
-      f: D => B
+        f: D => B
     )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
       F.pure(this → List(f(data)))
 
     def modPush[B](
-      f: D => (D, Option[B])
+        f: D => (D, Option[B])
     )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] = {
       val (newData, result) = f(data)
       (State[N, D, F](name, newData), result.toList: Iterable[B]).pure[F]
     }
 
     def pushF[B](
-      f: D => F[B]
+        f: D => F[B]
     )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
       F.map(f(data))(b => this → List(b))
 
@@ -160,36 +158,36 @@ object FSM {
       * @return - the same state with output value
       **/
     def push[B](
-      value: B
+        value: B
     )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
       F.pure(this → List(value))
 
     def pushF[B](
-      valueF: F[B]
+        valueF: F[B]
     )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
       F.map(valueF)(v => this → List(v))
 
     def dontPush[B](
-      implicit F: Applicative[F]
+        implicit F: Applicative[F]
     ): F[(State[N, D, F], Iterable[B])] = F.pure(this → Nil)
 
     def spam[B](
-      f: D => Iterable[B]
+        f: D => Iterable[B]
     )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
       F.pure(this → f(data))
 
     def spamF[B](
-      f: D => F[Iterable[B]]
+        f: D => F[Iterable[B]]
     )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
       F.map(f(data))(this → _)
 
     def spam[B](
-      values: Iterable[B]
+        values: Iterable[B]
     )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
       F.pure(this → values)
 
     def spamF[B](
-      valuesF: F[Iterable[B]]
+        valuesF: F[Iterable[B]]
     )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
       F.map(valuesF)(this → _)
   }
@@ -241,7 +239,7 @@ object FSM {
       def apply(state: S, value: A): Out = value
     }
 
-    def withState[A, S]: Result[A, S] = WithState()
+    def withState[A, S]: Result[A, S]   = WithState()
     def ignoreState[A, S]: Result[A, S] = IgnoreState()
   }
 
@@ -277,7 +275,7 @@ object FSM {
     * @param stateF - partial function handling some behavior
     **/
   class Partial[F[_]: Applicative, N, D, A, B](
-    stateF: PartialFunc[F, N, D, A, B]
+      stateF: PartialFunc[F, N, D, A, B]
   ) extends FSM[F, N, D, A, B] {
     def when(state: N)(f: PartialFunction[A, FSM.State[N, D, F] => F[
                          (FSM.State[N, D, F], Iterable[B])
@@ -293,7 +291,7 @@ object FSM {
     }
 
     def whenUndefined(
-      f: A => FSM.State[N, D, F] => F[(FSM.State[N, D, F], Iterable[B])]
+        f: A => FSM.State[N, D, F] => F[(FSM.State[N, D, F], Iterable[B])]
     ): FSM.State[N, D, F] => A => F[(FSM.State[N, D, F], Iterable[B])] = {
       case state if stateF.isDefinedAt(state.name) =>
         a =>

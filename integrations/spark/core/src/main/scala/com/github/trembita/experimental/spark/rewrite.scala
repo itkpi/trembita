@@ -11,7 +11,7 @@ class rewrite(val c: whitebox.Context) {
   import c.universe._
 
   private val Future = typeOf[Future[_]].dealias.typeConstructor
-  private val Spark = typeOf[Spark].dealias
+  private val Spark  = typeOf[Spark].dealias
   private val executionContext =
     typeOf[scala.concurrent.ExecutionContext].dealias
 
@@ -33,10 +33,10 @@ class rewrite(val c: whitebox.Context) {
   }
 
   def materializeFutureImpl[A: c.WeakTypeTag, B: c.WeakTypeTag](
-    f: c.Expr[A => Future[B]]
+      f: c.Expr[A => Future[B]]
   ): c.Tree = {
-    val A = weakTypeOf[A].dealias
-    val B = weakTypeOf[B].dealias
+    val A       = weakTypeOf[A].dealias
+    val B       = weakTypeOf[B].dealias
     val FutureB = weakTypeOf[Future[B]].dealias
     val MagnetF = weakTypeOf[MagnetF[Future, A, B, Spark]]
 
@@ -76,7 +76,7 @@ class rewrite(val c: whitebox.Context) {
           if (foundNS contains name) {
             foundNS -> exprs
           } else {
-            val freshName = TermName(c.freshName(name))
+            val freshName   = TermName(c.freshName(name))
             val updatedExpr = exprs :+ q"@transient lazy val $freshName = ${c.resetAllAttrs(nonSerializable)};"
             (foundNS + (name -> q"$freshObjectName.$freshName"), updatedExpr)
           }
@@ -114,7 +114,7 @@ class rewrite(val c: whitebox.Context) {
   }
 
   private def simpleTraverseForNonSerializable[A](
-    zero: A
+      zero: A
   )(f: (A, Tree) => A): Tree => A = {
     var acc = zero
     val traverser = new Traverser {

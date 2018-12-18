@@ -6,7 +6,7 @@ import com.github.trembita._
 import com.github.trembita.experimental.spark._
 import org.apache.spark._
 import cats.syntax.all._
-import com.examples.putStrLn
+import cats.effect.Console.io._
 import com.github.trembita.fsm._
 import org.apache.spark.sql.{Encoder, Encoders, SparkSession}
 import com.github.trembita.collections._
@@ -20,8 +20,8 @@ import scala.concurrent.duration._
   * */
 object FSMSample extends IOApp {
   sealed trait DoorState extends Serializable
-  case object Opened extends DoorState
-  case object Closed extends DoorState
+  case object Opened     extends DoorState
+  case object Closed     extends DoorState
 
   implicit val doorStateEncoder: Encoder[DoorState] = Encoders.kryo[DoorState]
   implicit val stateEncoder: Encoder[Map[DoorState, Int]] =
@@ -67,10 +67,10 @@ object FSMSample extends IOApp {
 
     withDoorState
       .evalWith(AsyncTimeout(5.minutes))
-      .flatTap(putStrLn)
+      .flatTap(s => putStrLn(s.toString))
       .void
   }
-  def run(args: List[String]): IO[ExitCode] = {
+  def run(args: List[String]): IO[ExitCode] =
     IO(
       SparkSession
         .builder()
@@ -81,5 +81,4 @@ object FSMSample extends IOApp {
         sparkSample
       })(release = spark => IO { spark.stop() })
       .as(ExitCode.Success)
-  }
 }

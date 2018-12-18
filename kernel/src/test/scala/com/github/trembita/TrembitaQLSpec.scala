@@ -1,244 +1,148 @@
 package com.github.trembita
 
-import cats.data.NonEmptyList
 import org.scalatest.FlatSpec
-import shapeless._
 import ql._
 import GroupingCriteria._
-import AggDecl._
 import AggRes._
-import QueryResult._
-import cats.implicits._
+import cats._
+import shapeless.syntax.singleton._
 
 class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
-
-  trait `divisible by 2`
-  trait `reminder of 3`
-  trait positive
-
-  trait sum
-  trait `all digits`
-  trait `avg number`
-  trait `max integer`
-
-  "QueryResult Monoid" should "work correctly" in {
-    val a
-      : QueryResult[Int, (Boolean :@ `divisible by 2`) &:: GNil, AggFunc.Result[
-        TaggedAgg[Int, sum, AggFunc.Type.Sum] %:: DNil,
-        (Int :@ sum) *:: RNil,
-        Int :: RNil :: HNil
-      ]] = ~**(
-      AggFunc.Result(6.as[sum] *:: RNil, 6 :: RNil :: HNil),
-      ~::(
-        Key.Single(true.as[`divisible by 2`]),
-        AggFunc.Result(2.as[sum] *:: RNil, 2 :: RNil :: HNil),
-        ##@(List(2))
-      ),
-      NonEmptyList(
-        ~::(
-          Key.Single(false.as[`divisible by 2`]),
-          AggFunc.Result(4.as[sum] *:: RNil, 4 :: RNil :: HNil),
-          ##@(List(1, 3))
-        ),
-        Nil
-      )
-    )
-    val b = a |+| a
-    assert(
-      b == ~**(
-        AggFunc.Result(12.as[sum] *:: RNil, 12 :: RNil :: HNil),
-        ~::(
-          Key.Single(true.as[`divisible by 2`]),
-          AggFunc.Result(4.as[sum] *:: RNil, 4 :: RNil :: HNil),
-          ##@(List(2, 2))
-        ),
-        NonEmptyList(
-          ~::(
-            Key.Single(false.as[`divisible by 2`]),
-            AggFunc.Result(8.as[sum] *:: RNil, 8 :: RNil :: HNil),
-            ##@(List(1, 3, 1, 3))
-          ),
-          Nil
-        )
-      )
-    )
-
-    val zero
-      : QueryResult[Int, (Boolean :@ `divisible by 2`) &:: GNil, AggFunc.Result[
-        TaggedAgg[Int, sum, AggFunc.Type.Sum] %:: DNil,
-        (Int :@ sum) *:: RNil,
-        Int :: RNil :: HNil
-      ]] =
-      QueryResult.Empty(AggFunc.Result(0.as[sum] *:: RNil, 0 :: RNil :: HNil))
-
-    val c = a |+| zero
-    assert(c == a)
-  }
-
-  "A simple List[Int].query(...)" should "produce correct result" in {
-    val list: List[Int] = List(3, 1, 2)
+  "A simple DataPipeline.query(...)" should "produce correct result" in {
+    val pipeline = DataPipeline[Int](3, 1, 2)
     val result =
-      list.query(
-        _.groupBy(num => (num % 2 == 0).as[`divisible by 2`] &:: GNil)
-          .aggregate(num => num.as[sum].sum %:: DNil)
-      )
+      pipeline
+        .query(
+          _.groupBy(expr[Int](_ % 2 == 0) as "divisible by 2")
+            .aggregate(col[Int] agg sum as "sum")
+        )
+        .eval
 
     assert(
-      result == ~**(
-        AggFunc.Result(6.as[sum] *:: RNil, 6 :: RNil :: HNil),
-        ~::(
-          Key.Single(true.as[`divisible by 2`]),
-          AggFunc.Result(2.as[sum] *:: RNil, 2 :: RNil :: HNil),
-          ##@(List(2))
+      result == Vector(
+        QueryResult(
+          :@(false) &:: GNil,
+          :@(4) *:: RNil,
+          Vector(3, 1)
         ),
-        NonEmptyList(
-          ~::(
-            Key.Single(false.as[`divisible by 2`]),
-            AggFunc.Result(4.as[sum] *:: RNil, 4 :: RNil :: HNil),
-            ##@(List(3, 1))
-          ),
-          Nil
+        QueryResult(
+          :@(true) &:: GNil,
+          :@(2) *:: RNil,
+          Vector(2)
         )
       )
     )
   }
 
-  "A simple List[Int].query(...) with ordering records" should "produce correct result" in {
-    val list: List[Int] = List(3, 1, 2)
+  "A simple DataPipeline.query(...) with ordering records" should "produce correct result" in {
+    val pipeline = DataPipeline[Int](3, 1, 2)
     val result =
-      list.query(
-        _.groupBy(num => (num % 2 == 0).as[`divisible by 2`] &:: GNil)
-          .aggregate(num => num.as[sum].sum %:: DNil)
-          .orderRecords
-      )
+      pipeline
+        .query(
+          _.groupBy(expr[Int](_ % 2 == 0) as "divisible by 2")
+            .aggregate(col[Int] agg sum as "sum")
+            .orderRecords
+        )
+        .eval
 
     assert(
-      result == ~**(
-        AggFunc.Result(6.as[sum] *:: RNil, 6 :: RNil :: HNil),
-        ~::(
-          Key.Single(true.as[`divisible by 2`]),
-          AggFunc.Result(2.as[sum] *:: RNil, 2 :: RNil :: HNil),
-          ##@(List(2))
+      result == Vector(
+        QueryResult(
+          :@(false) &:: GNil,
+          :@(4) *:: RNil,
+          Vector(1, 3)
         ),
-        NonEmptyList(
-          ~::(
-            Key.Single(false.as[`divisible by 2`]),
-            AggFunc.Result(4.as[sum] *:: RNil, 4 :: RNil :: HNil),
-            ##@(List(1, 3))
-          ),
-          Nil
+        QueryResult(
+          :@(true) &:: GNil,
+          :@(2) *:: RNil,
+          Vector(2)
         )
       )
     )
   }
 
-  "A complicated List[Int].query(...)" should "produce correct result" in {
-    val list: List[Int] = List(3, 1, 8, 2)
+  "A complicated DataPipeline.query(...)" should "produce correct result" in {
+    val pipeline = DataPipeline[Int](3, 1, 8, 2)
     val result =
-      list.query(
-        _.groupBy(
-          num =>
-            (num % 2 == 0).as[`divisible by 2`] &::
-              (num % 3).as[`reminder of 3`] &::
-              (num > 0).as[positive] &::
-            GNil
-        ).aggregate(
-            num =>
-              num.as[`all digits`].stringAgg %::
-                num.toDouble.as[`avg number`].avg %::
-                num.as[`max integer`].max %::
-              DNil
-          )
-          .ordered
-      )
-
-    assert(
-      result == ~**(
-        AggFunc.Result(
-          "8213".as[`all digits`] *:: 3.5
-            .as[`avg number`] *:: 8.as[`max integer`] *:: RNil,
-          new StringBuilder("8213") :: ((14.0 :: 4 :: HNil) :: (8 :: RNil :: HNil) :: HNil) :: HNil
-        ),
-        ~::(
-          Key.Single(false.as[`divisible by 2`]),
-          AggFunc.Result(
-            "13".as[`all digits`] *:: 2.0
-              .as[`avg number`] *:: 3.as[`max integer`] *:: RNil,
-            new StringBuilder("13") :: ((4.0 :: 2 :: HNil) :: (3 :: RNil :: HNil) :: HNil) :: HNil
-          ),
-          ~**(
-            AggFunc.Result(
-              "13".as[`all digits`] *:: 2.0
-                .as[`avg number`] *:: 3.as[`max integer`] *:: RNil,
-              new StringBuilder("13") :: ((4.0 :: 2 :: HNil) :: (3 :: RNil :: HNil) :: HNil) :: HNil
-            ),
-            ~::(
-              Key.Single(1.as[`reminder of 3`]),
-              AggFunc.Result(
-                "1".as[`all digits`] *:: 1.0
-                  .as[`avg number`] *:: 1.as[`max integer`] *:: RNil,
-                new StringBuilder("1") :: ((1.0 :: 1 :: HNil) :: (1 :: RNil :: HNil) :: HNil) :: HNil
-              ),
-              ~::(
-                Key.Single(true.as[positive]),
-                AggFunc.Result(
-                  "1".as[`all digits`] *:: 1.0
-                    .as[`avg number`] *:: 1.as[`max integer`] *:: RNil,
-                  new StringBuilder("1") :: ((1.0 :: 1 :: HNil) :: (1 :: RNil :: HNil) :: HNil) :: HNil
-                ),
-                ##@(List(1))
-              )
-            ),
-            NonEmptyList(
-              ~::(
-                Key.Single(0.as[`reminder of 3`]),
-                AggFunc.Result(
-                  "3".as[`all digits`] *:: 3.0
-                    .as[`avg number`] *:: 3.as[`max integer`] *:: RNil,
-                  new StringBuilder("3") :: ((3.0 :: 1 :: HNil) :: (3 :: RNil :: HNil) :: HNil) :: HNil
-                ),
-                ~::(
-                  Key.Single(true.as[positive]),
-                  AggFunc.Result(
-                    "3".as[`all digits`] *:: 3.0
-                      .as[`avg number`] *:: 3.as[`max integer`] *:: RNil,
-                    new StringBuilder("3") :: ((3.0 :: 1 :: HNil) :: (3 :: RNil :: HNil) :: HNil) :: HNil
-                  ),
-                  ##@(List(3))
-                )
-              ),
-              Nil
+      pipeline
+        .query(
+          _.groupBy(
+            expr[Int](_ % 2 == 0) as "divisible by 2",
+            expr[Int](_ % 3) as "reminder of 3",
+            expr[Int](_ > 0) as "positive"
+          ).aggregate(
+              col[Int] agg stringAgg as "all digits",
+              expr[Int](_.toDouble) agg avg as "avg number",
+              col[Int] agg max as "max integer"
             )
-          )
-        ),
-        NonEmptyList(
-          ~::(
-            Key.Single(true.as[`divisible by 2`]),
-            AggFunc.Result(
-              "82".as[`all digits`] *:: 5.0
-                .as[`avg number`] *:: 8.as[`max integer`] *:: RNil,
-              new StringBuilder("82") :: ((10.0 :: 2 :: HNil) :: (8 :: RNil :: HNil) :: HNil) :: HNil
-            ),
-            ~::(
-              Key.Single(2.as[`reminder of 3`]),
-              AggFunc.Result(
-                "82".as[`all digits`] *:: 5.0
-                  .as[`avg number`] *:: 8.as[`max integer`] *:: RNil,
-                new StringBuilder("82") :: ((10.0 :: 2 :: HNil) :: (8 :: RNil :: HNil) :: HNil) :: HNil
-              ),
-              ~::(
-                Key.Single(true.as[positive]),
-                AggFunc.Result(
-                  "82".as[`all digits`] *:: 5.0
-                    .as[`avg number`] *:: 8.as[`max integer`] *:: RNil,
-                  new StringBuilder("82") :: ((10.0 :: 2 :: HNil) :: (8 :: RNil :: HNil) :: HNil) :: HNil
-                ),
-                ##@(List(2, 8))
-              )
-            )
-          ),
-          Nil
+            .ordered
         )
+        .eval
+
+    assert(
+      result == Vector(
+        QueryResult(
+          :@(false) &:: :@(0) &:: :@(true) &:: GNil,
+          :@("3") *:: :@(3.0) *:: :@(3) *:: RNil,
+          Vector(3)
+        ),
+        QueryResult(
+          :@(false) &:: :@(1) &:: :@(true) &:: GNil,
+          :@("1") *:: :@(1.0) *:: :@(1) *:: RNil,
+          Vector(1)
+        ),
+        QueryResult(
+          :@(true) &:: :@(2) &:: :@(true) &:: GNil,
+          :@("82") *:: :@(5.0) *:: :@(8) *:: RNil,
+          Vector(2, 8)
+        )
+      )
+    )
+  }
+
+  it should "be converted to case class correctly" in {
+    case class Numbers(
+        divisibleBy2: Boolean,
+        reminderOf3: Int,
+        positive: Boolean,
+        allDigits: String,
+        avg: Double,
+        max: Int,
+        values: Vector[Int]
+    )
+
+    val pipeline = DataPipeline[Int](3, 1, 8, 2)
+    val result: Vector[Numbers] =
+      pipeline
+        .query(
+          _.groupBy(
+            expr[Int](_ % 2 == 0) as "divisible by 2",
+            expr[Int](_ % 3) as "reminder of 3",
+            expr[Int](_ > 0) as "positive"
+          ).aggregate(
+              col[Int] agg stringAgg as "all digits",
+              expr[Int](_.toDouble) agg avg as "avg number",
+              col[Int] agg max as "max integer"
+            )
+            .having(agg[Int]("max integer")(_ > 0))
+            .ordered
+        )
+        .as[Numbers]
+        .eval
+
+    assert(
+      result == Vector(
+        Numbers(
+          divisibleBy2 = false,
+          reminderOf3 = 0,
+          positive = true,
+          allDigits = "3",
+          avg = 3.0,
+          max = 3,
+          values = Vector(3)
+        ),
+        Numbers(false, 1, true, "1", 1.0, 1, Vector(1)),
+        Numbers(true, 2, true, "82", 5.0, 8, Vector(2, 8))
       )
     )
   }

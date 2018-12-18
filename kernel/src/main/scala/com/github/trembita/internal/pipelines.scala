@@ -28,39 +28,39 @@ import scala.util.Try
   * @param source - a pipeline that f was applied on
   **/
 protected[trembita] class MappingPipelineT[F[_], +A, B, Ex <: Environment](
-  f: A => B,
-  source: DataPipelineT[F, A, Ex]
+    f: A => B,
+    source: DataPipelineT[F, A, Ex]
 )(F: Monad[F])(implicit B: ClassTag[B])
     extends DataPipelineT[F, B, Ex] {
 
   /** Each next map will compose [[f]] with some other map function */
   def mapImpl[C: ClassTag](
-    f2: B => C
+      f2: B => C
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new MappingPipelineT[F, A, C, Ex](f2.compose(f), source)(F)
 
   /** Returns [[FlatMapPipelineT]] */
   def flatMapImpl[C: ClassTag](
-    f2: B => DataPipelineT[F, C, Ex]
+      f2: B => DataPipelineT[F, C, Ex]
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new FlatMapPipelineT[F, A, C, Ex](a => f2(f(a)), source)(F)
 
   def handleErrorImpl[BB >: B: ClassTag](
-    f2: Throwable => BB
+      f2: Throwable => BB
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, BB, Ex] =
     new HandleErrorPipelineT[F, A, BB, Ex](f, f2, source)(F)
 
   def handleErrorWithImpl[C >: B: ClassTag](
-    fallback: Throwable => F[C]
+      fallback: Throwable => F[C]
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, C, Ex] =
     new HandleErrorWithPipelineT[F, A, C, Ex](f, fallback, source)(F)
 
   def collectImpl[C: ClassTag](pf: PartialFunction[B, C])(
-    implicit F: Monad[F]
+      implicit F: Monad[F]
   ): DataPipelineT[F, C, Ex] = new CollectPipelineT[F, B, C, Ex](pf, this)(F)
 
   protected[trembita] def evalFunc[C >: B](
-    Ex: Ex
+      Ex: Ex
   )(implicit run: Ex.Run[F]): F[Ex.Repr[C]] =
     F.map(source.evalFunc[A](Ex))(
       vs => Ex.FlatMapRepr.map(vs)(f).asInstanceOf[Ex.Repr[C]]
@@ -77,51 +77,51 @@ protected[trembita] class MappingPipelineT[F[_], +A, B, Ex <: Environment](
   * @param source - a pipeline that f was applied on
   **/
 protected[trembita] class FlatMapPipelineT[F[_], +A, B, Ex <: Environment](
-  f: A => DataPipelineT[F, B, Ex],
-  source: DataPipelineT[F, A, Ex]
+    f: A => DataPipelineT[F, B, Ex],
+    source: DataPipelineT[F, A, Ex]
 )(F: Monad[F])(implicit B: ClassTag[B])
     extends DataPipelineT[F, B, Ex] {
 
   /** Each next map will compose [[f]] with some other map function */
   def mapImpl[C: ClassTag](
-    f2: B => C
+      f2: B => C
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new FlatMapPipelineT[F, A, C, Ex](f(_).mapImpl(f2), source)(F)
 
   /** Each next flatMap will compose [[f]] with some other map function */
   def flatMapImpl[C: ClassTag](
-    f2: B => DataPipelineT[F, C, Ex]
+      f2: B => DataPipelineT[F, C, Ex]
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new FlatMapPipelineT[F, A, C, Ex](f(_).flatMapImpl(f2), source)(F)
 
   /** Filters the result of [[f]] application */
   override def filterImpl[BB >: B](
-    p: B => Boolean
+      p: B => Boolean
   )(implicit F: Monad[F], B: ClassTag[BB]): DataPipelineT[F, BB, Ex] =
     new FlatMapPipelineT[F, A, BB, Ex](f(_).filterImpl[BB](p), source)(F)
 
   /** Applies a [[PartialFunction]] to the result of [[f]] */
   def collectImpl[C: ClassTag](
-    pf: PartialFunction[B, C]
+      pf: PartialFunction[B, C]
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new FlatMapPipelineT[F, A, C, Ex](f(_).collectImpl(pf), source)(F)
 
   def handleErrorImpl[BB >: B: ClassTag](
-    f2: Throwable => BB
+      f2: Throwable => BB
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, BB, Ex] =
     new FlatMapPipelineT[F, A, BB, Ex]({ a =>
       f(a).handleErrorImpl(f2)
     }, source)(F)
 
   def handleErrorWithImpl[C >: B: ClassTag](
-    fallback: Throwable => F[C]
+      fallback: Throwable => F[C]
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, C, Ex] =
     new FlatMapPipelineT[F, A, C, Ex]({ a =>
       f(a).handleErrorWithImpl(fallback)
     }, source)(F)
 
   protected[trembita] def evalFunc[C >: B](
-    Ex: Ex
+      Ex: Ex
   )(implicit run: Ex.Run[F]): F[Ex.Repr[C]] =
     F.flatMap(source.evalFunc[A](Ex)) { vs =>
       val res = Ex.TraverseRepr.traverse(vs)(f(_).evalFunc(Ex))(
@@ -133,29 +133,29 @@ protected[trembita] class FlatMapPipelineT[F[_], +A, B, Ex <: Environment](
 }
 
 class CollectPipelineT[F[_], +A, B, Ex <: Environment](
-  pf: PartialFunction[A, B],
-  source: DataPipelineT[F, A, Ex]
+    pf: PartialFunction[A, B],
+    source: DataPipelineT[F, A, Ex]
 )(F: Monad[F])(implicit B: ClassTag[B])
     extends DataPipelineT[F, B, Ex] {
   def mapImpl[C: ClassTag](
-    f2: B => C
+      f2: B => C
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new CollectPipelineT[F, A, C, Ex](pf.andThen(f2), source)(F)
 
   /** Returns [[FlatMapPipelineT]] */
   def flatMapImpl[C: ClassTag](
-    f2: B => DataPipelineT[F, C, Ex]
+      f2: B => DataPipelineT[F, C, Ex]
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new FlatMapPipelineT[F, B, C, Ex](f2, this)(F)
 
   /** Returns [[FlatMapPipelineT]] with [[PartialFunction]] applied */
   def collectImpl[C: ClassTag](
-    pf2: PartialFunction[B, C]
+      pf2: PartialFunction[B, C]
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new CollectPipelineT[F, A, C, Ex](pf.andThen(pf2), source)(F)
 
   def handleErrorImpl[BB >: B: ClassTag](
-    f2: Throwable => BB
+      f2: Throwable => BB
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, BB, Ex] =
     new CollectPipelineT[F, A, BB, Ex]({
       case a if pf.isDefinedAt(a) =>
@@ -166,40 +166,40 @@ class CollectPipelineT[F[_], +A, B, Ex <: Environment](
     }, source)(F)
 
   override def handleErrorWithImpl[C >: B: ClassTag](
-    fallback: Throwable => F[C]
+      fallback: Throwable => F[C]
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, C, Ex] =
     new HandleErrorWithPipelineT[F, A, C, Ex](pf(_): C, fallback, source)(F)
 
   protected[trembita] def evalFunc[C >: B](
-    Ex: Ex
+      Ex: Ex
   )(implicit run: Ex.Run[F]): F[Ex.Repr[C]] =
     F.map(source.evalFunc[A](Ex))(Ex.collect(_)(pf).asInstanceOf[Ex.Repr[C]])
 }
 
 protected[trembita] class HandleErrorPipelineT[F[_], +A, B, Ex <: Environment](
-  f: A => B,
-  fallback: Throwable => B,
-  source: DataPipelineT[F, A, Ex]
+    f: A => B,
+    fallback: Throwable => B,
+    source: DataPipelineT[F, A, Ex]
 )(F: MonadError[F, Throwable])(implicit B: ClassTag[B])
     extends DataPipelineT[F, B, Ex] {
 
   def mapImpl[C: ClassTag](
-    f2: B => C
+      f2: B => C
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new MappingPipelineT[F, B, C, Ex](f2, this)(F)
 
   def flatMapImpl[C: ClassTag](
-    f2: B => DataPipelineT[F, C, Ex]
+      f2: B => DataPipelineT[F, C, Ex]
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new FlatMapPipelineT[F, B, C, Ex](f2, this)(F)
 
   def collectImpl[C: ClassTag](
-    pf: PartialFunction[B, C]
+      pf: PartialFunction[B, C]
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new CollectPipelineT[F, B, C, Ex](pf, this)(F)
 
   def handleErrorImpl[BB >: B: ClassTag](
-    f2: Throwable => BB
+      f2: Throwable => BB
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, BB, Ex] =
     new HandleErrorPipelineT[F, A, BB, Ex]({ a =>
       try f(a)
@@ -209,7 +209,7 @@ protected[trembita] class HandleErrorPipelineT[F[_], +A, B, Ex <: Environment](
     }, f2, source)(F)
 
   override def handleErrorWithImpl[C >: B: ClassTag](
-    fallback2: Throwable => F[C]
+      fallback2: Throwable => F[C]
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, C, Ex] =
     new HandleErrorWithPipelineT[F, A, C, Ex](
       f,
@@ -222,7 +222,7 @@ protected[trembita] class HandleErrorPipelineT[F[_], +A, B, Ex <: Environment](
     )(F)
 
   protected[trembita] def evalFunc[C >: B](
-    Ex: Ex
+      Ex: Ex
   )(implicit run: Ex.Run[F]): F[Ex.Repr[C]] =
     F.map(
       source
@@ -240,14 +240,14 @@ protected[trembita] class HandleErrorPipelineT[F[_], +A, B, Ex <: Environment](
 }
 
 protected[trembita] class HandleErrorWithPipelineT[F[_], +A, B, Ex <: Environment](
-  f: A => B,
-  fallback: Throwable => F[B],
-  source: DataPipelineT[F, A, Ex]
+    f: A => B,
+    fallback: Throwable => F[B],
+    source: DataPipelineT[F, A, Ex]
 )(F: MonadError[F, Throwable])(implicit B: ClassTag[B])
     extends SeqSource[F, B, Ex](F) {
 
   override def handleErrorImpl[BB >: B: ClassTag](
-    f2: Throwable => BB
+      f2: Throwable => BB
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, BB, Ex] =
     new HandleErrorWithPipelineT[F, A, BB, Ex](
       f,
@@ -256,7 +256,7 @@ protected[trembita] class HandleErrorWithPipelineT[F[_], +A, B, Ex <: Environmen
     )(F)
 
   override def handleErrorWithImpl[C >: B: ClassTag](
-    f2: Throwable => F[C]
+      f2: Throwable => F[C]
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, C, Ex] =
     new HandleErrorWithPipelineT[F, A, C, Ex](
       f,
@@ -265,7 +265,7 @@ protected[trembita] class HandleErrorWithPipelineT[F[_], +A, B, Ex <: Environmen
     )(F)
 
   protected[trembita] def evalFunc[C >: B](
-    Ex: Ex
+      Ex: Ex
   )(implicit run: Ex.Run[F]): F[Ex.Repr[C]] =
     F.map(source.evalFunc[A](Ex))(
       vs =>
@@ -282,31 +282,31 @@ protected[trembita] class HandleErrorWithPipelineT[F[_], +A, B, Ex <: Environmen
 }
 
 protected[trembita] class MapMonadicPipelineT[F[_], +A, B, Ex <: Environment](
-  f: A => F[B],
-  source: DataPipelineT[F, A, Ex]
+    f: A => F[B],
+    source: DataPipelineT[F, A, Ex]
 )(F: Monad[F])(implicit B: ClassTag[B])
     extends DataPipelineT[F, B, Ex] {
 
   /** Each next map will compose [[f]] with some other map function */
   def mapImpl[C: ClassTag](
-    f2: B => C
+      f2: B => C
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new MappingPipelineT[F, B, C, Ex](f2, this)(F)
 
   /** Returns [[FlatMapPipelineT]] */
   def flatMapImpl[C: ClassTag](
-    f2: B => DataPipelineT[F, C, Ex]
+      f2: B => DataPipelineT[F, C, Ex]
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new FlatMapPipelineT[F, B, C, Ex](f2, this)(F)
 
   /** Returns [[FlatMapPipelineT]] with [[PartialFunction]] applied */
   def collectImpl[C: ClassTag](
-    pf: PartialFunction[B, C]
+      pf: PartialFunction[B, C]
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new CollectPipelineT[F, B, C, Ex](pf, this)(F)
 
   def handleErrorImpl[BB >: B: ClassTag](
-    f2: Throwable => BB
+      f2: Throwable => BB
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, BB, Ex] =
     new MapMonadicPipelineT[F, A, BB, Ex](
       a => f(a).asInstanceOf[F[BB]].handleError(f2),
@@ -314,7 +314,7 @@ protected[trembita] class MapMonadicPipelineT[F[_], +A, B, Ex <: Environment](
     )(F)
 
   override def handleErrorWithImpl[C >: B: ClassTag](
-    f2: Throwable => F[C]
+      f2: Throwable => F[C]
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, C, Ex] =
     new MapMonadicPipelineT[F, A, C, Ex](
       a => f(a).asInstanceOf[F[C]].handleErrorWith(f2),
@@ -322,7 +322,7 @@ protected[trembita] class MapMonadicPipelineT[F[_], +A, B, Ex <: Environment](
     )(F)
 
   protected[trembita] def evalFunc[C >: B](
-    Ex: Ex
+      Ex: Ex
   )(implicit run: Ex.Run[F]): F[Ex.Repr[C]] =
     F.flatMap(source.evalFunc[A](Ex)) { vs =>
       val resultF = Ex.TraverseRepr.traverse(vs)(f)
@@ -332,16 +332,13 @@ protected[trembita] class MapMonadicPipelineT[F[_], +A, B, Ex <: Environment](
 
 object BridgePipelineT {
   protected[trembita] def make[F[_], A, Ex0 <: Environment, Ex1 <: Environment](
-    source: DataPipelineT[F, A, Ex0],
-    Ex0: Ex0,
-    F: Monad[F]
-  )(implicit A: ClassTag[A],
-    run0: Ex0.Run[F],
-    @transient inject: InjectTaggedK[Ex0.Repr, Ex1#Repr])
-    : DataPipelineT[F, A, Ex1] =
+      source: DataPipelineT[F, A, Ex0],
+      Ex0: Ex0,
+      F: Monad[F]
+  )(implicit A: ClassTag[A], run0: Ex0.Run[F], @transient inject: InjectTaggedK[Ex0.Repr, Ex1#Repr]): DataPipelineT[F, A, Ex1] =
     new SeqSource[F, A, Ex1](F) {
       override def handleErrorImpl[B >: A: ClassTag](
-        f: Throwable => B
+          f: Throwable => B
       )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex1] =
         make[F, B, Ex0, Ex1](source.handleErrorImpl(f), Ex0, F)(
           implicitly[ClassTag[B]],
@@ -350,7 +347,7 @@ object BridgePipelineT {
         )
 
       override def handleErrorWithImpl[B >: A: ClassTag](
-        f: Throwable => F[B]
+          f: Throwable => F[B]
       )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex1] =
         make[F, B, Ex0, Ex1](source.handleErrorWithImpl(f), Ex0, F)(
           implicitly[ClassTag[B]],
@@ -359,7 +356,7 @@ object BridgePipelineT {
         )
 
       protected[trembita] def evalFunc[B >: A](
-        Ex: Ex1
+          Ex: Ex1
       )(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
         F.map(
           source
@@ -376,30 +373,30 @@ object BridgePipelineT {
   * [[DataPipelineT.flatMapImpl]]  ~> [[FlatMapPipelineT]]
   **/
 protected[trembita] abstract class SeqSource[F[_], +A, Ex <: Environment](
-  F: Monad[F]
+    F: Monad[F]
 )(implicit A: ClassTag[A])
     extends DataPipelineT[F, A, Ex] {
   def mapImpl[B: ClassTag](
-    f: A => B
+      f: A => B
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
     new MappingPipelineT[F, A, B, Ex](f, this)(F)
 
   def flatMapImpl[B: ClassTag](
-    f: A => DataPipelineT[F, B, Ex]
+      f: A => DataPipelineT[F, B, Ex]
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
     new FlatMapPipelineT[F, A, B, Ex](f, this)(F)
 
   def collectImpl[B: ClassTag](
-    pf: PartialFunction[A, B]
+      pf: PartialFunction[A, B]
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
     new CollectPipelineT[F, A, B, Ex](pf, this)(F)
 
   def handleErrorImpl[B >: A: ClassTag](f: Throwable => B)(
-    implicit F: MonadError[F, Throwable]
+      implicit F: MonadError[F, Throwable]
   ): DataPipelineT[F, B, Ex] = this
 
   override def handleErrorWithImpl[B >: A: ClassTag](f: Throwable => F[B])(
-    implicit F: MonadError[F, Throwable]
+      implicit F: MonadError[F, Throwable]
   ): DataPipelineT[F, B, Ex] = this
 }
 
@@ -411,12 +408,12 @@ protected[trembita] abstract class SeqSource[F[_], +A, Ex <: Environment](
   * @param iterF - not evaluated yet collection of [[A]]
   **/
 protected[trembita] class StrictSource[F[_], +A](
-  iterF: => F[Iterator[A]],
-  F: Monad[F]
+    iterF: => F[Iterator[A]],
+    F: Monad[F]
 )(implicit A: ClassTag[A], Fctg: ClassTag[F[_]])
     extends SeqSource[F, A, Sequential](F) {
   override def handleErrorImpl[B >: A: ClassTag](
-    f: Throwable => B
+      f: Throwable => B
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Sequential] =
     new StrictSource[F, B](iterF.map { iterator =>
       new Iterator[B] {
@@ -431,20 +428,23 @@ protected[trembita] class StrictSource[F[_], +A](
     }, F)
 
   override def handleErrorWithImpl[B >: A: ClassTag](
-    f: Throwable => F[B]
+      f: Throwable => F[B]
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Sequential] =
-    new StrictSource[F, F[B]](iterF.map { iterator =>
-      new Iterator[F[B]] {
-        def hasNext: Boolean = iterator.hasNext
+    new StrictSource[F, F[B]](
+      iterF.map { iterator =>
+        new Iterator[F[B]] {
+          def hasNext: Boolean = iterator.hasNext
 
-        def next(): F[B] =
-          try {
-            (iterator.next(): B).pure[F]
-          } catch {
-            case e: Throwable => f(e)
-          }
-      }
-    }, F)(ClassTag[F[B]](Fctg.runtimeClass), Fctg).mapMImpl(fb => fb)
+          def next(): F[B] =
+            try {
+              (iterator.next(): B).pure[F]
+            } catch {
+              case e: Throwable => f(e)
+            }
+        }
+      },
+      F
+    )(ClassTag[F[B]](Fctg.runtimeClass), Fctg).mapMImpl(fb => fb)
 
   /**
     * Forces evaluation of [[DataPipelineT]]
@@ -453,31 +453,30 @@ protected[trembita] class StrictSource[F[_], +A](
     * @return - collected data
     **/
   protected[trembita] def evalFunc[B >: A](
-    Ex: Sequential
+      Ex: Sequential
   )(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
     F.map(iterF)(iter => iter.toVector.asInstanceOf[Ex.Repr[B]])
 }
 
 protected[trembita] class MemoizedPipelineT[F[_], +A, Ex <: Environment](
-  source: DataPipelineT[F, A, Ex],
-  F: Monad[F]
+    source: DataPipelineT[F, A, Ex],
+    F: Monad[F]
 )(implicit A: ClassTag[A])
     extends SeqSource[F, A, Ex](F) {
   protected[trembita] def evalFunc[B >: A](
-    Ex: Ex
+      Ex: Ex
   )(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
     F.map(source.evalFunc[A](Ex))(Ex.memoize(_)).asInstanceOf[F[Ex.Repr[B]]]
 }
 
 object MapKPipelineT {
-  def make[F[_], G[_], A, Ex <: Environment](source: DataPipelineT[F, A, Ex],
-                                             ex0: Ex,
-                                             arrow: F ~> G,
-                                             G: Monad[G],
-  )(implicit A: ClassTag[A], run0: ex0.Run[F]): DataPipelineT[G, A, Ex] =
+  def make[F[_], G[_], A, Ex <: Environment](source: DataPipelineT[F, A, Ex], ex0: Ex, arrow: F ~> G, G: Monad[G])(
+      implicit A: ClassTag[A],
+      run0: ex0.Run[F]
+  ): DataPipelineT[G, A, Ex] =
     new SeqSource[G, A, Ex](G) {
       protected[trembita] def evalFunc[B >: A](
-        Ex: Ex
+          Ex: Ex
       )(implicit run: Ex.Run[G]): G[Ex.Repr[B]] =
         arrow(source.evalFunc[B](ex0)).asInstanceOf[G[Ex.Repr[B]]]
     }
@@ -490,13 +489,13 @@ object MapKPipelineT {
   * @param source - source pipeline to be sorted
   **/
 protected[trembita] class SortedPipelineT[+A: Ordering, F[_], Ex <: Environment](
-  source: DataPipelineT[F, A, Ex],
-  F: Monad[F],
-  canSort: CanSort[Ex#Repr]
+    source: DataPipelineT[F, A, Ex],
+    F: Monad[F],
+    canSort: CanSort[Ex#Repr]
 )(implicit A: ClassTag[A])
     extends SeqSource[F, A, Ex](F) {
   override def handleErrorImpl[B >: A: ClassTag](
-    f: Throwable => B
+      f: Throwable => B
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Ex] =
     new SortedPipelineT[A, F, Ex](
       source
@@ -507,7 +506,7 @@ protected[trembita] class SortedPipelineT[+A: Ordering, F[_], Ex <: Environment]
     )
 
   protected[trembita] def evalFunc[B >: A](
-    Ex: Ex
+      Ex: Ex
   )(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
     F.map(source.evalFunc[A](Ex)) { vs =>
       canSort.sorted(vs).asInstanceOf[Ex.Repr[B]]
@@ -516,12 +515,12 @@ protected[trembita] class SortedPipelineT[+A: Ordering, F[_], Ex <: Environment]
 
 object EvaluatedSource {
   def make[F[_], A: ClassTag, E <: Environment](
-    reprF: F[E#Repr[A]],
-    F: Monad[F]
+      reprF: F[E#Repr[A]],
+      F: Monad[F]
   ): DataPipelineT[F, A, E] =
     new SeqSource[F, A, E](F) {
       override def evalFunc[B >: A](
-        Ex: E
+          Ex: E
       )(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
         reprF.asInstanceOf[F[Ex.Repr[B]]]
     }
@@ -529,14 +528,12 @@ object EvaluatedSource {
 
 object MapReprPipeline {
   def make[F[_], A: ClassTag, B: ClassTag, E <: Environment](
-    source: DataPipelineT[F, A, E],
-    e: E
-  )(f: e.Repr[A] => e.Repr[B],
-    F: Monad[F],
-    run: e.Run[F]): DataPipelineT[F, B, E] =
+      source: DataPipelineT[F, A, E],
+      e: E
+  )(f: e.Repr[A] => e.Repr[B], F: Monad[F], run: e.Run[F]): DataPipelineT[F, B, E] =
     new SeqSource[F, B, E](F) {
       override def evalFunc[C >: B](
-        Ex: E
+          Ex: E
       )(implicit run0: Ex.Run[F]): F[Ex.Repr[C]] =
         F.map(source.evalFunc[A](e)(run))(f).asInstanceOf[F[Ex.Repr[C]]]
     }

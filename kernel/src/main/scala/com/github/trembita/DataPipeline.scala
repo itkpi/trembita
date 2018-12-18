@@ -22,7 +22,7 @@ object DataPipeline {
     * @return - a [[StrictSource]]
     **/
   def from[A: ClassTag](
-    it: => Iterable[A]
+      it: => Iterable[A]
   ): DataPipeline[A, Environment.Sequential] =
     new StrictSource[Id, A](it.toIterator, Monad[Id])
 }

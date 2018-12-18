@@ -10,7 +10,7 @@ import scala.reflect.ClassTag
 package object fsm {
 
   implicit class StatefulOps[A, F[_], E <: Environment](
-    val self: DataPipelineT[F, A, E]
+      val self: DataPipelineT[F, A, E]
   ) extends AnyVal {
 
     /**
@@ -26,7 +26,7 @@ package object fsm {
       * @return - mapped pipeline
       **/
     def fsm[N, D, B: ClassTag](initial: InitialState[N, D, F])(
-      fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
+        fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
     )(implicit canFSM: CanFSM[F, E], A: ClassTag[A]): DataPipelineT[F, B, E] =
       canFSM.fsm[A, N, D, B](self)(initial)(fsmF)
   }

@@ -1,8 +1,6 @@
 package com.github.trembita
 
 import cats._
-import cats.implicits._
-
 import language.{higherKinds, implicitConversions}
 import language.experimental.macros
 import shapeless._
@@ -10,23 +8,33 @@ import ql.AggRes._
 import ql.AggDecl._
 import ql.QueryBuilder._
 import ql.GroupingCriteria._
-import shapeless.ops.hlist.Tupler
-
+import shapeless.syntax.SingletonOps
 import scala.reflect.ClassTag
 
-package object ql
-    extends orderingInstances
-    with aggregationInstances
-    with monoidInstances {
+package object ql extends orderingInstances with aggregationInstances with monoidInstances with spire.std.AnyInstances with AggFunc.types {
 
   implicit class TaggingSyntax[A](private val self: A) extends AnyVal {
-    def as[T]: A :@ T = new :@[A, T](self)
-
-    def :@[T]: A :@ T = new :@[A, T](self)
+    def tagAs[T]: A :@ T = self.:@[T]
+    def :@[T]: A :@ T    = new :@[A, T](self)
   }
 
-  implicit class GroupingCriteriaOps[G <: GroupingCriteria](private val self: G)
-      extends AnyVal {
+  class aggDsl[A, U, AggT <: AggFunc.Type](val `f`: A => U) extends AnyVal {
+    @inline def as(s: SingletonOps): A => TaggedAgg[U, s.T, AggT] = a => TaggedAgg(:@(`f`(a)))
+  }
+  class tagDsl[A, U](val `f`: A => U) extends AnyVal {
+    @inline def as(s: SingletonOps): A => :@[U, s.T]                      = a => :@(`f`(a))
+    @inline def agg[AggT <: AggFunc.Type](aggT: AggT): aggDsl[A, U, AggT] = new aggDsl[A, U, AggT](`f`)
+  }
+  class exprDsl[A](val `dummy`: Boolean = false) extends AnyVal {
+    @inline def apply[U](f: A => U): tagDsl[A, U] = new tagDsl[A, U](f)
+  }
+  class havingDsl[A, T](val `f`: A => Boolean) extends AnyVal
+
+  @inline def expr[A]: exprDsl[A]                                         = new exprDsl[A]()
+  @inline def col[A]: tagDsl[A, A]                                        = new tagDsl[A, A](identity)
+  @inline def agg[A](s: SingletonOps)(f: A => Boolean): havingDsl[A, s.T] = new havingDsl[A, s.T](f)
+
+  implicit class GroupingCriteriaOps[G <: GroupingCriteria](private val self: G) extends AnyVal {
     def &::[GH <: :@[_, _]](head: GH): GH &:: G =
       GroupingCriteria.&::(head, self)
 
@@ -35,7 +43,7 @@ package object ql
   }
 
   implicit def tuple2GroupingCriteria[T, Out0 <: GroupingCriteria](t: T)(
-    implicit ev: FromTuple.Aux[T, Out0]
+      implicit ev: FromTuple.Aux[T, Out0]
   ): ev.Out = ev(t)
 
   implicit class AggregationNameOps[A <: AggDecl](val self: A) {
@@ -44,59 +52,34 @@ package object ql
   }
 
   implicit def tuple2AggDecl[T, Out0 <: AggDecl](t: T)(
-    implicit ev: FromTuple.Aux[T, Out0]
+      implicit ev: FromTuple.Aux[T, Out0]
   ): ev.Out = ev(t)
 
   implicit class AggResOps[A <: AggRes](val self: A) {
     def *::[H <: :@[_, _]](head: H): H *:: A = AggRes.*::(head, self)
 
-    def apply[U](implicit get: AggRes.Get[A, U]): get.Out = get(self)
+    def apply[U](u: U)(implicit get: AggRes.Get[A, U]): get.Out = get(self)
 
-    def get[U](implicit gget: AggRes.Get[A, U]): gget.Out = gget(self)
-  }
-
-  implicit class TaggingOps[A, U](val self: A :@ U) extends AnyVal {
-    def sum: TaggedAgg[A, U, AggFunc.Type.Sum] = TaggedAgg(self)
-    def avg: TaggedAgg[A, U, AggFunc.Type.Avg] = TaggedAgg(self)
-    def count: TaggedAgg[A, U, AggFunc.Type.Count] = TaggedAgg(self)
-    def max: TaggedAgg[A, U, AggFunc.Type.Max] = TaggedAgg(self)
-    def min: TaggedAgg[A, U, AggFunc.Type.Min] = TaggedAgg(self)
-    def product: TaggedAgg[A, U, AggFunc.Type.Product] = TaggedAgg(self)
-    def arr: TaggedAgg[A, U, AggFunc.Type.Arr] = TaggedAgg(self)
-    def stringAgg: TaggedAgg[A, U, AggFunc.Type.StringAgg] = TaggedAgg(self)
-    def deviation: TaggedAgg[A, U, AggFunc.Type.STDEV] = TaggedAgg(self)
-    def rms: TaggedAgg[A, U, AggFunc.Type.RMS] = TaggedAgg(self)
-    def random: TaggedAgg[A, U, AggFunc.Type.Random] = TaggedAgg(self)
-  }
-
-  /** Trembita QL for [[Seq]] */
-  implicit class TrembitaQL[A](private val self: Seq[A]) extends AnyVal {
-    def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
-      queryF: Empty[A] => Query[A, G, T, R, Comb]
-    )(
-      implicit trembitaql: trembitaql[A, G, T, R, Comb]
-    ): QueryResult[A, G, AggFunc.Result[T, R, Comb]] =
-      trembitaql(self, queryF)
+    def get[U](u: U)(implicit gget: AggRes.Get[A, U]): gget.Out = gget(self)
   }
 
   /** Trembita QL for [[DataPipelineT]] */
   implicit class TrembitaQLForPipeline[A, F[_], Ex <: Environment](
-    private val self: DataPipelineT[F, A, Ex]
+      private val self: DataPipelineT[F, A, Ex]
   ) extends AnyVal {
     def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
-      queryF: Empty[A] => Query[A, G, T, R, Comb]
-    )(implicit trembitaql: trembitaqlForPipeline[A, G, T, R, Comb, Ex],
+        queryF: Empty[A] => Query[A, G, T, R, Comb]
+    )(implicit trembitaql: trembitaql[A, G, T, R, Comb, Ex],
       ex: Ex,
-      F: MonadError[F, Throwable])
-      : DataPipelineT[F, QueryResult[A, G, AggFunc.Result[T, R, Comb]], Ex] =
-      trembitaql.applyWithoutTopTotals(self, queryF)
+      run: Ex#Run[F],
+      F: Monad[F]): DataPipelineT[F, QueryResult[A, G, R], Ex] =
+      trembitaql.apply(self, queryF)
   }
 
   implicit class AsOps[F[_], Ex <: Environment, A, G <: GroupingCriteria, T](
-    private val self: DataPipelineT[F, QueryResult[A, G, T], Ex]
+      private val self: DataPipelineT[F, QueryResult[A, G, T], Ex]
   ) extends AnyVal {
-    def as[R: ClassTag](implicit ev: ToCaseClass.Aux[A, G, T, R],
-                        F: Monad[F]): DataPipelineT[F, ev.Out, Ex] =
+    def as[R: ClassTag](implicit ev: ToCaseClass.Aux[A, G, T, R], F: Monad[F]): DataPipelineT[F, R, Ex] =
       self.mapImpl(_.as[R])
   }
 
@@ -106,12 +89,8 @@ package object ql
     * guarantees correctness
     * of the query
     **/
-  implicit def agg2Query[A,
-                         G <: GroupingCriteria,
-                         T <: AggDecl,
-                         R <: AggRes,
-                         Comb](
-    h: Aggregate[A, G, T, R, Comb]
+  implicit def agg2Query[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
+      h: Aggregate[A, G, T, R, Comb]
   ): Query[A, G, T, R, Comb] =
     Query[A, G, T, R, Comb](
       h.getG,
@@ -123,12 +102,8 @@ package object ql
       None
     )(h.aggF)
 
-  implicit def ordered2Query[A,
-                             G <: GroupingCriteria,
-                             T <: AggDecl,
-                             R <: AggRes,
-                             Comb](
-    h: MaybeOrderedHaving[A, G, T, R, Comb]
+  implicit def ordered2Query[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
+      h: MaybeOrderedHaving[A, G, T, R, Comb]
   ): Query[A, G, T, R, Comb] =
     Query[A, G, T, R, Comb](
       h.getG,
@@ -141,7 +116,7 @@ package object ql
     )(h.aggF)
 
   implicit class QueryResultToCaseClass[A, K <: GroupingCriteria, T](
-    private val self: QueryResult[A, K, T]
+      private val self: QueryResult[A, K, T]
   ) extends AnyVal {
     def as[R](implicit ev: ToCaseClass.Aux[A, K, T, R]): R = ev(self)
   }

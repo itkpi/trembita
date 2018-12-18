@@ -5,7 +5,7 @@ import akka.NotUsed
 import cats.effect._
 import cats.implicits._
 import com.github.trembita._
-import com.examples.putStrLn
+import cats.effect.Console.io._
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl._
@@ -15,8 +15,7 @@ import com.github.trembita.experimental.akka._
 import scala.concurrent.{ExecutionContext, Future}
 
 object Main extends IOApp {
-  def akkaSample(implicit mat: ActorMaterializer,
-                 ec: ExecutionContext): IO[Unit] = {
+  def akkaSample(implicit mat: ActorMaterializer, ec: ExecutionContext): IO[Unit] = {
 
     implicit val parallelism: Parallelism = Parallelism(8, ordered = false)
 

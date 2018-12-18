@@ -12,7 +12,7 @@ import scala.reflect.ClassTag
 
 object PhantomSource {
   def apply[R: ClassTag, T <: Table[T, R]](connection: CassandraConnection)(
-    query: SelectQuery[T, R, _, _, _, _, _]
+      query: SelectQuery[T, R, _, _, _, _, _]
   ): DataPipeline[R, Environment.Sequential] = {
     implicit val session: Session = connection.session
     CassandraSource
@@ -21,9 +21,9 @@ object PhantomSource {
   }
 
   def applyF[R: ClassTag, T <: Table[T, R], F[_], Ex <: Environment](
-    connection: CassandraConnection
+      connection: CassandraConnection
   )(
-    query: SelectQuery[T, R, _, _, _, _, _]
+      query: SelectQuery[T, R, _, _, _, _, _]
   )(implicit F: Sync[F]): DataPipelineT[F, R, Sequential] = {
     implicit val session: Session = connection.session
     CassandraSource

@@ -1,14 +1,18 @@
 package com.github.trembita.operations
+import scala.annotation.implicitNotFound
 import scala.collection.parallel.immutable.ParVector
 import scala.language.higherKinds
 
+@implicitNotFound("""
+    ${F} does not support `slice` operation natively.
+    Please provide an implicit instance in scope if necessary
+    """)
 trait CanSlice[F[_]] {
   def slice[A](fa: F[A], from: Int, to: Int): F[A]
 }
 
 trait LowPriorityCanSlice {
-  implicit def fromTakeAndDrop[F[_]](implicit canTake: CanTake[F],
-                                     canDrop: CanDrop[F]): CanSlice[F] =
+  implicit def fromTakeAndDrop[F[_]](implicit canTake: CanTake[F], canDrop: CanDrop[F]): CanSlice[F] =
     new CanSlice[F] {
       def slice[A](fa: F[A], from: Int, to: Int): F[A] =
         canTake.take(canDrop.drop(fa, from), to - from)

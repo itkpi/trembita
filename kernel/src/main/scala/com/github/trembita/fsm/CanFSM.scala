@@ -1,22 +1,25 @@
 package com.github.trembita.fsm
 
 import java.util.concurrent.atomic.AtomicReference
-
 import cats.Id
 import cats.effect.Sync
 import cats.effect.concurrent.Ref
 import com.github.trembita._
-import com.github.trembita.operations.{LiftPipeline, MagnetF}
 import cats.implicits._
-
+import scala.annotation.implicitNotFound
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
+@implicitNotFound("""
+    Unable to run Finite state machine with context ${F} in ${E}.
+    In most cases it means that ${E} does not provide an efficient implementation
+    for stateful transformations
+  """)
 trait CanFSM[F[_], E <: Environment] {
   def fsm[A: ClassTag, N, D, B: ClassTag](
-    pipeline: DataPipelineT[F, A, E]
+      pipeline: DataPipelineT[F, A, E]
   )(initial: InitialState[N, D, F])(
-    fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
+      fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
   ): DataPipelineT[F, B, E]
 }
 
@@ -28,23 +31,23 @@ object CanFSM {
     new FromIdParallel
 
   implicit def fsmSyncForSequential[F[_]](
-    implicit F: Sync[F]
+      implicit F: Sync[F]
   ): CanFSM[F, Sequential] =
     new FromSyncSequential[F]
 
   implicit def fsmSyncForParallel[F[_]](
-    implicit F: Sync[F]
+      implicit F: Sync[F]
   ): CanFSM[F, Parallel] =
     new FromSyncParallel[F]
 }
 
 class FromIdSeq extends CanFSM[Id, Sequential] {
   def fsm[A: ClassTag, N, D, B: ClassTag](
-    pipeline: DataPipelineT[Id, A, Sequential]
+      pipeline: DataPipelineT[Id, A, Sequential]
   )(initial: InitialState[N, D, Id])(
-    fsmF: FSM.Empty[Id, N, D, A, B] => FSM.Func[Id, N, D, A, B]
+      fsmF: FSM.Empty[Id, N, D, A, B] => FSM.Func[Id, N, D, A, B]
   ): DataPipelineT[Id, B, Sequential] = {
-    val stateF = fsmF(new FSM.Empty)
+    val stateF                                = fsmF(new FSM.Empty)
     var stateOpt: Option[FSM.State[N, D, Id]] = None
     pipeline map { elem: A =>
       val elemF: Iterable[B] = {
@@ -72,9 +75,9 @@ class FromIdSeq extends CanFSM[Id, Sequential] {
 
 class FromIdParallel extends CanFSM[Id, Parallel] {
   def fsm[A: ClassTag, N, D, B: ClassTag](
-    pipeline: DataPipelineT[Id, A, Parallel]
+      pipeline: DataPipelineT[Id, A, Parallel]
   )(initial: InitialState[N, D, Id])(
-    fsmF: FSM.Empty[Id, N, D, A, B] => FSM.Func[Id, N, D, A, B]
+      fsmF: FSM.Empty[Id, N, D, A, B] => FSM.Func[Id, N, D, A, B]
   ): DataPipelineT[Id, B, Parallel] = {
     val stateF = fsmF(new FSM.Empty)
     val stateOpt: AtomicReference[Option[FSM.State[N, D, Id]]] =
@@ -103,14 +106,13 @@ class FromIdParallel extends CanFSM[Id, Parallel] {
   }
 }
 
-class FromSyncSequential[F[_]](implicit F: Sync[F])
-    extends CanFSM[F, Sequential] {
+class FromSyncSequential[F[_]](implicit F: Sync[F]) extends CanFSM[F, Sequential] {
   def fsm[A: ClassTag, N, D, B: ClassTag](
-    pipeline: DataPipelineT[F, A, Sequential]
+      pipeline: DataPipelineT[F, A, Sequential]
   )(initial: InitialState[N, D, F])(
-    fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
+      fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
   ): DataPipelineT[F, B, Sequential] = {
-    val stateF = fsmF(new FSM.Empty)
+    val stateF    = fsmF(new FSM.Empty)
     val stateOptF = Ref.unsafe[F, Option[FSM.State[N, D, F]]](None)
     pipeline mapM { elem: A =>
       val elemF: F[Iterable[B]] =
@@ -140,11 +142,11 @@ class FromSyncSequential[F[_]](implicit F: Sync[F])
 
 class FromSyncParallel[F[_]](implicit F: Sync[F]) extends CanFSM[F, Parallel] {
   def fsm[A: ClassTag, N, D, B: ClassTag](
-    pipeline: DataPipelineT[F, A, Parallel]
+      pipeline: DataPipelineT[F, A, Parallel]
   )(initial: InitialState[N, D, F])(
-    fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
+      fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
   ): DataPipelineT[F, B, Parallel] = {
-    val stateF = fsmF(new FSM.Empty)
+    val stateF    = fsmF(new FSM.Empty)
     val stateOptF = Ref.unsafe[F, Option[FSM.State[N, D, F]]](None)
     pipeline mapM { elem: A =>
       val elemF: F[Iterable[B]] =

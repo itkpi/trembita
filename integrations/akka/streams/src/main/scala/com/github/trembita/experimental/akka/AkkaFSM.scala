@@ -11,13 +11,19 @@ import cats._
 import cats.instances.future._
 import cats.instances.either._
 import cats.instances.try_._
+import scala.annotation.implicitNotFound
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds
 import scala.util.Try
 
+@implicitNotFound("""
+    Unable to run Finite state machine in context ${F}
+    upon stream with materialized value ${Mat}.
+    Please try to define implicit ExecutionContext in the scope
+  """)
 trait AkkaFSM[F[_], Mat] {
   def apply[A, N, D, B](source: Source[A, Mat])(initial: InitialState[N, D, F])(
-    fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
+      fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
   ): Source[B, Mat]
 }
 
@@ -25,9 +31,9 @@ object AkkaFSM {
   implicit def idFsm[Mat](implicit ec: ExecutionContext): AkkaFSM[Id, Mat] =
     new AkkaFSM[Id, Mat] {
       def apply[A, N, D, B](
-        source: Source[A, Mat]
+          source: Source[A, Mat]
       )(initial: InitialState[N, D, Id])(
-        fsmF: FSM.Empty[Id, N, D, A, B] => FSM.Func[Id, N, D, A, B]
+          fsmF: FSM.Empty[Id, N, D, A, B] => FSM.Func[Id, N, D, A, B]
       ): Source[B, Mat] = {
         val stage =
           new FSMGraphF[Id, A, N, D, B](initial, fsmF, toFuture = idToFuture)
@@ -38,9 +44,9 @@ object AkkaFSM {
   implicit def tryFsm[Mat](implicit ec: ExecutionContext): AkkaFSM[Try, Mat] =
     new AkkaFSM[Try, Mat] {
       def apply[A, N, D, B](
-        source: Source[A, Mat]
+          source: Source[A, Mat]
       )(initial: InitialState[N, D, Try])(
-        fsmF: FSM.Empty[Try, N, D, A, B] => FSM.Func[Try, N, D, A, B]
+          fsmF: FSM.Empty[Try, N, D, A, B] => FSM.Func[Try, N, D, A, B]
       ): Source[B, Mat] = {
         val stage =
           new FSMGraphF[Try, A, N, D, B](initial, fsmF, toFuture = tryToFuture)
@@ -49,11 +55,11 @@ object AkkaFSM {
     }
 
   implicit def eitherFSM[Mat](
-    implicit ec: ExecutionContext
+      implicit ec: ExecutionContext
   ): AkkaFSM[Either[Throwable, ?], Mat] =
     new AkkaFSM[Either[Throwable, ?], Mat] {
       def apply[A, N, D, B](source: Source[A, Mat])(
-        initial: InitialState[N, D, Either[Throwable, ?]]
+          initial: InitialState[N, D, Either[Throwable, ?]]
       )(fsmF: FSM.Empty[Either[Throwable, ?], N, D, A, B] => FSM.Func[Either[
           Throwable,
           ?
@@ -68,12 +74,12 @@ object AkkaFSM {
     }
 
   implicit def futureFsm[Mat](
-    implicit ec: ExecutionContext
+      implicit ec: ExecutionContext
   ): AkkaFSM[Future, Mat] = new AkkaFSM[Future, Mat] {
     def apply[A, N, D, B](
-      source: Source[A, Mat]
+        source: Source[A, Mat]
     )(initial: InitialState[N, D, Future])(
-      fsmF: FSM.Empty[Future, N, D, A, B] => FSM.Func[Future, N, D, A, B]
+        fsmF: FSM.Empty[Future, N, D, A, B] => FSM.Func[Future, N, D, A, B]
     ): Source[B, Mat] = {
       val stage =
         new FSMGraphF[Future, A, N, D, B](
@@ -88,9 +94,9 @@ object AkkaFSM {
   implicit def ioFsm[Mat](implicit ec: ExecutionContext): AkkaFSM[IO, Mat] =
     new AkkaFSM[IO, Mat] {
       def apply[A, N, D, B](
-        source: Source[A, Mat]
+          source: Source[A, Mat]
       )(initial: InitialState[N, D, IO])(
-        fsmF: FSM.Empty[IO, N, D, A, B] => FSM.Func[IO, N, D, A, B]
+          fsmF: FSM.Empty[IO, N, D, A, B] => FSM.Func[IO, N, D, A, B]
       ): Source[B, Mat] = {
         val stage =
           new FSMGraphF[IO, A, N, D, B](initial, fsmF, toFuture = ioToFuture)
@@ -100,12 +106,12 @@ object AkkaFSM {
 }
 
 class FSMGraphF[F[_], A, N, D, B](
-  initial: InitialState[N, D, F],
-  fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B],
-  toFuture: F ~> Future
+    initial: InitialState[N, D, F],
+    fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B],
+    toFuture: F ~> Future
 )(implicit applicative: Applicative[F], ec: ExecutionContext)
     extends GraphStage[FlowShape[A, B]] {
-  val in: Inlet[A] = Inlet[A]("FSM.in")
+  val in: Inlet[A]   = Inlet[A]("FSM.in")
   val out: Outlet[B] = Outlet[B]("FSM.out")
 
   override val shape: FlowShape[A, B] = FlowShape.of(in, out)
@@ -138,16 +144,15 @@ class FSMGraphF[F[_], A, N, D, B](
                 }
               case Some(s) => s
             }
-            val xF = stateF(currState)(a)
+            val xF      = stateF(currState)(a)
             val xFuture = toFuture(xF)
             xFuture.foreach(updateAndEmit.invoke)
           }
         }
       )
       setHandler(out, new OutHandler {
-        override def onPull(): Unit = {
+        override def onPull(): Unit =
           if (!hasBeenPulled(in)) pull(in)
-        }
       })
     }
 }

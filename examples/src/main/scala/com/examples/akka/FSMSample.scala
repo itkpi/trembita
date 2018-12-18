@@ -5,7 +5,7 @@ import akka.stream.{ActorMaterializer, KillSwitches, UniqueKillSwitch}
 import akka.stream.scaladsl._
 import cats.effect.{ExitCode, IO, IOApp}
 import com.github.trembita.DataPipelineT
-import com.examples.putStrLn
+import cats.effect.Console.io._
 import com.github.trembita._
 import com.github.trembita.fsm._
 import com.github.trembita.collections._
@@ -21,8 +21,7 @@ object FSMSample extends IOApp {
   case object Opened extends DoorState
   case object Closed extends DoorState
 
-  def akkaTrembitaFsmSample(implicit mat: ActorMaterializer,
-                            ec: ExecutionContext): IO[Unit] = {
+  def akkaTrembitaFsmSample(implicit mat: ActorMaterializer, ec: ExecutionContext): IO[Unit] = {
     val pipeline: DataPipelineT[IO, Int, Akka] =
       DataPipelineT.fromRepr[IO, Int, Akka](
         Source.fromIterator(() => Iterator.continually(Random.nextInt()))
@@ -69,9 +68,9 @@ object FSMSample extends IOApp {
 
     for {
       killSwitch <- killSwitchIO
-      _ <- IO { StdIn.readLine("Press something to stop") }
-      _ <- IO { killSwitch.shutdown() }
-      _ <- putStrLn("Stopped!")
+      _          <- IO { StdIn.readLine("Press something to stop") }
+      _          <- IO { killSwitch.shutdown() }
+      _          <- putStrLn("Stopped!")
     } yield {}
   }
 

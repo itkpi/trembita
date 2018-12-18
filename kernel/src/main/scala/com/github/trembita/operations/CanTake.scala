@@ -1,7 +1,12 @@
 package com.github.trembita.operations
+import scala.annotation.implicitNotFound
 import scala.collection.parallel.immutable.ParVector
 import scala.language.higherKinds
 
+@implicitNotFound("""
+    ${F} does not support `take` operation natively.
+    Please provide an implicit instance in scope if necessary
+    """)
 trait CanTake[F[_]] {
   def take[A](fa: F[A], n: Int): F[A]
 }
