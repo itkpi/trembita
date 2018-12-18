@@ -1,11 +1,13 @@
 package com.github.trembita.ql
 
+import com.github.trembita.ql.AggDecl.{%::, DNil}
 import com.github.trembita.ql.AggRes.{*::, RNil}
 import com.github.trembita.ql.GroupingCriteria.{&::, GNil}
 import shapeless._
+
 import scala.language.experimental.macros
 
-trait ToHList[A] extends DepFn1[A] { type Out }
+trait ToHList[A] extends DepFn1[A]
 
 object ToHList {
   type Aux[A, Out0] = ToHList[A] { type Out = Out0 }
@@ -17,7 +19,7 @@ object ToHList {
   }
 
   implicit def gconsToHList[A, U, RT <: GroupingCriteria, L <: HList](
-    implicit ev: ToHList.Aux[RT, L]
+      implicit ev: ToHList.Aux[RT, L]
   ): ToHList.Aux[(A :@ U) &:: RT, A :: L] =
     new ToHList[(A :@ U) &:: RT] {
       type Out = A :: L
@@ -25,7 +27,7 @@ object ToHList {
     }
 
   implicit def aggFuncResToHList[In, R, Comb](
-    implicit ev: ToHList[R]
+      implicit ev: ToHList[R]
   ): ToHList.Aux[AggFunc.Result[In, R, Comb], ev.Out] =
     new ToHList[AggFunc.Result[In, R, Comb]] {
       type Out = ev.Out
@@ -38,10 +40,43 @@ object ToHList {
   }
 
   implicit def rconsToHList[A, U, RT <: AggRes, L <: HList](
-    implicit ev: ToHList.Aux[RT, L]
+      implicit ev: ToHList.Aux[RT, L]
   ): ToHList.Aux[(A :@ U) *:: RT, A :: L] =
     new ToHList[(A :@ U) *:: RT] {
       type Out = A :: L
       def apply(t: (A :@ U) *:: RT): Out = t.head.value :: ev(t.tail)
+    }
+}
+
+trait FromHList[A <: HList] extends DepFn1[A]
+
+object FromHList {
+  type Aux[A <: HList, Out0] = FromHList[A] { type Out = Out0 }
+  def apply[A <: HList](implicit ev: FromHList[A]): Aux[A, ev.Out] = ev
+
+  implicit val hnilToGNil: FromHList.Aux[HNil, GNil] = new FromHList[HNil] {
+    type Out = GNil
+    def apply(t: HNil): GNil = GNil
+  }
+
+  implicit def hconsToGcons[A, U, L <: HList, RT <: GroupingCriteria](
+      implicit ev: FromHList.Aux[L, RT]
+  ): FromHList.Aux[(A :@ U) :: L, (A :@ U) &:: RT] =
+    new FromHList[(A :@ U) :: L] {
+      type Out = (A :@ U) &:: RT
+      def apply(t: (A :@ U) :: L): Out = t.head &:: ev(t.tail)
+    }
+
+  implicit val hnilToDNil: FromHList.Aux[HNil, DNil] = new FromHList[HNil] {
+    type Out = DNil
+    def apply(t: HNil): DNil = DNil
+  }
+
+  implicit def hconsToDcons[A, U, T <: AggFunc.Type, L <: HList, DT <: AggDecl](
+      implicit ev: FromHList.Aux[L, DT]
+  ): FromHList.Aux[TaggedAgg[A, U, T] :: L, TaggedAgg[A, U, T] %:: DT] =
+    new FromHList[TaggedAgg[A, U, T] :: L] {
+      type Out = TaggedAgg[A, U, T] %:: DT
+      def apply(t: TaggedAgg[A, U, T] :: L): Out = t.head %:: ev(t.tail)
     }
 }

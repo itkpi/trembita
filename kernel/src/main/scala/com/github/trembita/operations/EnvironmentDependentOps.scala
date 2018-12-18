@@ -55,12 +55,12 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
     * @param M - monoid for pipeline's elements
     * @return - combined elements
     **/
-  def reduce(implicit M: Monoid[A],
-             Ex: Ex,
-             run: Ex#Run[F],
-             F: Functor[F],
-             canFold: CanFold[Ex#Repr],
-             A: ClassTag[A]): F[canFold.Result[A]] =
+  def combineAll(implicit M: Monoid[A],
+                 Ex: Ex,
+                 run: Ex#Run[F],
+                 F: Functor[F],
+                 canFold: CanFold[Ex#Repr],
+                 A: ClassTag[A]): F[canFold.Result[A]] =
     mapEvaledRepr(canFold.reduce(_)(M.combine))
 
   /**
@@ -81,7 +81,7 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
     mapEvaledRepr(canFold.reduce(_)(f))
 
   /**
-    * SAFE version of [[reduce]]
+    * SAFE version of [[combineAll]]
     * handling empty [[DataPipelineT]]
     *
     * @param f - reducing function

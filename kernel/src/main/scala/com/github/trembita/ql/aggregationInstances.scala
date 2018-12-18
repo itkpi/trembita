@@ -33,7 +33,7 @@ trait aggregationInstances {
       def extract[AA <: TaggedAgg[A, U, AggFunc.Type.Sum], O >: A :@ U](
         comb: A
       ): AggFunc.Result[AA, O, A] =
-        AggFunc.Result(comb.as[U], comb)
+        AggFunc.Result(comb.tagAs[U], comb)
     }
 
   /**
@@ -52,7 +52,7 @@ trait aggregationInstances {
       def extract[AA <: TaggedAgg[A, U, AggFunc.Type.Count], O >: Long :@ U](
         comb: Long
       ): AggFunc.Result[AA, O, Long] =
-        AggFunc.Result(comb.as[U], comb)
+        AggFunc.Result(comb.tagAs[U], comb)
     }
 
   /**
@@ -87,7 +87,7 @@ trait aggregationInstances {
         comb: A :: BigInt :: HNil
       ): AggFunc.Result[AA, O, A :: BigInt :: HNil] = {
         val combValue :: counter :: HNil = comb
-        AggFunc.Result(FA.div(combValue, FA.fromBigInt(counter)).as[U], comb)
+        AggFunc.Result(FA.div(combValue, FA.fromBigInt(counter)).tagAs[U], comb)
       }
     }
 
@@ -113,7 +113,7 @@ trait aggregationInstances {
       def extract[AA <: TaggedAgg[A, U, AggFunc.Type.Max], O >: A :@ U](
         comb: A
       ): AggFunc.Result[AA, O, A] =
-        AggFunc.Result(comb.as[U], comb)
+        AggFunc.Result(comb.tagAs[U], comb)
     }
 
   /**
@@ -138,7 +138,7 @@ trait aggregationInstances {
       def extract[AA <: TaggedAgg[A, U, AggFunc.Type.Min], O >: A :@ U](
         comb: A
       ): AggFunc.Result[AA, O, A] =
-        AggFunc.Result(comb.as[U], comb)
+        AggFunc.Result(comb.tagAs[U], comb)
     }
 
   /**
@@ -162,7 +162,7 @@ trait aggregationInstances {
       def extract[AA <: TaggedAgg[A, U, AggFunc.Type.Product], O >: A :@ U](
         comb: A
       ): AggFunc.Result[AA, O, A] =
-        AggFunc.Result(comb.as[U], comb)
+        AggFunc.Result(comb.tagAs[U], comb)
     }
 
   /**
@@ -326,7 +326,7 @@ trait aggregationInstances {
       def extract[AA <: TaggedAgg[A, U, AggFunc.Type.Random], O >: A :@ U](
         comb: A
       ): AggFunc.Result[AA, O, A] =
-        AggFunc.Result(comb.as[U], comb)
+        AggFunc.Result(comb.tagAs[U], comb)
     }
 
   /** [[AggFunc]] for [[DNil]] and [[RNil]] */

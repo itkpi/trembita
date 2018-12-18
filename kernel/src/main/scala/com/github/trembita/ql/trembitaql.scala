@@ -6,10 +6,8 @@ import scala.language.higherKinds
 import scala.reflect.macros.blackbox
 import com.github.trembita._
 import QueryBuilder._
-import cats.MonadError
-import cats.kernel.Monoid
+import cats.Monad
 import com.github.trembita.operations.CanSort
-
 import scala.reflect.ClassTag
 
 trait trembitaql[A,
@@ -20,7 +18,7 @@ trait trembitaql[A,
                  Ex <: Environment] {
   def apply[F[_]](pipeline: DataPipelineT[F, A, Ex],
                   queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb])(
-    implicit F: MonadError[F, Throwable],
+    implicit F: Monad[F],
     ex: Ex,
     run: Ex#Run[F]
   ): DataPipelineT[F, QueryResult[A, G, R], Ex]
@@ -40,7 +38,7 @@ trait LowPriorityTrembitaQl {
       override def apply[F[_]](
         pipeline: DataPipelineT[F, A, Ex],
         queryF: Empty[A] => Query[A, G, T, R, Comb]
-      )(implicit F: MonadError[F, Throwable],
+      )(implicit F: Monad[F],
         ex: Ex,
         run: Ex#Run[F]): DataPipelineT[F, QueryResult[A, G, R], Ex] = {
         val query = queryF(new Empty[A])

@@ -45,7 +45,7 @@ object QLExample extends IOApp {
                     (num * num).toDouble.as[square].avg,
                     num.as[count].count,
                     (num * num * num * num).as[`^4`].sum,
-                    num.toString.as[`some name`].sum
+                    num.toString.tagAs[`some name`].sum
                 )
               )
               .having(_.get[count] > 7)

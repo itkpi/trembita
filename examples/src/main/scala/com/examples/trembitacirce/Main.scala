@@ -42,7 +42,7 @@ object Main {
     ]]
 
   def main(args: Array[String]): Unit = {
-    val a: Int :@ MyNumber = 5.as[MyNumber]
+    val a: Int :@ MyNumber = 5.tagAs[MyNumber]
     val aJson: Json = a.asJson
     println(aJson)
 
@@ -50,7 +50,7 @@ object Main {
     println(parsed.show)
 
     val criteria: Criteria = true
-      .as[`divisible by 2`] &:: 1.as[`reminder of 3`] &:: GNil
+      .tagAs[`divisible by 2`] &:: 1.tagAs[`reminder of 3`] &:: GNil
     val crJson: Json = criteria.asJson
     println(crJson)
 
@@ -58,7 +58,7 @@ object Main {
     println(parsedCr.show)
 
     val agg: Agg = 4
-      .as[`sum of squares`] *:: 8.as[`standard deviation`] *:: RNil
+      .tagAs[`sum of squares`] *:: 8.tagAs[`standard deviation`] *:: RNil
     val agJson: Json = agg.asJson
     println(agJson)
 

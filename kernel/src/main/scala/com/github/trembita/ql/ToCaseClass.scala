@@ -21,18 +21,21 @@ object ToCaseClass {
                       KR <: HList,
                       T,
                       TR <: HList,
+                      P <: HList,
                       L <: HList,
-                      R](implicit ev: Generic.Aux[R, Vector[A] :: L],
-                         kToHList: ToHList.Aux[K, KR],
+                      R](implicit kToHList: ToHList.Aux[K, KR],
                          tToHList: ToHList.Aux[T, TR],
                          prepend0: Prepend.Aux[KR, TR, L],
-  ): ToCaseClass.Aux[A, K, T, R] = new ToCaseClass[A, K, T] {
-    type Out = R
-    def apply(t: QueryResult[A, K, T]): R = {
-      val totalsHList = tToHList(t.totals)
-      val keysHList = kToHList(t.keys)
-      val prepended = prepend0(keysHList, totalsHList)
-      ev.from(t.values :: prepended)
+                         prepend1: Prepend.Aux[L, Vector[A] :: HNil, P],
+                         ev: Generic.Aux[R, P]): ToCaseClass.Aux[A, K, T, R] =
+    new ToCaseClass[A, K, T] {
+      type Out = R
+      def apply(t: QueryResult[A, K, T]): R = {
+        val totalsHList = tToHList(t.totals)
+        val keysHList = kToHList(t.keys)
+        val prepended0 = prepend0(keysHList, totalsHList)
+        val repr = prepend1(prepended0, t.values :: HNil)
+        ev.from(repr)
+      }
     }
-  }
 }
