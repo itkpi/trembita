@@ -161,7 +161,8 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
         "com.datastax.cassandra" % "cassandra-driver-extras" % "3.6.0",
         "com.outworkers" %% "phantom-jdk8" % "2.29.0",
         "org.apache.spark" %% "spark-core" % sparkV % "provided",
-        "org.apache.spark" %% "spark-sql" % sparkV % "provided"
+        "org.apache.spark" %% "spark-sql" % sparkV % "provided",
+        "com.github.gvolpe" %% "console4cats" % "0.5"
       ).map(_ exclude ("org.slf4j", "log4j-over-slf4j"))
     },
     test in assembly := {},

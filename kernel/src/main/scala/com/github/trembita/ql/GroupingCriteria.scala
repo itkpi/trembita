@@ -125,7 +125,7 @@ and check required implicits in your scope:
 - algebra.ring.Field[Ax] & spire.algebra.NRoot[Ax] ∀ type Ax used in TaggedAgg[Ax, _, AggFunc.Type.STDEV | AggFunc.Type.RMS]
 """
 )
-trait AggFunc[-A, +Out, Comb] {
+trait AggFunc[-A, +Out, Comb] extends Serializable {
   def empty: Comb
 
   /**
@@ -170,7 +170,7 @@ object AggFunc {
     * An extendable sum type
     * representing some type of aggregations
     **/
-  trait Type
+  trait Type extends Serializable
   object Type {
     sealed trait Sum     extends Type
     sealed trait Count   extends Type
@@ -192,7 +192,7 @@ object AggFunc {
     /** Root mean square */
     sealed trait RMS extends Type
   }
-  trait types {
+  trait types extends Serializable {
     val sum: Type.Sum             = new Type.Sum       {}
     val count: Type.Count         = new Type.Count     {}
     val avg: Type.Avg             = new Type.Avg       {}
@@ -295,7 +295,7 @@ object AggRes {
   *
   * @tparam A - record type
   **/
-sealed trait QueryBuilder[A]
+sealed trait QueryBuilder[A] extends Serializable
 object QueryBuilder {
 
   /**

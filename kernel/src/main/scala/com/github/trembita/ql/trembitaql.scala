@@ -10,7 +10,7 @@ import cats.Monad
 import com.github.trembita.operations.CanSort
 import scala.reflect.ClassTag
 
-trait trembitaql[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb, Ex <: Environment] {
+trait trembitaql[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb, Ex <: Environment] extends Serializable {
   def apply[F[_]](pipeline: DataPipelineT[F, A, Ex], queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb])(
       implicit F: Monad[F],
       ex: Ex,

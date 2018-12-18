@@ -3,7 +3,7 @@ package com.examples.kernel
 import cats.effect._
 import cats.implicits._
 import com.github.trembita._
-import com.examples.putStrLn
+import cats.effect.Console.io._
 
 case class Person(personId: Long, name: String, age: Int)
 case class Car(carId: Long, ownerId: Long, model: String)
@@ -23,6 +23,6 @@ object JoinsSample extends IOApp {
       .map { case (car, person) => s"${person.name} has ${car.model}" }
       .eval
 
-    joined.flatTap(putStrLn).as(ExitCode.Success)
+    joined.flatTap(vs => putStrLn(vs.mkString("\n"))).as(ExitCode.Success)
   }
 }

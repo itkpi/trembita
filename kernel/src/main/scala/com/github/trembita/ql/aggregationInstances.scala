@@ -12,7 +12,7 @@ import spire.algebra.NRoot
 import shapeless._
 import scala.concurrent.duration._
 
-trait aggregationInstances {
+trait aggregationInstances extends Serializable {
 
   /**
     * Provides a sum function

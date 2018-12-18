@@ -3,7 +3,7 @@ package com.github.trembita.ql
 import scala.language.higherKinds
 import cats._
 
-trait monoidInstances {
+trait monoidInstances extends Serializable {
 
   /**
     * [[Monoid]] for some [[AggFunc.Result]] of [[A]]

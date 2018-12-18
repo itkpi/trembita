@@ -3,9 +3,9 @@ package com.github.trembita.ql
 import shapeless._
 import shapeless.ops.hlist._
 
-trait FromTuple[T] extends DepFn1[T]
+trait FromTuple[T] extends DepFn1[T] with Serializable
 
-object composePoly extends Poly2 {
+object composePoly extends Poly2 with Serializable {
   implicit def case0[A, B, C](implicit ev: C <:!< HList): Case.Aux[A => B, A => C, A => B :: C :: HNil] =
     at((f1, f2) => a => f1(a) :: f2(a) :: HNil)
 

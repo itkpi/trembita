@@ -14,11 +14,11 @@ Please add imports:
 }}}
 Or provide a default value for type ${A}
 """)
-trait Default[A] {
+trait Default[A] extends Serializable {
   def get: A
 }
 
-trait LowPriorityDefaults {
+trait LowPriorityDefaults extends Serializable {
   implicit def defaultFromMonoid[A](implicit A: Monoid[A]): Default[A] =
     new Default[A] {
       val get: A = A.empty

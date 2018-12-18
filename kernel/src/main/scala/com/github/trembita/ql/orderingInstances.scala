@@ -5,7 +5,7 @@ import scala.concurrent.duration._
 import GroupingCriteria._
 import AggRes._
 
-trait orderingInstances {
+trait orderingInstances extends Serializable {
   implicit val localDateOrdering: Ordering[LocalDate] =
     Ordering.fromLessThan(_ isBefore _)
   implicit val localTimeOrdering: Ordering[LocalTime] =

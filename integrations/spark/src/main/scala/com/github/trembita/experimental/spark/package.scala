@@ -1,7 +1,7 @@
 package com.github.trembita.experimental
 
 import cats.effect.IO
-import cats.{~>, Eval, Functor, Id, Monad, StackSafeMonad}
+import cats.{Eval, Functor, Id, Monad, StackSafeMonad, ~>}
 import com.github.trembita.operations.{CanSort, InjectTaggedK, MagnetF}
 
 import scala.language.experimental.macros
@@ -9,7 +9,7 @@ import scala.language.{higherKinds, implicitConversions}
 import com.github.trembita.DataPipelineT
 import com.github.trembita.fsm.{FSM, InitialState}
 import com.github.trembita.ql.QueryBuilder.Query
-import com.github.trembita.ql.{AggDecl, AggRes, GroupingCriteria, QueryBuilder}
+import com.github.trembita.ql.{AggDecl, AggRes, GroupingCriteria, QueryBuilder, QueryResult}
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql._
@@ -40,8 +40,8 @@ package object spark {
     )(implicit trembitaqlForSpark: trembitaqlForSpark[A, G, T, R, Comb],
       run: Spark#Run[F],
       F: Monad[F],
-      A: ClassTag[A]): DataPipelineT[F, Row, Spark] =
-      `this`.mapRepr[Row](trembitaqlForSpark.apply(_, queryF))
+      A: ClassTag[A]): DataPipelineT[F, QueryResult[A, G, R], Spark] =
+      `this`.mapRepr(trembitaqlForSpark.apply(_, queryF))
   }
 
   implicit class SparkIOOps[A](val `this`: DataPipelineT[IO, A, Spark]) extends AnyVal with MagnetlessSparkIOOps[A]

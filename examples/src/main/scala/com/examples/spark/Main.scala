@@ -6,7 +6,7 @@ import com.github.trembita._
 import com.github.trembita.experimental.spark._
 import org.apache.spark._
 import cats.syntax.all._
-import com.examples.putStrLn
+import cats.effect.Console.io._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
@@ -58,7 +58,7 @@ object Main extends IOApp {
 
         IO.suspend {
           putStrLn("TREMBITA eval") *>
-            numbers.eval.flatTap(putStrLn)
+            numbers.eval.flatTap(vs => putStrLn(vs.toString))
         }
       })(release = sc => IO { sc.stop() })
       .as(ExitCode.Success)

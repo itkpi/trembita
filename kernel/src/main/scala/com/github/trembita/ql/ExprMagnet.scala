@@ -4,7 +4,7 @@ import com.github.trembita.ql.AggDecl.{%::, DNil}
 import com.github.trembita.ql.GroupingCriteria.{&::, GNil}
 import scala.language.implicitConversions
 
-trait ExprMagnet[T] {
+trait ExprMagnet[T] extends Serializable {
   type Out
 
   def apply(): Out

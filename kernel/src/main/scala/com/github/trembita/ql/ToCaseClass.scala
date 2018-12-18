@@ -5,7 +5,7 @@ import shapeless.ops.hlist.Prepend
 import scala.language.experimental.macros
 
 trait ToCaseClass[A, K <: GroupingCriteria, T]
-    extends DepFn1[QueryResult[A, K, T]]
+    extends DepFn1[QueryResult[A, K, T]] with Serializable
 
 object ToCaseClass {
   type Aux[A, K <: GroupingCriteria, T, Out0] = ToCaseClass[A, K, T] {

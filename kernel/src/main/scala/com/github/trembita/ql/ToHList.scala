@@ -7,7 +7,7 @@ import shapeless._
 
 import scala.language.experimental.macros
 
-trait ToHList[A] extends DepFn1[A]
+trait ToHList[A] extends DepFn1[A] with Serializable
 
 object ToHList {
   type Aux[A, Out0] = ToHList[A] { type Out = Out0 }
@@ -48,7 +48,7 @@ object ToHList {
     }
 }
 
-trait FromHList[A <: HList] extends DepFn1[A]
+trait FromHList[A <: HList] extends DepFn1[A] with Serializable
 
 object FromHList {
   type Aux[A <: HList, Out0] = FromHList[A] { type Out = Out0 }
