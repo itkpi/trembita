@@ -185,12 +185,12 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
       run1: Ex#Run[F],
       A: ClassTag[A],
       F: Monad[F],
-      injectK: InjectTaggedK[Ex#Repr, Ex2#Repr]
+      injectK: InjectTaggedK[Ex#Repr, λ[α => F[Ex2#Repr[α]]]]
   ): DataPipelineT[F, A, Ex2] =
     BridgePipelineT.make[F, A, Ex, Ex2](`this`, Ex, F)(
       A,
       widen(run1)(Ex),
-      injectK.asInstanceOf[InjectTaggedK[Ex.Repr, Ex2#Repr]]
+      injectK.asInstanceOf[InjectTaggedK[Ex.Repr, λ[α => F[Ex2#Repr[α]]]]]
     )
 
   def mapK[G[_]](arrow: F ~> G)(implicit G: Monad[G], Ex: Ex, run0: Ex#Run[F], A: ClassTag[A]): DataPipelineT[G, A, Ex] =

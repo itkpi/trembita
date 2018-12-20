@@ -38,11 +38,11 @@ object LiftPipeline {
     def liftIterable[A: ClassTag](
         xs: Iterable[A]
     ): DataPipelineT[F, A, Parallel] =
-      new StrictSource[F, A](F.pure(xs.toIterator), F).to[Parallel]
+      DataPipelineT.fromRepr[F, A, Parallel](xs.toVector.par)
 
     def liftIterableF[A: ClassTag](
         fa: F[Iterable[A]]
     ): DataPipelineT[F, A, Parallel] =
-      new StrictSource[F, A](F.map(fa)(_.toIterator), F).to[Parallel]
+      DataPipelineT.fromReprF[F, A, Parallel](F.map(fa)(_.toVector.par))
   }
 }
