@@ -9,8 +9,8 @@ import scala.reflect.ClassTag
 
 sealed trait Spark extends Environment {
   final type Repr[X] = RDD[X]
-  type Run[G[_]]     = RunOnSpark[G]
-  type Result[X]     = X
+  final type Run[G[_]]     = RunOnSpark[G]
+  final type Result[X]     = X
 
   def toVector[A](repr: RDD[A]): Vector[A] = repr.collect().toVector
 

@@ -28,22 +28,8 @@ object InjectTaggedK {
   implicit val injectParVectorIntoSeq: InjectTaggedK[ParVector, Vector] =
     InjectTaggedK.fromArrow(λ[ParVector[?] ~> Vector[?]](_.seq))
 
-  implicit def havingArrow[F[_], G[_], Ex <: Environment, Ex2 <: Environment](
-      implicit existing: InjectTaggedK[Ex#Repr, λ[α => G[Ex2#Repr[α]]]],
-      arrow: G ~> F,
-      ev: ∃[G] =:!= ∃[Id]
-  ): InjectTaggedK[Ex#Repr, λ[α => F[Ex2#Repr[α]]]] =
-    new InjectTaggedK[Ex#Repr, λ[α => F[Ex2#Repr[α]]]] {
-      override def apply[A: ClassTag](fa: Ex#Repr[A]): F[Ex2#Repr[A]] =
-        arrow(existing(fa))
-    }
-
-  implicit def fromId[F[_], Ex <: Environment, Ex2 <: Environment](
-      implicit existing: InjectTaggedK[Ex#Repr, λ[α => Ex2#Repr[α]]],
-      F: Applicative[F]
-  ): InjectTaggedK[Ex#Repr, λ[α => F[Ex2#Repr[α]]]] =
-    new InjectTaggedK[Ex#Repr, λ[α => F[Ex2#Repr[α]]]] {
-      override def apply[A: ClassTag](fa: Ex#Repr[A]): F[Ex2#Repr[A]] =
-        F.pure(existing(fa))
+  def fromId[F0[_], F[_], G[_]](existing: InjectTaggedK[F, G])(implicit F0: Applicative[F0]): InjectTaggedK[F, λ[α => F0[G[α]]]] =
+    new InjectTaggedK[F, λ[α => F0[G[α]]]] {
+      override def apply[A: ClassTag](fa: F[A]): F0[G[A]] = F0.pure(existing(fa))
     }
 }

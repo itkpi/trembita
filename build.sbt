@@ -164,7 +164,9 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
         phantom,
         Spark.core          % "provided",
         Spark.sql           % "provided",
-        "com.github.gvolpe" %% "console4cats" % "0.5"
+        "com.github.gvolpe" %% "console4cats" % "0.5",
+        "com.lightbend.akka" %% "akka-stream-alpakka-csv" % "0.8",
+        "com.typesafe.akka" %% "akka-http"   % "10.1.6"
       ).map(_ exclude ("org.slf4j", "log4j-over-slf4j"))
     },
     test in assembly := {},

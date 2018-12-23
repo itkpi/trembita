@@ -11,7 +11,7 @@ import scala.concurrent.Future
 import scala.reflect.ClassTag
 
 package object akka_spark {
-  implicit def akkaToSpark[Mat](bufferLimit: Int)(implicit materializer: Materializer,
+  def akkaToSpark[Mat](bufferLimit: Int)(implicit materializer: Materializer,
                                          spark: SparkSession): InjectTaggedK[Source[?, Mat], λ[α => Future[RDD[α]]]] =
     new InjectTaggedK[Source[?, Mat], λ[α => Future[RDD[α]]]] {
       def apply[A: ClassTag](fa: Source[A, Mat]): Future[RDD[A]] = {
@@ -21,5 +21,5 @@ package object akka_spark {
       }
     }
 
-  implicit val sparkToAkka: InjectTaggedK[RDD, Source[?, NotUsed]] = InjectTaggedK.fromArrow(λ[RDD[?] ~> Source[?, NotUsed]](RDDSource))
+  implicit val sparkToAkka: InjectTaggedK[RDD, Source[?, NotUsed]] = InjectTaggedK.fromArrow[RDD, Source[?, NotUsed]](λ[RDD[?] ~> Source[?, NotUsed]](rdd => RDDSource(rdd)))
 }
