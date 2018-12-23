@@ -247,6 +247,36 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
       widen(run)(Ex)
     )
 
+  def mapReprF[B: ClassTag](f: Ex#Repr[A] => F[Ex#Repr[B]])(
+      implicit F: Monad[F],
+      Ex: Ex,
+      run: Ex#Run[F],
+      A: ClassTag[A],
+      canFlatMap: CanFlatMap[Ex]
+  ): DataPipelineT[F, B, Ex] =
+    MapReprFPipeline.make[F, A, B, Ex](`this`, Ex)(
+      widenF(f)(Ex),
+      F,
+      widen(run)(Ex)
+    )
+
+  def flatMap[B: ClassTag](f: A => DataPipelineT[F, B, Ex])(
+      implicit F: Monad[F],
+      Ex: Ex,
+      run: Ex#Run[F],
+      A: ClassTag[A],
+      canFlatMap: CanFlatMap[Ex],
+      ctg: ClassTag[Ex#Repr[B]]
+  ): DataPipelineT[F, B, Ex] =
+    `this`.mapReprF[B] { repr =>
+      F.map(
+        Ex.TraverseRepr.traverse(repr.asInstanceOf[Ex.Repr[A]])(a => f(a).evalFunc[B](Ex)(widen(run)))(
+          ctg.asInstanceOf[ClassTag[Ex.Repr[B]]],
+          widen(run)
+        )
+      )(reprF => canFlatMap.flatten(reprF.asInstanceOf[Ex#Repr[Ex#Repr[B]]]))
+    }
+
   private def widen(run: Ex#Run[F])(implicit ex: Ex): ex.Run[F] =
     run.asInstanceOf[ex.Run[F]]
 
@@ -261,4 +291,9 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
       f: Ex#Repr[x] => Ex#Repr[y]
   )(implicit ex: Ex): ex.Repr[x] => ex.Repr[y] =
     f.asInstanceOf[ex.Repr[x] => ex.Repr[y]]
+
+  private def widenF[x, y](
+      f: Ex#Repr[x] => F[Ex#Repr[y]]
+  )(implicit ex: Ex): ex.Repr[x] => F[ex.Repr[y]] =
+    f.asInstanceOf[ex.Repr[x] => F[ex.Repr[y]]]
 }

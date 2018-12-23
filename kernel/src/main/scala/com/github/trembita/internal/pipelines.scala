@@ -14,7 +14,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 import java.util.concurrent.atomic.AtomicReference
 
-import com.github.trembita.operations.{CanSort, InjectTaggedK}
+import com.github.trembita.operations.{CanFlatMap, CanSort, InjectTaggedK}
 
 import scala.util.Try
 
@@ -110,7 +110,8 @@ protected[trembita] class MapConcatPipelineT[F[_], +A, B, Ex <: Environment](
       f2: Throwable => BB
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, BB, Ex] =
     new HandleErrorPipelineT[F, A, Iterable[BB], Ex](
-      f, fallback = e => List(f2(e)),
+      f,
+      fallback = e => List(f2(e)),
       source
     )(F).mapConcatImpl(identity _)
 
@@ -121,7 +122,7 @@ protected[trembita] class MapConcatPipelineT[F[_], +A, B, Ex <: Environment](
   protected[trembita] def evalFunc[C >: B](
       Ex: Ex
   )(implicit run: Ex.Run[F]): F[Ex.Repr[C]] =
-    F.map(source.evalFunc[A](Ex)) {repr =>
+    F.map(source.evalFunc[A](Ex)) { repr =>
       Ex.FlatMapRepr.mapConcat(repr)(f).asInstanceOf[Ex.Repr[C]]
     }
 }
@@ -329,7 +330,9 @@ object BridgePipelineT {
       source: DataPipelineT[F, A, Ex0],
       Ex0: Ex0,
       F: Monad[F]
-  )(implicit A: ClassTag[A], run0: Ex0.Run[F], @transient inject: InjectTaggedK[Ex0.Repr, λ[α => F[Ex1#Repr[α]]]]): DataPipelineT[F, A, Ex1] =
+  )(implicit A: ClassTag[A],
+    run0: Ex0.Run[F],
+    @transient inject: InjectTaggedK[Ex0.Repr, λ[α => F[Ex1#Repr[α]]]]): DataPipelineT[F, A, Ex1] =
     new SeqSource[F, A, Ex1](F) {
       override def handleErrorImpl[B >: A: ClassTag](
           f: Throwable => B
@@ -530,5 +533,20 @@ object MapReprPipeline {
           Ex: E
       )(implicit run0: Ex.Run[F]): F[Ex.Repr[C]] =
         F.map(source.evalFunc[A](e)(run))(f).asInstanceOf[F[Ex.Repr[C]]]
+    }
+}
+
+object MapReprFPipeline {
+  def make[F[_], A: ClassTag, B: ClassTag, E <: Environment](
+      source: DataPipelineT[F, A, E],
+      e: E
+  )(f: e.Repr[A] => F[e.Repr[B]], F: Monad[F], run: e.Run[F])(implicit canFlatMap: CanFlatMap[E]): DataPipelineT[F, B, E] =
+    new SeqSource[F, B, E](F) {
+      override def evalFunc[C >: B](
+          Ex: E
+      )(implicit run0: Ex.Run[F]): F[Ex.Repr[C]] =
+        F.flatMap(source.evalFunc[A](e)(run)){reprA =>
+          f(reprA).asInstanceOf[F[Ex.Repr[C]]]
+        }
     }
 }

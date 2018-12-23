@@ -7,7 +7,7 @@ import cats.{~>, Monad}
 import cats.effect.IO
 import com.github.trembita.fsm.{CanFSM, FSM, InitialState}
 import com.github.trembita.{DataPipelineT, Environment}
-import com.github.trembita.operations.{LiftPipeline, MagnetlessOps}
+import com.github.trembita.operations.{CanFlatMap, LiftPipeline, MagnetlessOps}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds
@@ -75,4 +75,10 @@ package object akka {
       ): DataPipelineT[F, B, AkkaMat[Mat]] =
         pipeline.mapRepr[B](akkaFSM[A, N, D, B](_)(initial)(fsmF))
     }
+
+  implicit def canFlatMapAkka[Mat]: CanFlatMap[AkkaMat[Mat]] = new CanFlatMap[AkkaMat[Mat]] {
+    override def flatMap[A, B](fa: Source[A, Mat])(
+        f: A => Source[B, Mat]
+    ): Source[B, Mat] = fa.flatMapConcat(f)
+  }
 }
