@@ -180,6 +180,19 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
           .map[Vector[A], Option[A]](Ex.toVector(widen(repr)(Ex)))(_.headOption)
     )
 
+  def toF[Ex2 <: Environment](
+      implicit Ex: Ex,
+      run1: Ex#Run[F],
+      A: ClassTag[A],
+      F: Monad[F],
+      injectK: InjectTaggedK[Ex#Repr, λ[α => F[Ex2#Repr[α]]]]
+  ): DataPipelineT[F, A, Ex2] =
+    BridgePipelineT.make[F, A, Ex, Ex2](`this`, Ex, F)(
+      A,
+      widen(run1)(Ex),
+      injectK.asInstanceOf[InjectTaggedK[Ex.Repr, λ[α => F[Ex2#Repr[α]]]]]
+    )
+
   def to[Ex2 <: Environment](
       implicit Ex: Ex,
       run1: Ex#Run[F],
@@ -190,7 +203,9 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
     BridgePipelineT.make[F, A, Ex, Ex2](`this`, Ex, F)(
       A,
       widen(run1)(Ex),
-      injectK.asInstanceOf[InjectTaggedK[Ex.Repr, Ex2#Repr]]
+      InjectTaggedK
+        .fromId[F, Ex#Repr, Ex2#Repr](injectK)
+        .asInstanceOf[InjectTaggedK[Ex.Repr, λ[α => F[Ex2#Repr[α]]]]]
     )
 
   def mapK[G[_]](arrow: F ~> G)(implicit G: Monad[G], Ex: Ex, run0: Ex#Run[F], A: ClassTag[A]): DataPipelineT[G, A, Ex] =

@@ -1,4 +1,5 @@
 import xerial.sbt.Sonatype._
+import Dependencies._
 
 lazy val snapshot: Boolean = true
 lazy val v: String = {
@@ -12,20 +13,6 @@ lazy val scalaReflect = Def.setting {
 }
 
 organization in ThisBuild := "com.github.vitaliihonta.trembita"
-
-val scalaV       = "2.12.8"
-val testV        = "3.0.4"
-val catsEffectsV = "1.1.0"
-val shapelessV   = "2.3.3"
-val spireV       = "0.16.0"
-
-val commonDeps = Seq(
-  "org.scalactic" %% "scalactic"   % testV,
-  "org.scalatest" %% "scalatest"   % testV % "test",
-  "org.typelevel" %% "cats-effect" % catsEffectsV,
-  "com.chuusai"   %% "shapeless"   % shapelessV,
-  "org.typelevel" %% "spire"       % spireV
-)
 
 def sonatypeProject(id: String, base: File) =
   Project(id, base)
@@ -71,7 +58,7 @@ lazy val cassandra_connector = sonatypeProject(
 ).dependsOn(kernel)
   .settings(libraryDependencies ++= {
     Seq(
-      "com.datastax.cassandra" % "cassandra-driver-core" % "3.6.0" % "provided"
+      Cassandra.driver
     )
   })
 
@@ -80,8 +67,8 @@ lazy val cassandra_connector_phantom =
     .dependsOn(cassandra_connector)
     .settings(libraryDependencies ++= {
       Seq(
-        "com.outworkers"         %% "phantom-jdk8"           % "2.29.0" % "provided",
-        "com.datastax.cassandra" % "cassandra-driver-extras" % "3.6.0"  % "provided"
+        phantom                % "provided",
+        Cassandra.driverExtras % "provided"
       )
     })
 
@@ -89,7 +76,7 @@ lazy val slf4j =
   sonatypeProject(id = "trembita-slf4j", base = file("./utils/slf4j"))
     .dependsOn(kernel)
     .settings(libraryDependencies ++= {
-      Seq("org.slf4j" % "slf4j-api" % "1.7.25")
+      Seq(Dependencies.slf4j)
     })
 
 lazy val trembita_spark =
@@ -103,11 +90,10 @@ lazy val trembita_spark =
         "-language:experimental.macros"
       ),
       libraryDependencies ++= {
-        val sparkV = "2.4.0"
         Seq(
-          "org.apache.spark" %% "spark-core"    % sparkV % "provided",
-          "org.apache.spark" %% "spark-sql"     % sparkV % "provided",
-          "org.scalamacros"  %% "resetallattrs" % "1.0.0"
+          Spark.core % "provided",
+          Spark.sql  % "provided",
+          Macros.resetallattrs
         )
       }
     )
@@ -122,12 +108,27 @@ lazy val trembita_akka_streamns =
       version := v,
       scalacOptions ++= Seq("-Ypartial-unification"),
       libraryDependencies ++= {
-        val akkaV = "2.5.19"
         Seq(
-          "com.typesafe.akka" %% "akka-actor"  % akkaV,
-          "com.typesafe.akka" %% "akka-stream" % akkaV
+          Akka.actors,
+          Akka.streams
         )
       }
+    )
+
+lazy val seamless_akka_spark =
+  sonatypeProject(
+    id = "trembita-seamless-akka-spark",
+    base = file("./integrations/seamless/akka-spark")
+  ).dependsOn(kernel, trembita_akka_streamns, trembita_spark)
+    .settings(
+      name := "trembita-seamless-akka-spark",
+      version := v,
+      scalacOptions ++= Seq("-Ypartial-unification"),
+      libraryDependencies ++= Seq(
+        Spark.core % "provided",
+        Spark.sql  % "provided"
+      ),
+      addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.8")
     )
 
 lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
@@ -138,7 +139,8 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     cassandra_connector,
     cassandra_connector_phantom,
     trembita_spark,
-    trembita_akka_streamns
+    trembita_akka_streamns,
+    seamless_akka_spark
   )
   .settings(
     name := "trembita-examples",
@@ -156,14 +158,15 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     libraryDependencies ++= {
       val sparkV = "2.4.0"
       Seq(
-        "io.circe"               %% "circe-java8"            % "0.10.1",
-        "com.datastax.cassandra" % "cassandra-driver-core"   % "3.6.0",
-        "com.datastax.cassandra" % "cassandra-driver-extras" % "3.6.0",
-        "com.outworkers"         %% "phantom-jdk8"           % "2.29.0",
-        "org.apache.spark"       %% "spark-core"             % sparkV % "provided",
-        "org.apache.spark"       %% "spark-sql"              % sparkV % "provided",
-        "org.apache.spark"       %% "spark-streaming"        % sparkV % "provided",
-        "com.github.gvolpe"      %% "console4cats"           % "0.5"
+        "io.circe" %% "circe-java8" % "0.10.1",
+        Cassandra.driver,
+        Cassandra.driverExtras,
+        phantom,
+        Spark.core          % "provided",
+        Spark.sql           % "provided",
+        "com.github.gvolpe" %% "console4cats" % "0.5",
+        "com.lightbend.akka" %% "akka-stream-alpakka-csv" % "0.8",
+        "com.typesafe.akka" %% "akka-http"   % "10.1.6"
       ).map(_ exclude ("org.slf4j", "log4j-over-slf4j"))
     },
     test in assembly := {},
@@ -190,7 +193,8 @@ lazy val root = Project(id = "trembita", base = file("."))
     cassandra_connector,
     cassandra_connector_phantom,
     trembita_spark,
-    trembita_akka_streamns
+    trembita_akka_streamns,
+    seamless_akka_spark
   )
   .settings(
     name := "trembita",

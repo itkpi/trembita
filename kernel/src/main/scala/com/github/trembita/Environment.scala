@@ -74,9 +74,9 @@ object Environment {
   type RunAux[Run0[_[_]]] = Environment { type Run[G[_]] = Run0[G] }
 
   sealed trait Sequential extends Environment {
-    type Repr[+X]  = Vector[X]
-    type Run[G[_]] = Applicative[G]
-    type Result[X] = X
+    final type Repr[+X]  = Vector[X]
+    final type Run[G[_]] = Applicative[G]
+    final type Result[X] = X
 
     def toVector[A](repr: Vector[A]): Result[Vector[A]] = repr
 
@@ -132,9 +132,9 @@ object Environment {
   }
 
   sealed trait Parallel extends Environment {
-    type Repr[+X]  = ParVector[X]
-    type Run[G[_]] = Applicative[G]
-    type Result[X] = X
+    final type Repr[+X]  = ParVector[X]
+    final type Run[G[_]] = Applicative[G]
+    final type Result[X] = X
 
     def toVector[A](repr: ParVector[A]): Result[Vector[A]] = repr.seq
 

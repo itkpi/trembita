@@ -335,7 +335,7 @@ object BridgePipelineT {
       source: DataPipelineT[F, A, Ex0],
       Ex0: Ex0,
       F: Monad[F]
-  )(implicit A: ClassTag[A], run0: Ex0.Run[F], @transient inject: InjectTaggedK[Ex0.Repr, Ex1#Repr]): DataPipelineT[F, A, Ex1] =
+  )(implicit A: ClassTag[A], run0: Ex0.Run[F], @transient inject: InjectTaggedK[Ex0.Repr, λ[α => F[Ex1#Repr[α]]]]): DataPipelineT[F, A, Ex1] =
     new SeqSource[F, A, Ex1](F) {
       override def handleErrorImpl[B >: A: ClassTag](
           f: Throwable => B
@@ -358,10 +358,10 @@ object BridgePipelineT {
       protected[trembita] def evalFunc[B >: A](
           Ex: Ex1
       )(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
-        F.map(
+        F.flatMap(
           source
             .evalFunc[A](Ex0)
-        )(vs => inject(vs).asInstanceOf[Ex.Repr[B]])
+        )(vs => inject(vs).asInstanceOf[F[Ex.Repr[B]]])
     }
 }
 
