@@ -67,7 +67,7 @@ class FromIdSeq extends CanFSM[Id, Sequential] {
         elems
       }
       elemF
-    } flatMap { vs =>
+    } mapConcat { vs =>
       vs
     }
   }
@@ -100,7 +100,7 @@ class FromIdParallel extends CanFSM[Id, Parallel] {
         elems
       }
       elemF
-    } flatMap { vs =>
+    } mapConcat { vs =>
       vs
     }
   }
@@ -134,7 +134,7 @@ class FromSyncSequential[F[_]](implicit F: Sync[F]) extends CanFSM[F, Sequential
           }
         }
       elemF
-    } flatMap { vs =>
+    } mapConcat { vs =>
       vs
     }
   }
@@ -168,7 +168,7 @@ class FromSyncParallel[F[_]](implicit F: Sync[F]) extends CanFSM[F, Parallel] {
           }
         }
       elemF
-    } flatMap { vs =>
+    } mapConcat { vs =>
       vs
     }
   }

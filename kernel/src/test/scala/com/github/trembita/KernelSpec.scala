@@ -47,7 +47,7 @@ class KernelSpec extends FlatSpec {
 
   "DataPipeline.flatMap(getWords)" should "be a pipeline of words" in {
     val pipeline = DataPipeline("Hello world", "hello you to")
-    val res      = pipeline.flatMap(_.split("\\s")).eval
+    val res      = pipeline.mapConcat(_.split("\\s")).eval
     assert(res == Vector("Hello", "world", "hello", "you", "to"))
   }
 

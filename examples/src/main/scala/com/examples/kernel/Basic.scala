@@ -14,7 +14,7 @@ object Basic extends IOApp {
 
     val numbers: DataPipelineT[IO, Int, Parallel] = pipeline
       .to[Parallel]
-      .flatMap(_.split(" "))
+      .mapConcat(_.split(" "))
       .map(_.toInt)
       .recoverNonFatal(_ => -100)
 
@@ -25,7 +25,7 @@ object Basic extends IOApp {
       .randomInts[IO](20)
       .map(_ + 1)
       .to[Parallel]
-      .flatMap(i => i :: (48 + i) :: Nil)
+      .mapConcat(i => i :: (48 + i) :: Nil)
       .mapM { i =>
         putStrLn("mapM is working") *>
           IO { i * 12 }

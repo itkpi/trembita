@@ -17,10 +17,10 @@ protected[trembita] class LoggedSource[F[_], +A, Ex <: Environment](
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
     new LoggedSource[F, B, Ex](logger, source.mapImpl(f))
 
-  override def flatMapImpl[B: ClassTag](
-      f: A => DataPipelineT[F, B, Ex]
+  override def mapConcatImpl[B: ClassTag](
+      f: A => Iterable[B]
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
-    new LoggedSource[F, B, Ex](logger, source.flatMapImpl(f))
+    new LoggedSource[F, B, Ex](logger, source.mapConcatImpl(f))
 
   override def filterImpl[AA >: A](
       p: A => Boolean

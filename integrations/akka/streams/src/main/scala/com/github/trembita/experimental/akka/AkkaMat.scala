@@ -10,6 +10,7 @@ import cats.{~>, Functor, Monad}
 import scala.annotation.implicitNotFound
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
+import cats.instances.future._
 
 @implicitNotFound("""
     Operation you're performing requires implicit AkkaMat[${Mat}] in the scope.
@@ -28,18 +29,13 @@ sealed trait AkkaMat[Mat] extends Environment {
       def map[A, B: ClassTag](fa: Source[A, Mat])(f: A => B): Source[B, Mat] =
         fa.map(f)
 
-      def flatMap[A, B: ClassTag](
+      def mapConcat[A, B: ClassTag](
           fa: Source[A, Mat]
-      )(f: A => Source[B, Mat]): Source[B, Mat] =
-        fa.flatMapConcat(f)
+      )(f: A => Iterable[B]): Source[B, Mat] =
+        fa.mapConcat(f(_).toVector)
     }
 
-  val FlatMapResult: ApplicativeFlatMap[Future] =
-    new ApplicativeFlatMap[Future] {
-      def map[A, B: ClassTag](fa: Future[A])(f: A => B): Future[B] = fa.map(f)
-      def flatMap[A, B: ClassTag](fa: Future[A])(f: A => Future[B]): Future[B] =
-        fa.flatMap(f)
-    }
+  val FlatMapResult: Monad[Future] = Monad[Future]
 
   val TraverseRepr: TraverseTag[Repr, Run] = new TraverseTag[Repr, Run] {
     def traverse[G[_], A, B: ClassTag](

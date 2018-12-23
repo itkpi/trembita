@@ -14,10 +14,10 @@ trait MagnetlessOps[F[_], A, Ex <: Environment] extends Any {
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
     `this`.mapImpl(f)
 
-  def flatMap[B: ClassTag](
-      f: A => DataPipelineT[F, B, Ex]
+  def mapConcat[B: ClassTag](
+      f: A => Iterable[B]
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
-    `this`.flatMapImpl(f)
+    `this`.mapConcatImpl(f)
 
   def filter(p: A => Boolean)(implicit F: Monad[F], A: ClassTag[A]): DataPipelineT[F, A, Ex] =
     `this`.filterImpl(p)
@@ -28,7 +28,7 @@ trait MagnetlessOps[F[_], A, Ex <: Environment] extends Any {
     `this`.collectImpl(pf)
 
   def flatCollect[B: ClassTag](
-      pf: PartialFunction[A, DataPipelineT[F, B, Ex]]
+      pf: PartialFunction[A, Iterable[B]]
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
     `this`.collectImpl(pf).flatten
 

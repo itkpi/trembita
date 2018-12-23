@@ -39,11 +39,11 @@ protected[trembita] class MappingPipelineT[F[_], +A, B, Ex <: Environment](
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new MappingPipelineT[F, A, C, Ex](f2.compose(f), source)(F)
 
-  /** Returns [[FlatMapPipelineT]] */
-  def flatMapImpl[C: ClassTag](
-      f2: B => DataPipelineT[F, C, Ex]
+  /** Returns [[MapConcatPipelineT]] */
+  def mapConcatImpl[C: ClassTag](
+      f2: B => Iterable[C]
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
-    new FlatMapPipelineT[F, A, C, Ex](a => f2(f(a)), source)(F)
+    new MapConcatPipelineT[F, A, C, Ex](a => f2(f(a)), source)(F)
 
   def handleErrorImpl[BB >: B: ClassTag](
       f2: Throwable => BB
@@ -69,15 +69,15 @@ protected[trembita] class MappingPipelineT[F[_], +A, B, Ex <: Environment](
 
 /**
   * A [[DataPipelineT]]
-  * that was flatMapped
+  * that was map-concatenated
   *
   * @tparam A - type of source pipeline elements
   * @tparam B - type of pipeline elements after f application
   * @param f      - transformation function
   * @param source - a pipeline that f was applied on
   **/
-protected[trembita] class FlatMapPipelineT[F[_], +A, B, Ex <: Environment](
-    f: A => DataPipelineT[F, B, Ex],
+protected[trembita] class MapConcatPipelineT[F[_], +A, B, Ex <: Environment](
+    f: A => Iterable[B],
     source: DataPipelineT[F, A, Ex]
 )(F: Monad[F])(implicit B: ClassTag[B])
     extends DataPipelineT[F, B, Ex] {
@@ -86,49 +86,43 @@ protected[trembita] class FlatMapPipelineT[F[_], +A, B, Ex <: Environment](
   def mapImpl[C: ClassTag](
       f2: B => C
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
-    new FlatMapPipelineT[F, A, C, Ex](f(_).mapImpl(f2), source)(F)
+    new MapConcatPipelineT[F, A, C, Ex](f(_).map(f2), source)(F)
 
   /** Each next flatMap will compose [[f]] with some other map function */
-  def flatMapImpl[C: ClassTag](
-      f2: B => DataPipelineT[F, C, Ex]
+  def mapConcatImpl[C: ClassTag](
+      f2: B => Iterable[C]
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
-    new FlatMapPipelineT[F, A, C, Ex](f(_).flatMapImpl(f2), source)(F)
+    new MapConcatPipelineT[F, A, C, Ex](f(_).flatMap(f2), source)(F)
 
   /** Filters the result of [[f]] application */
   override def filterImpl[BB >: B](
       p: B => Boolean
   )(implicit F: Monad[F], B: ClassTag[BB]): DataPipelineT[F, BB, Ex] =
-    new FlatMapPipelineT[F, A, BB, Ex](f(_).filterImpl[BB](p), source)(F)
+    new MapConcatPipelineT[F, A, BB, Ex](f(_).filter(p), source)(F)
 
   /** Applies a [[PartialFunction]] to the result of [[f]] */
   def collectImpl[C: ClassTag](
       pf: PartialFunction[B, C]
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
-    new FlatMapPipelineT[F, A, C, Ex](f(_).collectImpl(pf), source)(F)
+    new MapConcatPipelineT[F, A, C, Ex](f(_).collect(pf), source)(F)
 
   def handleErrorImpl[BB >: B: ClassTag](
       f2: Throwable => BB
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, BB, Ex] =
-    new FlatMapPipelineT[F, A, BB, Ex]({ a =>
-      f(a).handleErrorImpl(f2)
-    }, source)(F)
+    new HandleErrorPipelineT[F, A, Iterable[BB], Ex](
+      f, fallback = e => List(f2(e)),
+      source
+    )(F).mapConcatImpl(identity _)
 
   def handleErrorWithImpl[C >: B: ClassTag](
       fallback: Throwable => F[C]
-  )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, C, Ex] =
-    new FlatMapPipelineT[F, A, C, Ex]({ a =>
-      f(a).handleErrorWithImpl(fallback)
-    }, source)(F)
+  )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, C, Ex] = this // todo: think about it
 
   protected[trembita] def evalFunc[C >: B](
       Ex: Ex
   )(implicit run: Ex.Run[F]): F[Ex.Repr[C]] =
-    F.flatMap(source.evalFunc[A](Ex)) { vs =>
-      val res = Ex.TraverseRepr.traverse(vs)(f(_).evalFunc(Ex))(
-        ClassTag(vs.getClass.asInstanceOf[Class[Ex.Repr[B]]]),
-        run
-      )
-      F.map(res)(Ex.FlatMapRepr.flatten(_)).asInstanceOf[F[Ex.Repr[C]]]
+    F.map(source.evalFunc[A](Ex)) {repr =>
+      Ex.FlatMapRepr.mapConcat(repr)(f).asInstanceOf[Ex.Repr[C]]
     }
 }
 
@@ -142,13 +136,13 @@ class CollectPipelineT[F[_], +A, B, Ex <: Environment](
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new CollectPipelineT[F, A, C, Ex](pf.andThen(f2), source)(F)
 
-  /** Returns [[FlatMapPipelineT]] */
-  def flatMapImpl[C: ClassTag](
-      f2: B => DataPipelineT[F, C, Ex]
+  /** Returns [[MapConcatPipelineT]] */
+  def mapConcatImpl[C: ClassTag](
+      f2: B => Iterable[C]
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
-    new FlatMapPipelineT[F, B, C, Ex](f2, this)(F)
+    new MapConcatPipelineT[F, B, C, Ex](f2, this)(F)
 
-  /** Returns [[FlatMapPipelineT]] with [[PartialFunction]] applied */
+  /** Returns [[MapConcatPipelineT]] with [[PartialFunction]] applied */
   def collectImpl[C: ClassTag](
       pf2: PartialFunction[B, C]
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
@@ -188,10 +182,10 @@ protected[trembita] class HandleErrorPipelineT[F[_], +A, B, Ex <: Environment](
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new MappingPipelineT[F, B, C, Ex](f2, this)(F)
 
-  def flatMapImpl[C: ClassTag](
-      f2: B => DataPipelineT[F, C, Ex]
+  def mapConcatImpl[C: ClassTag](
+      f2: B => Iterable[C]
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
-    new FlatMapPipelineT[F, B, C, Ex](f2, this)(F)
+    new MapConcatPipelineT[F, B, C, Ex](f2, this)(F)
 
   def collectImpl[C: ClassTag](
       pf: PartialFunction[B, C]
@@ -293,13 +287,13 @@ protected[trembita] class MapMonadicPipelineT[F[_], +A, B, Ex <: Environment](
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
     new MappingPipelineT[F, B, C, Ex](f2, this)(F)
 
-  /** Returns [[FlatMapPipelineT]] */
-  def flatMapImpl[C: ClassTag](
-      f2: B => DataPipelineT[F, C, Ex]
+  /** Returns [[MapConcatPipelineT]] */
+  def mapConcatImpl[C: ClassTag](
+      f2: B => Iterable[C]
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
-    new FlatMapPipelineT[F, B, C, Ex](f2, this)(F)
+    new MapConcatPipelineT[F, B, C, Ex](f2, this)(F)
 
-  /** Returns [[FlatMapPipelineT]] with [[PartialFunction]] applied */
+  /** Returns [[MapConcatPipelineT]] with [[PartialFunction]] applied */
   def collectImpl[C: ClassTag](
       pf: PartialFunction[B, C]
   )(implicit F: Monad[F]): DataPipelineT[F, C, Ex] =
@@ -370,7 +364,7 @@ object BridgePipelineT {
   * with basic operations implemented:
   *
   * [[DataPipelineT.mapImpl]]      ~> [[MappingPipelineT]]
-  * [[DataPipelineT.flatMapImpl]]  ~> [[FlatMapPipelineT]]
+  * [[DataPipelineT.mapConcatImpl]]  ~> [[MapConcatPipelineT]]
   **/
 protected[trembita] abstract class SeqSource[F[_], +A, Ex <: Environment](
     F: Monad[F]
@@ -381,10 +375,10 @@ protected[trembita] abstract class SeqSource[F[_], +A, Ex <: Environment](
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
     new MappingPipelineT[F, A, B, Ex](f, this)(F)
 
-  def flatMapImpl[B: ClassTag](
-      f: A => DataPipelineT[F, B, Ex]
+  def mapConcatImpl[B: ClassTag](
+      f: A => Iterable[B]
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
-    new FlatMapPipelineT[F, A, B, Ex](f, this)(F)
+    new MapConcatPipelineT[F, A, B, Ex](f, this)(F)
 
   def collectImpl[B: ClassTag](
       pf: PartialFunction[A, B]

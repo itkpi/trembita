@@ -15,10 +15,10 @@ trait EnvironmentIndependentOps[F[_], A, Ex <: Environment] extends Any {
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
     `this`.mapImpl[B](magnet.prepared)
 
-  def flatMap[B: ClassTag](
-      magnet: Magnet[A, DataPipelineT[F, B, Ex], Ex]
+  def mapConcat[B: ClassTag](
+      magnet: Magnet[A, Iterable[B], Ex]
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
-    `this`.flatMapImpl[B](magnet.prepared)
+    `this`.mapConcatImpl[B](magnet.prepared)
 
   def collect[B: ClassTag](
       partialMagnet: PartialMagnet[A, B, Ex]
@@ -26,12 +26,12 @@ trait EnvironmentIndependentOps[F[_], A, Ex <: Environment] extends Any {
     `this`.collectImpl[B](partialMagnet.prepared)
 
   def flatCollect[B: ClassTag](
-      partialMagnet: PartialMagnet[A, DataPipelineT[F, B, Ex], Ex]
+      partialMagnet: PartialMagnet[A, Iterable[B], Ex]
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex] =
     collect(partialMagnet).flatten
 
-  def flatten[B: ClassTag](implicit ev: A <:< DataPipelineT[F, B, Ex], F: Monad[F]): DataPipelineT[F, B, Ex] =
-    `this`.flatMapImpl(ev)
+  def flatten[B: ClassTag](implicit ev: A <:< Iterable[B], F: Monad[F]): DataPipelineT[F, B, Ex] =
+    `this`.mapConcatImpl(ev)
 
   def handleError(magnet: Magnet[Throwable, A, Ex])(
       implicit F: MonadError[F, Throwable],
@@ -159,22 +159,6 @@ trait EnvironmentIndependentOps[F[_], A, Ex <: Environment] extends Any {
       F: Monad[F]
   ): DataPipelineT[F, (Option[A], B), Ex] =
     new JoinRightPipelineT[F, A, B, Ex](`this`, that, on)
-
-  def cartesian[B](
-      that: DataPipelineT[F, B, Ex]
-  )(implicit F: Monad[F]): DataPipelineT[F, (A, B), Ex] =
-    `this`.flatMapImpl { a =>
-      that.mapImpl(b => a -> b)
-    }
-
-  def mapConcat[B, Repr[_]](magnet: Magnet[A, Repr[B], Ex])(
-      implicit F: Monad[F],
-      B: ClassTag[B],
-      ev: Repr[B] => DataPipelineT[F, B, Ex]
-  ): DataPipelineT[F, B, Ex] =
-    `this`.flatMapImpl { a =>
-      ev(magnet.prepared(a))
-    }
 
   /**
     * Prints each element of the pipeline
