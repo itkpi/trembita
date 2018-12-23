@@ -1,16 +1,15 @@
 package com.github.trembita.experimental.spark
 
-import cats.{Functor, Id}
+import cats.{Functor, Id, Monad}
 import com.github.trembita._
 import org.apache.spark.rdd.RDD
-
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
 sealed trait Spark extends Environment {
-  final type Repr[X] = RDD[X]
-  final type Run[G[_]]     = RunOnSpark[G]
-  final type Result[X]     = X
+  final type Repr[X]   = RDD[X]
+  final type Run[G[_]] = RunOnSpark[G]
+  final type Result[X] = X
 
   def toVector[A](repr: RDD[A]): Vector[A] = repr.collect().toVector
 
@@ -30,12 +29,12 @@ sealed trait Spark extends Environment {
 
   def absorb[F[_], A](fa: Result[F[A]]): F[A] = fa
 
-  val FlatMapResult: ApplicativeFlatMap[Id] = ApplicativeFlatMap.id
+  val FlatMapResult: Monad[Id] = SerializableMonad.idMonad
 
   val FlatMapRepr: ApplicativeFlatMap[RDD] =
     new ApplicativeFlatMap[RDD] {
-      def flatMap[A, B: ClassTag](fa: RDD[A])(f: A => RDD[B]): RDD[B] =
-        fa.flatMap(f(_).collect())
+      def mapConcat[A, B: ClassTag](fa: RDD[A])(f: A => Iterable[B]): RDD[B] =
+        fa.flatMap(f(_))
 
       def map[A, B: ClassTag](fa: RDD[A])(f: A => B): RDD[B] = fa.map(f)
     }

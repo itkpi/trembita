@@ -29,7 +29,7 @@ object Main extends IOApp {
 
     val wordsCount: DataPipelineT[IO, String, Akka] = fileLines
       .map(_.utf8String)
-      .flatMap(_.split("\\s"))
+      .mapConcat(_.split("\\s"))
       .groupBy(identity _)
       .mapValues(_.size)
       .map { case (word, count) => s"`$word` occurs $count times" }

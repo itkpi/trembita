@@ -30,14 +30,13 @@ trait DataPipelineT[F[_], +A, Ex <: Environment] extends Serializable {
   ): DataPipelineT[F, B, Ex]
 
   /**
-    * Monad.flatMap
     *
     * @tparam B - resulting data type
-    * @param f - transformation function from [[A]] into {{{DataPipeline[B]}}}
+    * @param f - transformation function from [[A]] into {{{Iterable[B]}}}
     * @return - transformed [[DataPipelineT]]
     **/
-  protected[trembita] def flatMapImpl[B: ClassTag](
-      f: A => DataPipelineT[F, B, Ex] @uncheckedVariance
+  protected[trembita] def mapConcatImpl[B: ClassTag](
+      f: A => Iterable[B]
   )(implicit F: Monad[F]): DataPipelineT[F, B, Ex]
 
   /**

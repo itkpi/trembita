@@ -9,14 +9,8 @@ import scala.reflect.ClassTag
 
 trait ApplicativeFlatMap[F[_]] extends Serializable {
   def map[A, B: ClassTag](fa: F[A])(f: A => B): F[B]
-  def flatMap[A, B: ClassTag](fa: F[A])(f: A => F[B]): F[B]
-  def flatten[A: ClassTag](ffa: F[F[A]]): F[A] = flatMap(ffa)(identity)
-}
-object ApplicativeFlatMap {
-  val id: ApplicativeFlatMap[Id] = new ApplicativeFlatMap[Id] {
-    def map[A, B: ClassTag](fa: Id[A])(f: A => B): Id[B]         = f(fa)
-    def flatMap[A, B: ClassTag](fa: Id[A])(f: A => Id[B]): Id[B] = f(fa)
-  }
+  def mapConcat[A, B: ClassTag](fa: F[A])(f: A => Iterable[B]): F[B]
+  def flatten[A: ClassTag](ffa: F[Iterable[A]]): F[A] = mapConcat(ffa)(identity)
 }
 trait TraverseTag[F[_], Run[_[_]]] extends Serializable {
   def traverse[G[_], A, B: ClassTag](fa: F[A])(f: A => G[B])(
@@ -43,7 +37,7 @@ trait Environment extends Serializable {
   def absorbF[F[_], A](rfa: Result[F[A]])(implicit F: Monad[F], arrow: Result ~> F): F[A] =
     F.flatten(arrow(rfa))
 
-  val FlatMapResult: ApplicativeFlatMap[Result]
+  val FlatMapResult: Monad[Result]
   val FlatMapRepr: ApplicativeFlatMap[Repr]
   val TraverseRepr: TraverseTag[Repr, Run]
 
@@ -111,15 +105,15 @@ object Environment {
     def foreach[A](repr: Repr[A])(f: A => Unit): Result[Unit] =
       repr.foreach(f)
 
-    val FlatMapResult: ApplicativeFlatMap[Id] = ApplicativeFlatMap.id
+    val FlatMapResult: Monad[Id] = Monad[Id]
 
     val FlatMapRepr: ApplicativeFlatMap[Vector] =
       new ApplicativeFlatMap[Vector] {
         def pure[A: ClassTag](a: A): Vector[A]                       = Vector(a)
         def map[A, B: ClassTag](fa: Vector[A])(f: A => B): Vector[B] = fa.map(f)
-        def flatMap[A, B: ClassTag](
+        def mapConcat[A, B: ClassTag](
             fa: Vector[A]
-        )(f: A => Vector[B]): Vector[B] =
+        )(f: A => Iterable[B]): Vector[B] =
           fa.flatMap(f)
       }
     val TraverseRepr: TraverseTag[Vector, Applicative] =
@@ -160,15 +154,15 @@ object Environment {
 
     def absorb[F[_], A](fa: Result[F[A]]): F[A] = fa
 
-    val FlatMapResult: ApplicativeFlatMap[Id] = ApplicativeFlatMap.id
+    val FlatMapResult: Monad[Id] = Monad[Id]
 
     val FlatMapRepr: ApplicativeFlatMap[ParVector] =
       new ApplicativeFlatMap[ParVector] {
         def pure[A: ClassTag](a: A): ParVector[A] = ParVector(a)
 
-        def flatMap[A, B: ClassTag](
+        def mapConcat[A, B: ClassTag](
             fa: ParVector[A]
-        )(f: A => ParVector[B]): ParVector[B] =
+        )(f: A => Iterable[B]): ParVector[B] =
           fa.flatMap(f)
 
         def map[A, B: ClassTag](fa: ParVector[A])(f: A => B): ParVector[B] =
@@ -193,9 +187,6 @@ object Environment {
           ) { (a, lgvb) =>
             G.map2Eval(f(a), lgvb)(_ +: _)
           }.value
-
-//      def foldLeft[A, B](fa: ParVector[A], b: B)(f: (B, A) => B): B =
-//        fa.foldLeft(b)(f)
 
         def foldRight[A, B](fa: ParVector[A], lb: Eval[B])(
             f: (A, Eval[B]) => Eval[B]
