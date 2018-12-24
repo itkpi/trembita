@@ -13,7 +13,7 @@ Trembita allows you to make complecated transformation pipelines where some of t
 ```scala
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 libraryDependencies ++= {
-  val trembitaV = "0.5.0-SNAPSHOT"
+  val trembitaV = "0.6.0-SNAPSHOT"
   Seq(
     "com.github.vitaliihonta.trembita" %% "trembita-kernel" % trembitaV, // kernel,
     
@@ -166,7 +166,28 @@ val stateful = pipeline.fsm(/* your FSM definition here */)
 ```
 You can find full examples [here](./examples/src/main/scala/com/examples/akka)
 
+## Seamless Akka to Spark integration
+Add the following dependency if you wan't to run your pipeline through both akka streams and spark RDD:
+```scala
+libraryDependencies += "com.github.vitaliihonta.trembita" %% "trembita-seamless-akka-spark" % trembitaV
+```
+It goal is to avoid additional overhead when switching between akka and spark.
+`Akka -> Spark` is implemented using custom Sink
+`Spark -> Akka` is implemented using `toLocalIterator`
+
+## Experimental: Spark streaming support
+Trembita now allows to write `QL` and `FSM` upon [spark DStreams](https://spark.apache.org/docs/latest/streaming-programming-guide.html).
+```scala
+libraryDependencies += "com.github.vitaliihonta.trembita" %%  "trembita-spark-streaming" % trembitaV
+```
+
+For examples see [here](./examples/src/main/scala/com/examples/spark/streaming)
+Run scripts:
+- [basic](./examples/src/main/resources/spark/cluster/run_streaming.sh)
+- [FSM](./examples/src/main/resources/spark/cluster/run_streaming_fsm.sh)
+- [QL](./examples/src/main/resources/spark/cluster/run_streaming_ql.sh)
 
 ### To be done
-- caching
-- integration with distributed streaming frameworks
+- [ ] caching
+- [x] integration with distributed streaming frameworks
+- [ ] tensorflow

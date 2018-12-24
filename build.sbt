@@ -3,7 +3,7 @@ import Dependencies._
 
 lazy val snapshot: Boolean = true
 lazy val v: String = {
-  val vv = "0.5.0"
+  val vv = "0.6.0"
   if (!snapshot) vv
   else vv + "-SNAPSHOT"
 }
@@ -212,7 +212,8 @@ lazy val root = Project(id = "trembita", base = file("."))
     cassandra_connector_phantom,
     trembita_spark,
     trembita_akka_streamns,
-    seamless_akka_spark
+    seamless_akka_spark,
+    trembita_spark_streaming
   )
   .settings(
     name := "trembita",
