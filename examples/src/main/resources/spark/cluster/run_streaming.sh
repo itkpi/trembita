@@ -9,7 +9,7 @@ docker cp examples/target/scala-2.12/trembita-spark.jar cluster_spark-worker_1:/
 docker cp examples/target/scala-2.12/trembita-spark.jar cluster_spark-worker_2:/spark/
 docker cp examples/target/scala-2.12/trembita-spark.jar cluster_spark-worker_3:/spark/
 docker exec -it spark-master /spark/bin/spark-submit \
-    --class com.examples.spark.FSMSample \
+    --class com.examples.spark.streaming.Basic \
     --master spark://spark-master:7077 \
     /spark/trembita-spark.jar
 

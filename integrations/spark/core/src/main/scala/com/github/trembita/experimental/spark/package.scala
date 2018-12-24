@@ -2,7 +2,7 @@ package com.github.trembita.experimental
 
 import cats.effect.IO
 import cats.{~>, Eval, Functor, Id, Monad, StackSafeMonad}
-import com.github.trembita.operations.{CanSort, InjectTaggedK, MagnetF}
+import com.github.trembita.operations._
 
 import scala.language.experimental.macros
 import scala.language.{higherKinds, implicitConversions}
@@ -32,9 +32,6 @@ package object spark {
     new RunIOOnSpark(timeout)
 
   implicit class SparkOps[F[_], A](val `this`: DataPipelineT[F, A, Spark]) extends AnyVal with MagnetlessSparkBasicOps[F, A] {
-    def evalWith(run: Spark#Run[F])(implicit F: Functor[F], Ex: Spark): F[Vector[A]] =
-      `this`.eval(F, Ex, run)
-
     def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
         queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb]
     )(implicit trembitaqlForSpark: trembitaqlForSpark[A, G, T, R, Comb],
@@ -42,13 +39,16 @@ package object spark {
       F: Monad[F],
       A: ClassTag[A]): DataPipelineT[F, QueryResult[A, G, R], Spark] =
       `this`.mapRepr(trembitaqlForSpark.apply(_, queryF))
+
+    def mapM[B: ClassTag](magnet: MagnetF[F, A, B, Spark])(implicit F: Monad[F]): DataPipelineT[F, B, Spark] =
+      `this`.mapMImpl[A, B](magnet.prepared)
   }
 
   implicit class SparkIOOps[A](val `this`: DataPipelineT[IO, A, Spark]) extends AnyVal with MagnetlessSparkIOOps[A]
 
   implicit def materializeFuture[A, B](
       f: A => Future[B]
-  ): MagnetF[Future, A, B, Spark] = macro rewrite.materializeFutureImpl[A, B]
+  ): MagnetF[Future, A, B, BaseSpark] = macro rewrite.materializeFutureImpl[A, B]
 
   implicit def turnVectorIntoRDD(
       implicit sc: SparkContext
@@ -155,5 +155,39 @@ package object spark {
 
     def filterMany(cond0: Column, rest: Column*): Dataset[A] =
       rest.foldLeft(self.filter(cond0))(_ filter _)
+  }
+
+  implicit val rddToVector: CanToVector.Aux[RDD, Id] = new CanToVector[RDD] {
+    type Result[X] = X
+    def apply[A](fa: RDD[A]): Vector[A] = fa.toLocalIterator.toVector
+  }
+
+  implicit val canGroupByRDD: CanGroupBy[RDD] = new CanGroupBy[RDD] {
+    def groupBy[K: ClassTag, V: ClassTag](fa: RDD[V])(f: V => K): RDD[(K, Iterable[V])] = fa.groupBy(f)
+  }
+
+  implicit val canZipRDD: CanZip[RDD] = new CanZip[RDD] {
+    def zip[A: ClassTag, B: ClassTag](
+        fa: RDD[A],
+        fb: RDD[B]
+    ): RDD[(A, B)] = fa zip fb
+  }
+
+  implicit def liftIdToRdd(implicit sc: SparkContext): LiftPipeline[Id, Spark] = new LiftPipeline[Id, Spark] {
+    override def liftIterable[A: ClassTag](
+        xs: Iterable[A]
+    ): DataPipelineT[Id, A, Spark] = DataPipelineT.fromRepr[Id, A, Spark](sc.parallelize(xs.toSeq))
+    override def liftIterableF[A: ClassTag](
+        fa: Id[Iterable[A]]
+    ): DataPipelineT[Id, A, Spark] = DataPipelineT.fromRepr[Id, A, Spark](sc.parallelize(fa.toSeq))
+  }
+
+  implicit def liftIOToRdd(implicit sc: SparkContext): LiftPipeline[IO, Spark] = new LiftPipeline[IO, Spark] {
+    override def liftIterable[A: ClassTag](
+        xs: Iterable[A]
+    ): DataPipelineT[IO, A, Spark] = DataPipelineT.fromRepr[IO, A, Spark](sc.parallelize(xs.toSeq))
+    override def liftIterableF[A: ClassTag](
+        fa: IO[Iterable[A]]
+    ): DataPipelineT[IO, A, Spark] = DataPipelineT.fromReprF[IO, A, Spark](fa.map(xs => sc.parallelize(xs.toSeq)))
   }
 }

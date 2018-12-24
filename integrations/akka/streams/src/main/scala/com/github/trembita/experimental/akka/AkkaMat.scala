@@ -49,23 +49,6 @@ sealed trait AkkaMat[Mat] extends Environment {
   )(f: A => F[Unit])(implicit Run: RunAkka[F], F: Functor[F]): F[Unit] =
     Run.traverse_(repr)(f)
 
-  def toVector[A](repr: Repr[A]): Future[Vector[A]] =
-    repr.runWith(Sink.collection[A, Vector[A]])
-
-  def groupBy[A, K: ClassTag](
-      vs: Repr[A]
-  )(f: A => K): Repr[(K, Iterable[A])] = {
-    val groupFlow: Flow[(K, A), (K, Iterable[A]), NotUsed] = Flow[(K, A)]
-      .fold(Map.empty[K, Vector[A]]) {
-        case (m, (k, v)) => m.modify(k, Vector(v))(_ :+ v)
-      }
-      .mapConcat { x =>
-        x
-      }
-
-    vs.map(a => f(a) -> a).via(groupFlow)
-  }
-
   def collect[A, B: ClassTag](
       repr: Repr[A]
   )(pf: PartialFunction[A, B]): Repr[B] =

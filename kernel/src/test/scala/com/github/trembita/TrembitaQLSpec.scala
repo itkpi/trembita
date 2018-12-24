@@ -6,11 +6,21 @@ import GroupingCriteria._
 import AggRes._
 import cats._
 import shapeless.syntax.singleton._
+import shapeless.Witness
 
 class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
+  /* Only for testing */
+  type `divisible by 2` = Witness.`"divisible by 2"`.T
+  type sum              = Witness.`"sum"`.T
+  type `reminder of 3`  = Witness.`"reminder of 3"`.T
+  type positive         = Witness.`"positive"`.T
+  type `all digits`     = Witness.`"all digits"`.T
+  type `avg number`     = Witness.`"avg number"`.T
+  type `max integer`    = Witness.`"max integer"`.T
+
   "A simple DataPipeline.query(...)" should "produce correct result" in {
     val pipeline = DataPipeline[Int](3, 1, 2)
-    val result =
+    val result: Vector[QueryResult[Int, (Boolean :@ `divisible by 2`) &:: GNil, (Int :@ sum) *:: RNil]] =
       pipeline
         .query(
           _.groupBy(expr[Int](_ % 2 == 0) as "divisible by 2")
@@ -36,7 +46,7 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
 
   "A simple DataPipeline.query(...) with ordering records" should "produce correct result" in {
     val pipeline = DataPipeline[Int](3, 1, 2)
-    val result =
+    val result: Vector[QueryResult[Int, (Boolean :@ `divisible by 2`) &:: GNil, (Int :@ sum) *:: RNil]] =
       pipeline
         .query(
           _.groupBy(expr[Int](_ % 2 == 0) as "divisible by 2")
@@ -63,7 +73,11 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
 
   "A complicated DataPipeline.query(...)" should "produce correct result" in {
     val pipeline = DataPipeline[Int](3, 1, 8, 2)
-    val result =
+    val result: Vector[QueryResult[
+      Int,
+      (Boolean :@ `divisible by 2`) &:: (Int :@ `reminder of 3`) &:: (Boolean :@ positive) &:: GNil,
+      (String :@ `all digits`) *:: (Double :@ `avg number`) *:: (Int :@ `max integer`) *:: RNil
+    ]] =
       pipeline
         .query(
           _.groupBy(

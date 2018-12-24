@@ -2,14 +2,15 @@ package com.github.trembita.internal
 
 import cats.Monad
 import com.github.trembita._
-import com.github.trembita.operations.CanJoin
+import com.github.trembita.operations.{CanJoin, CanZip}
 
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
 protected[trembita] class ZipPipelineT[F[_], A, B, Ex <: Environment](
     left: DataPipelineT[F, A, Ex],
-    right: DataPipelineT[F, B, Ex]
+    right: DataPipelineT[F, B, Ex],
+    canZip: CanZip[Ex#Repr]
 )(implicit A: ClassTag[A], F: Monad[F], B: ClassTag[B])
     extends SeqSource[F, (A, B), Ex](F) {
   protected[trembita] def evalFunc[C >: (A, B)](
@@ -17,7 +18,7 @@ protected[trembita] class ZipPipelineT[F[_], A, B, Ex <: Environment](
   )(implicit run: Ex.Run[F]): F[Ex.Repr[C]] =
     F.flatMap(left.evalFunc[A](Ex)) { leftRepr =>
       F.map(right.evalFunc[B](Ex))(
-        rightRepr => Ex.zip(leftRepr, rightRepr).asInstanceOf[Ex.Repr[C]]
+        rightRepr => canZip.zip(leftRepr.asInstanceOf[Ex#Repr[A]], rightRepr.asInstanceOf[Ex#Repr[B]]).asInstanceOf[Ex.Repr[C]]
       )
     }
 }

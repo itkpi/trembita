@@ -28,7 +28,7 @@ class KernelSpec extends FlatSpec {
 
   "DataPipeline.collect(toInt)" should "be DataPipeline[Int]" in {
     val pipeline = DataPipeline("1", "2", "3", "abc")
-    val res = pipeline.collect {
+    val res: Vector[Int] = pipeline.collect {
       case str if str.forall(_.isDigit) => str.toInt
     }.eval
     assert(res == Vector(1, 2, 3))
@@ -46,21 +46,21 @@ class KernelSpec extends FlatSpec {
   }
 
   "DataPipeline.flatMap(getWords)" should "be a pipeline of words" in {
-    val pipeline = DataPipeline("Hello world", "hello you to")
-    val res      = pipeline.mapConcat(_.split("\\s")).eval
+    val pipeline            = DataPipeline("Hello world", "hello you to")
+    val res: Vector[String] = pipeline.mapConcat(_.split("\\s")).eval
     assert(res == Vector("Hello", "world", "hello", "you", "to"))
   }
 
   "DataPipeline.sorted" should "be sorted" in {
-    val pipeline = DataPipeline(5, 4, 3, 1)
-    val sorted   = pipeline.sorted
-    assert(sorted.eval == Vector(1, 3, 4, 5))
+    val pipeline            = DataPipeline(5, 4, 3, 1)
+    val sorted: Vector[Int] = pipeline.sorted.eval
+    assert(sorted == Vector(1, 3, 4, 5))
   }
 
   "DataPipeline.sortBy(_.length)" should "be sorted by length" in {
-    val pipeline = DataPipeline("a", "abcd", "bcd")
-    val res      = pipeline.sortBy(_.length)
-    assert(res.eval == Vector("a", "bcd", "abcd"))
+    val pipeline            = DataPipeline("a", "abcd", "bcd")
+    val res: Vector[String] = pipeline.sortBy(_.length).eval
+    assert(res == Vector("a", "bcd", "abcd"))
   }
 
   "DataPipeline.reduce(_+_)" should "produce pipeline sum" in {
@@ -97,18 +97,19 @@ class KernelSpec extends FlatSpec {
 
   "DataPipeline.groupBy" should "group elements" in {
     val pipeline = DataPipeline(1, 2, 3, 4)
-    val grouped: DataPipeline[(Boolean, List[Int]), Sequential] = pipeline
+    val grouped: Vector[(Boolean, List[Int])] = pipeline
       .groupBy(_ % 2 == 0)
       .mapValues(_.toList)
       .sortBy(_._1)
+      .eval
 
-    assert(grouped.eval == Vector(false -> List(1, 3), true -> List(2, 4)))
+    assert(grouped == Vector(false -> List(1, 3), true -> List(2, 4)))
   }
 
   "DataPipeline.distinct" should "work" in {
-    val pipeline = DataPipeline(1, 2, 3, 1, 3, 2, 1)
-    val distinct = pipeline.distinct.eval.sorted
-    assert(distinct == Vector(1, 2, 3))
+    val pipeline              = DataPipeline(1, 2, 3, 1, 3, 2, 1)
+    val distinct: Vector[Int] = pipeline.distinct.eval
+    assert(distinct.sorted == Vector(1, 2, 3))
   }
 
   "DataPipeline operations" should "be executed on each force" in {
@@ -116,9 +117,9 @@ class KernelSpec extends FlatSpec {
     val pipeline = DataPipeline(1, 2, 3).map { i =>
       x += 1; i
     }
-    val res1 = pipeline.eval
+    val res1: Vector[Int] = pipeline.eval
     assert(x == 3)
-    val res2 = pipeline.eval
+    val res2: Vector[Int] = pipeline.eval
     assert(x == 6)
   }
 
@@ -136,46 +137,47 @@ class KernelSpec extends FlatSpec {
 
   "PairPipeline transformations" should "work correctly" in {
     val pipeline = DataPipeline("a" → 1, "b" → 2, "c" → 3)
-    val result1  = pipeline.mapValues(_ + 1).eval
+
+    val result1: Vector[(String, Int)] = pipeline.mapValues(_ + 1).eval
     assert(result1 == Vector("a" → 2, "b" → 3, "c" → 4))
 
-    val result2 = pipeline.keys.eval
+    val result2: Vector[String] = pipeline.keys.eval
     assert(result2 == Vector("a", "b", "c"))
 
-    val result3 = pipeline.values.eval
+    val result3: Vector[Int] = pipeline.values.eval
     assert(result3 == Vector(1, 2, 3))
   }
 
   "DataPipeline.zip" should "work correctly for pipelines" in {
-    val p1     = DataPipeline(1, 2, 3, 4)
-    val p2     = DataPipeline("a", "b", "c")
-    val result = p1.zip(p2).eval
+    val p1                            = DataPipeline(1, 2, 3, 4)
+    val p2                            = DataPipeline("a", "b", "c")
+    val result: Vector[(Int, String)] = p1.zip(p2).eval
     assert(result == Vector(1 -> "a", 2 -> "b", 3 -> "c"))
   }
 
   "DataPipeline.++" should "work correctly for pipelines" in {
-    val p1     = DataPipeline(1, 2, 3, 4)
-    val p2     = DataPipeline(5, 6, 7)
-    val result = (p1 ++ p2).sorted
-    assert(result.eval == Vector(1, 2, 3, 4, 5, 6, 7))
+    val p1                  = DataPipeline(1, 2, 3, 4)
+    val p2                  = DataPipeline(5, 6, 7)
+    val result: Vector[Int] = (p1 ++ p2).sorted.eval
+    assert(result == Vector(1, 2, 3, 4, 5, 6, 7))
   }
 
   "DataPipeline.take" should "work correctly" in {
-    val pipeline = DataPipeline(1, 2, 3, 4)
-    val result   = pipeline.take(2)
-    assert(result.eval == Vector(1, 2))
+    val pipeline            = DataPipeline(1, 2, 3, 4)
+    val result: Vector[Int] = pipeline.take(2).eval
+    assert(result == Vector(1, 2))
   }
 
   "DataPipeline.drop" should "work correctly" in {
-    val pipeline = DataPipeline(1, 2, 3, 4)
-    val result   = pipeline.drop(2)
-    assert(result.eval == Vector(3, 4))
+    val pipeline            = DataPipeline(1, 2, 3, 4)
+    val result: Vector[Int] = pipeline.drop(2).eval
+    assert(result == Vector(3, 4))
   }
 
   "DataPipeline.slice" should "work correctly" in {
-    val pipeline = DataPipeline(1, 2, 3, 4, 5)
-    val result   = pipeline.slice(1, 4)
-    assert(result.eval == Vector(2, 3, 4))
+    val pipeline            = DataPipeline(1, 2, 3, 4, 5)
+    val result: Vector[Int] = pipeline.slice(1, 4).eval
+    assert(result == Vector(2, 3, 4))
   }
 
   "DataPipeline[IO]" should "produce the result wrapped in IO monad" in {

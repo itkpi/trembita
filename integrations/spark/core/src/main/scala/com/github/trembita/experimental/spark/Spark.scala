@@ -6,7 +6,10 @@ import org.apache.spark.rdd.RDD
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
-sealed trait Spark extends Environment {
+/* Marker trait */
+trait BaseSpark extends Environment
+
+sealed trait Spark extends Environment with BaseSpark {
   final type Repr[X]   = RDD[X]
   final type Run[G[_]] = RunOnSpark[G]
   final type Result[X] = X

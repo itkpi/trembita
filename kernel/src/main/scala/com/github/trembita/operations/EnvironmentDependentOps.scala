@@ -10,10 +10,10 @@ import scala.reflect.ClassTag
 trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
   def `this`: DataPipelineT[F, A, Ex]
 
-  def eval(implicit F: Functor[F], Ex: Ex, run: Ex#Run[F]): F[Ex.Result[Vector[A]]] =
+  def eval(implicit F: Functor[F], Ex: Ex, run: Ex#Run[F], toVector: CanToVector[Ex#Repr]): F[toVector.Result[Vector[A]]] =
     `this`
       .evalFunc[A](Ex)(widen(run)(Ex))
-      .map(repr => Ex.toVector(repr))
+      .map(repr => toVector(repr))
 
   def foreach(
       f: A => Unit
@@ -36,14 +36,6 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
       f: Ex#Repr[A] => B
   )(implicit Ex: Ex, run: Ex#Run[F], F: Functor[F]): F[B] =
     evalRepr.map(f)
-
-  private def mapEvaled[B](f: Vector[A] => B)(
-      implicit Ex: Ex,
-      run: Ex#Run[F],
-      F: Functor[F],
-      Result: Functor[Ex#Result]
-  ): F[Ex.Result[B]] =
-    eval.map(widen(Result)(Ex).map(_)(f))
 
   /**
     * Reduces [[DataPipelineT]]
@@ -156,29 +148,6 @@ trait EnvironmentDependentOps[F[_], A, Ex <: Environment] extends Any {
           )(canSlice.slice(_, from, to))
           .asInstanceOf[F[ex0.Repr[B]]]
     }
-
-  //
-  /**
-    * UNSAFE version of [[headOption]]
-    *
-    * @return - first element of the pipeline
-    **/
-  def head(implicit Ex: Ex, run: Ex#Run[F], F: Functor[F], canTake: CanTake[Ex#Repr], Result: Functor[Ex#Result]): F[Ex.Result[A]] =
-    headOption.map(widen(Result)(Ex).map(_)(_.get))
-
-  /**
-    * @return - {{{Some(firstElement)}}} if pipeline is not empty, [[None]] otherwise
-    **/
-  def headOption(implicit Ex: Ex,
-                 run: Ex#Run[F],
-                 F: Functor[F],
-                 canTake: CanTake[Ex#Repr],
-                 Result: Functor[Ex#Result]): F[Ex.Result[Option[A]]] =
-    mapEvaledRepr(canTake.take(_, 1)).map(
-      repr =>
-        widen(Result)(Ex)
-          .map[Vector[A], Option[A]](Ex.toVector(widen(repr)(Ex)))(_.headOption)
-    )
 
   def toF[Ex2 <: Environment](
       implicit Ex: Ex,

@@ -2,6 +2,8 @@ package com.github.trembita
 import cats.{Monad, Monoid}
 import cats.implicits._
 
+import scala.collection.immutable.SortedMap
+
 package object collections {
   implicit class IterableExtended[A](val self: Iterable[A]) extends AnyVal {
     def minMax(implicit cmp: Ordering[A]): (A, A) = {
@@ -70,6 +72,13 @@ package object collections {
 
   implicit class MapOps[K, V](map: Map[K, V]) {
     def modify(key: K, default: => V)(f: V => V): Map[K, V] =
+      if (map contains key) {
+        map.updated(key, f(map(key)))
+      } else map + (key -> default)
+  }
+
+  implicit class SortedMapOps[K, V](map: SortedMap[K, V]) {
+    def modify(key: K, default: => V)(f: V => V): SortedMap[K, V] =
       if (map contains key) {
         map.updated(key, f(map(key)))
       } else map + (key -> default)

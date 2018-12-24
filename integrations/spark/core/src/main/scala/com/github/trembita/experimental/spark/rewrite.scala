@@ -11,7 +11,7 @@ class rewrite(val c: whitebox.Context) {
   import c.universe._
 
   private val Future = typeOf[Future[_]].dealias.typeConstructor
-  private val Spark  = typeOf[Spark].dealias
+  private val Spark  = typeOf[BaseSpark].dealias
   private val executionContext =
     typeOf[scala.concurrent.ExecutionContext].dealias
 
@@ -38,7 +38,7 @@ class rewrite(val c: whitebox.Context) {
     val A       = weakTypeOf[A].dealias
     val B       = weakTypeOf[B].dealias
     val FutureB = weakTypeOf[Future[B]].dealias
-    val MagnetF = weakTypeOf[MagnetF[Future, A, B, Spark]]
+    val MagnetF = weakTypeOf[MagnetF[Future, A, B, BaseSpark]]
 
     if (B.typeConstructor =:= Future) {
       c.abort(

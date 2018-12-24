@@ -17,7 +17,7 @@ import scala.reflect.ClassTag
 @implicitNotFound(
   """
     Unable to run Finite state machine in context ${F} on Spark.
-    Probably Spark doesn't support an efficient implementation by default
+    Probably Spark doesn't support an efficient implementation with ${F} by default
   """
 )
 trait SparkFSM[F[_]] {

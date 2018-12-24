@@ -131,6 +131,24 @@ lazy val seamless_akka_spark =
       addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.8")
     )
 
+lazy val trembita_spark_streaming =
+  sonatypeProject(id = "trembita-spark-streaming", base = file("./integrations/spark/streaming"))
+    .dependsOn(kernel, trembita_spark)
+    .settings(
+      name := "trembita-spark-streaming",
+      version := v,
+      scalacOptions ++= Seq(
+        "-Ypartial-unification",
+        "-language:experimental.macros"
+      ),
+      libraryDependencies ++= {
+        Seq(
+          Spark.core      % "provided",
+          Spark.streaming % "provided"
+        )
+      }
+    )
+
 lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
   .dependsOn(
     collection_extentions,
@@ -140,7 +158,8 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     cassandra_connector_phantom,
     trembita_spark,
     trembita_akka_streamns,
-    seamless_akka_spark
+    seamless_akka_spark,
+    trembita_spark_streaming
   )
   .settings(
     name := "trembita-examples",
@@ -156,17 +175,16 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     ),
     addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.8"),
     libraryDependencies ++= {
-      val sparkV = "2.4.0"
       Seq(
-        "io.circe" %% "circe-java8" % "0.10.1",
         Cassandra.driver,
         Cassandra.driverExtras,
         phantom,
-        Spark.core          % "provided",
-        Spark.sql           % "provided",
-        "com.github.gvolpe" %% "console4cats" % "0.5",
-        "com.lightbend.akka" %% "akka-stream-alpakka-csv" % "0.8",
-        "com.typesafe.akka" %% "akka-http"   % "10.1.6"
+        Spark.core      % "provided",
+        Spark.sql       % "provided",
+        Spark.streaming % "provided",
+        Dependencies.console,
+        Akka.csv,
+        Akka.http
       ).map(_ exclude ("org.slf4j", "log4j-over-slf4j"))
     },
     test in assembly := {},

@@ -9,7 +9,7 @@ import scala.language.{higherKinds, implicitConversions}
     In most cases it means that ${Ex} has special requirements
     that your function doesn't deals with
     """)
-trait Magnet[A, B, Ex <: Environment] extends Serializable {
+trait Magnet[A, B, -Ex <: Environment] extends Serializable {
   def prepared: A => B
 }
 
@@ -18,7 +18,7 @@ trait Magnet[A, B, Ex <: Environment] extends Serializable {
     In most cases it means that ${Ex} has special requirements
     that your function doesn't deals with
     """)
-trait PartialMagnet[A, B, Ex <: Environment] extends Serializable {
+trait PartialMagnet[A, B, -Ex <: Environment] extends Serializable {
   def prepared: PartialFunction[A, B]
 }
 
@@ -27,7 +27,7 @@ trait PartialMagnet[A, B, Ex <: Environment] extends Serializable {
     In most cases it means that ${Ex} has special requirements
     that your function doesn't deals with
     """)
-trait MagnetF[F[_], A, B, Ex <: Environment] extends Serializable {
+trait MagnetF[F[_], A, B, -Ex <: Environment] extends Serializable {
   def prepared: A => F[B]
 }
 
@@ -36,7 +36,7 @@ trait MagnetF[F[_], A, B, Ex <: Environment] extends Serializable {
     In most cases it means that ${Ex} has special requirements
     that your function doesn't deals with
     """)
-trait PartialMagnetF[F[_], A, B, Ex <: Environment] extends Serializable {
+trait PartialMagnetF[F[_], A, B, -Ex <: Environment] extends Serializable {
   def prepared: PartialFunction[A, F[B]]
 }
 

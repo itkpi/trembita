@@ -3,6 +3,7 @@ package com.github.trembita.internal
 import com.github.trembita._
 import cats._
 import cats.implicits._
+import com.github.trembita.operations.{CanGroupBy, CanGroupByOrdered}
 
 import scala.annotation.unchecked.uncheckedVariance
 import scala.concurrent.{ExecutionContext, Future}
@@ -103,67 +104,53 @@ protected[trembita] class BaseMapPipelineT[F[_], K, V, Ex <: Environment](
   * @tparam V - value
   * @param f - grouping function
   **/
-protected[trembita] class GroupByPipelineT[F[_], K, V, Ex <: Environment](
-  f: V => K,
-  source: DataPipelineT[F, V, Ex],
-  F: Monad[F]
-)(implicit K: ClassTag[K], V: ClassTag[V]) extends SeqSource[F, (K, Iterable[V]), Ex](F) {
+object GroupByPipelineT {
+  def make[F[_], K, V, Ex <: Environment](
+                                           f: V => K,
+                                           source: DataPipelineT[F, V, Ex],
+                                           F: Monad[F],
+                                           canGroupBy: CanGroupBy[Ex#Repr]
+                                         )(
+    implicit K: ClassTag[K], V: ClassTag[V]
+  ): DataPipelineT[F, (K, Iterable[V]), Ex]   =
+ new SeqSource[F, (K, Iterable[V]), Ex](F) {
   protected[trembita] def evalFunc[B >: (K, Iterable[V])](Ex: Ex)(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
     F.map(
       source
         .evalFunc[V](Ex)
     )(
       vs =>
-        Ex.groupBy(vs)(f).asInstanceOf[Ex.Repr[B]]
+        canGroupBy.groupBy(vs.asInstanceOf[Ex#Repr[V]])(f).asInstanceOf[Ex.Repr[B]]
     )
+  }
 }
 
-object MapPipelineT {
-//
-//  /**
-//    * Creates [[MapPipelineT]] from given pairs
-//    *
-//    * @tparam K - key
-//    * @tparam V - value
-//    * @param vs - pairs
-//    * @return - a MapPipeline
-//    **/
-//  def apply[K, V](
-//    vs: (K, V)*
-//  ): BaseMapPipelineT[K, V, Try, Execution.Sequential] = from(vs.toMap)
-//
-//  def applyF[K, V, F[_]](vs: (K, V)*)(
-//    implicit F: MonadError[F, Throwable]
-//  ): BaseMapPipelineT[K, V, F, Execution.Sequential] =
-//    new BaseMapPipelineT[K, V, F, Execution.Sequential](
-//      DataPipelineT.applyF(vs: _*),
-//      Execution.Sequential
-//    )
-//
-//  /**
-//    * Creates [[MapPipelineT]] from given map
-//    *
-//    * @tparam K - key
-//    * @tparam V - value
-//    * @param map - map
-//    * @return - a MapPipeline
-//    **/
-//  def from[K, V](
-//    map: Map[K, V]
-//  ): BaseMapPipelineT[K, V, Try, Execution.Sequential] =
-//    new BaseMapPipelineT[K, V, Try, Execution.Sequential](
-//      DataPipelineT.from(map),
-//      Execution.Sequential
-//    )
-//
-//  def fromEffect[K, V, F[_], Ex <: Execution](mapF: F[Map[K, V]])(
-//    implicit F: MonadError[F, Throwable],
-//    Ex: Ex
-//  ): BaseMapPipelineT[F, K, V, Ex] =
-//    new BaseMapPipelineT[F, K, V, Ex](
-//      DataPipelineT.fromEffect[(K, V), F, Ex](
-//        mapF.asInstanceOf[F[Iterable[(K, V)]]]
-//      ),
-//      Ex
-//    )
+/**
+  * A [[DataPipelineT]]
+  * been grouped by some criteria
+  *
+  * @tparam K - grouping criteria type
+  * @tparam V - value
+  * @param f - grouping function
+  **/
+object GroupByOrderedPipelineT {
+  def make[F[_], K, V, Ex <: Environment](
+                                           f: V => K,
+                                           source: DataPipelineT[F, V, Ex],
+                                           F: Monad[F],
+                                           canGroupBy: CanGroupByOrdered[Ex#Repr]
+                                         )(
+                                           implicit K: ClassTag[K], V: ClassTag[V],
+                                           ordering: Ordering[K]
+                                         ): DataPipelineT[F, (K, Iterable[V]), Ex]   =
+    new SeqSource[F, (K, Iterable[V]), Ex](F) {
+      protected[trembita] def evalFunc[B >: (K, Iterable[V])](Ex: Ex)(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
+        F.map(
+          source
+            .evalFunc[V](Ex)
+        )(
+          vs =>
+            canGroupBy.groupBy(vs.asInstanceOf[Ex#Repr[V]])(f).asInstanceOf[Ex.Repr[B]]
+        )
+    }
 }
