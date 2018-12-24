@@ -6,7 +6,9 @@ import scala.language.higherKinds
 import com.github.trembita._
 import QueryBuilder._
 import cats.Monad
-import com.github.trembita.operations.CanSort
+import com.github.trembita.operations.{CanGroupBy, CanSort}
+
+import scala.collection.parallel.immutable.ParVector
 import scala.reflect.ClassTag
 
 @implicitNotFound("""
@@ -32,7 +34,8 @@ object trembitaql {
              R <: AggRes: ClassTag,
              Comb: ClassTag,
              Ex <: Environment: ClassTag](
-      implicit canSort: CanSort[Ex#Repr]
+      implicit canSort: CanSort[Ex#Repr],
+      canGroupBy: CanGroupBy[Ex#Repr]
   ): trembitaql[A, G, T, R, Comb, Ex] =
     new trembitaql[A, G, T, R, Comb, Ex] {
       type QueryRes = QueryResult[A, G, R]
@@ -78,10 +81,15 @@ object trembitaql {
     }
 
   implicit def sequentialQL[A: ClassTag, G <: GroupingCriteria: ClassTag, T <: AggDecl: ClassTag, R <: AggRes: ClassTag, Comb: ClassTag](
-      implicit canSort: CanSort[Sequential#Repr]
+      implicit canSort: CanSort[Sequential#Repr],
+      canGroupBy: CanGroupBy[Vector]
   ): trembitaql[A, G, T, R, Comb, Sequential] = derive
 
-  implicit def parallelQL[A: ClassTag, G <: GroupingCriteria: ClassTag, T <: AggDecl: ClassTag, R <: AggRes: ClassTag, Comb: ClassTag](
-      implicit canSort: CanSort[Parallel#Repr]
-  ): trembitaql[A, G, T, R, Comb, Parallel] = derive
+  implicit def parallelQL[A: ClassTag,
+                          G <: GroupingCriteria: ClassTag,
+                          T <: AggDecl: ClassTag,
+                          R <: AggRes: ClassTag,
+                          Comb: ClassTag,
+                          Implicits[_, _]](implicit canSort: CanSort[Parallel#Repr],
+                                           canGroupBy: CanGroupBy[ParVector]): trembitaql[A, G, T, R, Comb, Parallel] = derive
 }

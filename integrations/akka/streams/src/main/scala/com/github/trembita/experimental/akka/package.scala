@@ -7,8 +7,9 @@ import cats.{~>, Monad}
 import cats.effect.IO
 import com.github.trembita.fsm.{CanFSM, FSM, InitialState}
 import com.github.trembita.{DataPipelineT, Environment}
-import com.github.trembita.operations.{CanFlatMap, LiftPipeline, MagnetlessOps}
+import com.github.trembita.operations._
 
+import scala.collection.immutable.SortedMap
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds
 import scala.language.implicitConversions
@@ -21,12 +22,6 @@ package object akka {
       val `this`: DataPipelineT[F, A, AkkaMat[Mat]]
   ) extends AnyVal
       with MagnetlessOps[F, A, AkkaMat[Mat]] {
-    def evalWith(run: AkkaMat[Mat]#Run[F])(
-        implicit e: AkkaMat[Mat],
-        F: Monad[F],
-        arrow: AkkaMat[Mat]#Result ~> F
-    ): F[Vector[A]] =
-      F.flatMap(`this`.eval(F, e, run.asInstanceOf[e.Run[F]]))(arrow(_))
 
     def runForeach(
         f: A => Unit
@@ -80,5 +75,41 @@ package object akka {
     override def flatMap[A, B](fa: Source[A, Mat])(
         f: A => Source[B, Mat]
     ): Source[B, Mat] = fa.flatMapConcat(f)
+  }
+
+  implicit def canGroupByAkka[Mat]: CanGroupBy[Source[?, Mat]] = new CanGroupBy[Source[?, Mat]] {
+    import com.github.trembita.collections._
+
+    def groupBy[K: ClassTag, V: ClassTag](vs: Source[V, Mat])(f: V => K): Source[(K, Iterable[V]), Mat] = {
+      val groupFlow: Flow[(K, V), (K, Iterable[V]), NotUsed] = Flow[(K, V)]
+        .fold(Map.empty[K, Vector[V]]) {
+          case (m, (k, v)) => m.modify(k, Vector(v))(_ :+ v)
+        }
+        .mapConcat { x =>
+          x
+        }
+
+      vs.map(v => f(v) -> v).via(groupFlow)
+    }
+  }
+
+  implicit def canGroupByOrderedAkka[Mat]: CanGroupByOrdered[Source[?, Mat]] = new CanGroupByOrdered[Source[?, Mat]] {
+    import com.github.trembita.collections._
+
+    def groupBy[K: ClassTag: Ordering, V: ClassTag](vs: Source[V, Mat])(f: V => K): Source[(K, Iterable[V]), Mat] = {
+      val groupFlow: Flow[(K, V), (K, Iterable[V]), NotUsed] = Flow[(K, V)]
+        .fold(SortedMap.empty[K, Vector[V]]) {
+          case (m, (k, v)) => m.modify(k, Vector(v))(_ :+ v)
+        }
+        .mapConcat { x =>
+          x
+        }
+
+      vs.map(v => f(v) -> v).via(groupFlow)
+    }
+  }
+
+  implicit def canZipAkka[Mat]: CanZip[Source[?, Mat]] = new CanZip[Source[?, Mat]] {
+    def zip[A: ClassTag, B: ClassTag](fa: Source[A, Mat], fb: Source[B, Mat]): Source[(A, B), Mat] = fa zip fb
   }
 }

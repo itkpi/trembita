@@ -41,8 +41,6 @@ trait Environment extends Serializable {
   val FlatMapRepr: ApplicativeFlatMap[Repr]
   val TraverseRepr: TraverseTag[Repr, Run]
 
-  def toVector[A](repr: Repr[A]): Result[Vector[A]]
-
   def foreach[A](repr: Repr[A])(f: A => Unit): Result[Unit]
 
   def foreachF[F[_], A](
@@ -50,45 +48,31 @@ trait Environment extends Serializable {
   )(f: A => F[Unit])(implicit Run: Run[F], F: Functor[F]): F[Unit] =
     TraverseRepr.traverse_[F, A](repr)(f)
 
-  def groupBy[A, K: ClassTag](vs: Repr[A])(f: A => K): Repr[(K, Iterable[A])]
-
   def collect[A, B: ClassTag](repr: Repr[A])(pf: PartialFunction[A, B]): Repr[B]
 
   def distinctKeys[A: ClassTag, B: ClassTag](repr: Repr[(A, B)]): Repr[(A, B)]
 
   def concat[A](xs: Repr[A], ys: Repr[A]): Repr[A]
 
-  def zip[A, B: ClassTag](xs: Repr[A], ys: Repr[B]): Repr[(A, B)]
-
   def memoize[A: ClassTag](xs: Repr[A]): Repr[A]
 }
 
 object Environment {
   type ReprAux[Repr0[_]]  = Environment { type Repr[X]   = Repr0[X] }
-  type RunAux[Run0[_[_]]] = Environment { type Run[G[_]] = Run0[G] }
 
   sealed trait Sequential extends Environment {
     final type Repr[+X]  = Vector[X]
     final type Run[G[_]] = Applicative[G]
     final type Result[X] = X
 
-    def toVector[A](repr: Vector[A]): Result[Vector[A]] = repr
-
     def collect[A, B: ClassTag](
         repr: Vector[A]
     )(pf: PartialFunction[A, B]): Vector[B] =
       repr.collect(pf)
 
-    def fromVector[A: ClassTag](vs: Vector[A]): Vector[A] = vs
-
     def fromIterable[A: ClassTag](vs: Iterable[A]): Vector[A] = vs.toVector
 
     def fromIterator[A: ClassTag](vs: Iterator[A]): Repr[A] = vs.toVector
-
-    def groupBy[A, K: ClassTag](
-        vs: Vector[A]
-    )(f: A => K): Vector[(K, Iterable[A])] =
-      vs.groupBy(f).toVector
 
     def distinctKeys[A: ClassTag, B: ClassTag](
         repr: Repr[(A, B)]
@@ -130,8 +114,6 @@ object Environment {
     final type Run[G[_]] = Applicative[G]
     final type Result[X] = X
 
-    def toVector[A](repr: ParVector[A]): Result[Vector[A]] = repr.seq
-
     def fromVector[A: ClassTag](vs: Vector[A]): ParVector[A] = vs.par
 
     def fromIterable[A: ClassTag](vs: Iterable[A]): Repr[A] = vs.to[ParVector]
@@ -143,9 +125,6 @@ object Environment {
     ): ParVector[B] = repr.collect(pf)
 
     def concat[A](xs: ParVector[A], ys: ParVector[A]): ParVector[A] = xs ++ ys
-
-    def zip[A, B: ClassTag](xs: ParVector[A], ys: ParVector[B]): ParVector[(A, B)] =
-      xs.zip(ys)
 
     def distinctKeys[A: ClassTag, B: ClassTag](
         repr: Repr[(A, B)]
@@ -168,11 +147,6 @@ object Environment {
         def map[A, B: ClassTag](fa: ParVector[A])(f: A => B): ParVector[B] =
           fa.map(f)
       }
-
-    def groupBy[A, K: ClassTag](
-        vs: ParVector[A]
-    )(f: A => K): ParVector[(K, Iterable[A])] =
-      vs.groupBy(f).mapValues(_.seq).toVector.par
 
     def memoize[A: ClassTag](xs: ParVector[A]): ParVector[A] = xs
 

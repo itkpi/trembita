@@ -6,14 +6,12 @@ services:
     ports:
       - "8080:8080"
       - "7077:7077"
+      - "35511:35511"
     environment:
       - INIT_DAEMON_STEP=setup_spark
-  spark-worker-1:
+  spark-worker:
     image: bde2020/spark-worker:2.4.0-hadoop2.8-scala2.12
-    container_name: spark-worker-1
     depends_on:
       - spark-master
-    ports:
-      - "8081:8081"
     environment:
       - "SPARK_MASTER=spark://spark-master:7077"

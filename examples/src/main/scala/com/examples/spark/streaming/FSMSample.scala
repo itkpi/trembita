@@ -1,23 +1,22 @@
-package com.examples.spark
+package com.examples.spark.streaming
+
+import java.nio.file.FileSystems
 
 import cats.Id
 import cats.effect.{ExitCode, IO, IOApp}
 import com.github.trembita._
-import com.github.trembita.experimental.spark._
+import com.github.trembita.experimental.spark.streaming._
 import org.apache.spark._
 import cats.syntax.all._
 import cats.effect.Console.io._
 import com.github.trembita.fsm._
 import org.apache.spark.sql.{Encoder, Encoders, SparkSession}
 import com.github.trembita.collections._
+import com.github.trembita.experimental.spark.AsyncTimeout
+import org.apache.spark.streaming.{StreamingContext, Duration => StreamingDuration}
+
 import scala.concurrent.duration._
 
-/**
-  * To run this example, you need a spark-cluster.
-  * Use docker-compose to deploy one
-  *
-  * @see resources/spark/cluster
-  * */
 object FSMSample extends IOApp {
   sealed trait DoorState extends Serializable
   case object Opened     extends DoorState
@@ -27,15 +26,12 @@ object FSMSample extends IOApp {
   implicit val stateEncoder: Encoder[Map[DoorState, Int]] =
     Encoders.kryo[Map[DoorState, Int]]
 
-  def sparkSample(implicit spark: SparkSession): IO[Unit] = {
-    import spark.implicits._
+  def sparkSample(implicit ssc: StreamingContext): IO[Unit] = {
     implicit val timeout: AsyncTimeout = AsyncTimeout(5.minutes)
 
-    val pipeline: DataPipelineT[Id, Int, Spark] =
-      DataPipelineT.fromRepr[Id, Int, Spark](
-        spark.sparkContext.parallelize(
-          List.tabulate(5000)(i => scala.util.Random.nextInt() + i)
-        )
+    val pipeline: DataPipelineT[Id, Int, SparkStreaming] =
+      DataPipelineT.liftF[Id, Int, SparkStreaming](
+        Vector.tabulate(5000)(i => scala.util.Random.nextInt() + i)
       )
 
     val withDoorState =
@@ -66,19 +62,21 @@ object FSMSample extends IOApp {
         .mapK(idToIO)
         .map(_ + 1)
 
-    withDoorState
-      .eval
-      .flatTap(s => putStrLn(s.toString))
+    withDoorState.evalRepr
+      .map(_.print())
+      .map { _ =>
+        ssc.start()
+        ssc.awaitTermination()
+      }
       .void
   }
   def run(args: List[String]): IO[ExitCode] =
     IO(
-      SparkSession
-        .builder()
-        .master("spark://spark-master:7077")
-        .appName("trembita-spark")
-        .getOrCreate()
-    ).bracket(use = { implicit spark: SparkSession =>
+      new SparkContext("spark://spark-master:7077", "trembita-spark")
+    ).bracket(use = { trembitaSpark: SparkContext =>
+        implicit val ssc: StreamingContext = new StreamingContext(trembitaSpark, batchDuration = StreamingDuration(1000))
+        val checkpointDir                  = FileSystems.getDefault.getPath(".") resolve "checkpoint"
+        ssc.checkpoint(s"file://${checkpointDir.toAbsolutePath}")
         sparkSample
       })(release = spark => IO { spark.stop() })
       .as(ExitCode.Success)
