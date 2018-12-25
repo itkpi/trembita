@@ -1,11 +1,14 @@
 package com.github.trembita.caching
 
-import cats.effect.IO
+import cats.effect.{IO, Timer}
 import org.scalatest.FlatSpec
 import com.github.trembita._
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 class LocalCachingSpec extends FlatSpec {
+  implicit val ioTimer: Timer[IO] = IO.timer(ExecutionContext.global)
+
   "local caching" should "cache values of sequential pipeline" in {
     implicit val caching: Caching[IO, Sequential, Int] =
       Caching.localCaching[IO, Sequential, Int](ExpirationTimeout(5.seconds)).unsafeRunSync()
