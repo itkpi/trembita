@@ -248,5 +248,7 @@ lazy val root = Project(id = "trembita", base = file("."))
     isSnapshot := snapshot,
     skip in publish := true,
     publish := {},
-    publishLocal := {}
+    publishLocal := {},
+    coverageExcludedPackages := ".*operations.*",
+    coverageExcludedFiles := ".*orderingInstances | .*arrows* | .*ToCaseClass*"
   )

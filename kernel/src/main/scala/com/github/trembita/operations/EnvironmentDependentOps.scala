@@ -3,7 +3,7 @@ package com.github.trembita.operations
 import cats._
 import cats.implicits._
 import com.github.trembita.internal._
-import com.github.trembita.{CanFold, DataPipelineT, Environment}
+import com.github.trembita.{DataPipelineT, Environment}
 import scala.language.{higherKinds, implicitConversions}
 import scala.reflect.ClassTag
 

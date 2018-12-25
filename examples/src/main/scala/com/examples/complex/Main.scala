@@ -1,20 +1,19 @@
-package com.examples.akka_spark
+package com.examples.complex
 
-import java.time.LocalDate
-import akka.stream.alpakka.csv.scaladsl.CsvToMap
-import akka.stream.alpakka.csv.scaladsl.CsvParsing
-import com.github.trembita._
-import com.github.trembita.experimental.akka._
-import com.github.trembita.experimental.spark._
-import com.github.trembita.seamless.akka_spark._
-import cats.effect.{ExitCode, IO, IOApp}
-import cats.effect.Console.io._
-import cats.implicits._
-import org.apache.spark.sql.SparkSession
-import akka.stream.scaladsl._
-import akka.stream.ActorMaterializer
 import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
+import akka.stream.alpakka.csv.scaladsl.{CsvParsing, CsvToMap}
+import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import cats.effect.{ExitCode, IO, IOApp}
+import com.github.trembita.DataPipelineT
+import com.github.trembita.experimental.akka._
+import org.apache.spark.sql.SparkSession
+import cats.syntax.functor._
+import com.github.trembita.caching._
+import com.github.trembita.caching.infinispan.InfinispanDefaultCaching
+import com.github.trembita.experimental.spark._
+import scala.concurrent.duration._
 
 object Main extends IOApp {
   def run(args: List[String]): IO[ExitCode] =
@@ -29,27 +28,30 @@ object Main extends IOApp {
             .appName("trembita-spark")
             .getOrCreate()
         ).bracket(use = { implicit spark: SparkSession =>
-          akkaSparkExample
+
+          InfinispanDefaultCaching[IO, Spark, String](???, ExpirationTimeout(15.seconds)).bracket(use = {
+            implicit caching: Caching[IO, Spark, String] =>
+              akkaSparkExample
+          })(release = _.stop())
+
         })(release = spark => IO(spark.stop()))
+
       })(release = system => IO.fromFuture(IO(system.terminate())).void)
       .as(ExitCode.Success)
 
-  def akkaSparkExample(implicit mat: ActorMaterializer, spark: SparkSession): IO[Unit] = {
-    val csvPipeline = DataPipelineT.fromRepr[IO, Map[String, ByteString], Akka](
-      Source
-        .fromIterator(
-          () => scala.io.Source.fromURL("https://data.cityofchicago.org/api/views/ijzp-q8t2/rows.csv?accessType=DOWNLOAD").getLines()
-        )
-        .map(ByteString(_))
-        .via(CsvParsing.lineScanner())
-        .via(CsvToMap.toMap())
-    )
+  def akkaSparkExample(implicit mat: ActorMaterializer, spark: SparkSession, caching: Caching[IO, Spark, String]): IO[Unit] = {
+    val csvPipeline: DataPipelineT[IO, Map[String, ByteString], Akka] =
+      DataPipelineT.fromRepr[IO, Map[String, ByteString], Akka](
+        Source
+          .fromIterator(
+            () => scala.io.Source.fromURL("https://data.cityofchicago.org/api/views/ijzp-q8t2/rows.csv?accessType=DOWNLOAD").getLines()
+          )
+          .map(ByteString(_))
+          .via(CsvParsing.lineScanner())
+          .via(CsvToMap.toMap())
+      )
 
-    val recordsPipeline = csvPipeline.map {record =>
-      record.toString
-    }
-
-
+//    val recordsPipeline = csvPipeline.map
 
     ???
   }

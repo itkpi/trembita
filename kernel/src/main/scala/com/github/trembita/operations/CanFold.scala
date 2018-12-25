@@ -1,6 +1,7 @@
-package com.github.trembita
+package com.github.trembita.operations
 
 import cats.Id
+
 import scala.annotation.implicitNotFound
 import scala.collection.parallel.immutable.ParVector
 import scala.language.higherKinds
