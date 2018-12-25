@@ -3,7 +3,7 @@ import Dependencies._
 
 lazy val snapshot: Boolean = true
 lazy val v: String = {
-  val vv = "0.6.0"
+  val vv = "0.6.1"
   if (!snapshot) vv
   else vv + "-SNAPSHOT"
 }
