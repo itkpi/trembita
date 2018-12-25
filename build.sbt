@@ -149,6 +149,27 @@ lazy val trembita_spark_streaming =
       }
     )
 
+lazy val trembita_caching =
+  sonatypeProject(id = "trembita-caching", base = file("./caching/kernel"))
+    .dependsOn(kernel)
+    .settings(
+      name := "trembita-caching",
+      version := v
+    )
+
+lazy val trembita_caching_infinispan =
+  sonatypeProject(id = "trembita-caching-infinispan", base = file("./caching/infinispan"))
+    .dependsOn(trembita_caching)
+    .settings(
+      name := "trembita-caching-infinispan",
+      version := v,
+      libraryDependencies ++= Seq(
+        Infinispan.core,
+        Infinispan.commons,
+        ScalaCompat.java8compat
+      )
+    )
+
 lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
   .dependsOn(
     collection_extentions,
@@ -159,7 +180,9 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     trembita_spark,
     trembita_akka_streamns,
     seamless_akka_spark,
-    trembita_spark_streaming
+    trembita_spark_streaming,
+    trembita_caching,
+    trembita_caching_infinispan
   )
   .settings(
     name := "trembita-examples",
@@ -213,7 +236,9 @@ lazy val root = Project(id = "trembita", base = file("."))
     trembita_spark,
     trembita_akka_streamns,
     seamless_akka_spark,
-    trembita_spark_streaming
+    trembita_spark_streaming,
+    trembita_caching,
+    trembita_caching_infinispan
   )
   .settings(
     name := "trembita",
