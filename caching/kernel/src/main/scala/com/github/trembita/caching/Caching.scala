@@ -1,10 +1,11 @@
 package com.github.trembita.caching
 
-import cats.Monad
+import cats.{Id, Monad}
 import cats.effect.Sync
 import cats.effect.concurrent.Ref
 import com.github.trembita.Environment
 import cats.syntax.all._
+import com.github.trembita.operations.{CanToVector, FromVector}
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.higherKinds
@@ -32,14 +33,16 @@ trait Caching[F[_], E <: Environment, A] {
 }
 
 object Caching {
-  def localCaching[F[_], E <: Environment, A](expirationTimeout: ExpirationTimeout)(implicit F: Sync[F]): F[Caching[F, E, A]] =
-    Ref.of[F, Map[String, (Long, E#Repr[A])]](Map.empty).map { cacheRef =>
+  def localCaching[F[_], E <: Environment, A](
+      expirationTimeout: ExpirationTimeout
+  )(implicit F: Sync[F], toVector: CanToVector.Aux[E#Repr, Id], fromVector: FromVector[E#Repr]): F[Caching[F, E, A]] =
+    Ref.of[F, Map[String, (Long, Vector[A])]](Map.empty).map { cacheRef =>
       new Caching[F, E, A] {
         protected implicit val monad: Monad[F]   = F
         protected val timeout: ExpirationTimeout = expirationTimeout
 
         def cacheRepr(cacheName: String, repr: E#Repr[A]): F[Unit] =
-          cacheRef.update(_.updated(cacheName, System.currentTimeMillis() -> repr))
+          cacheRef.update(_.updated(cacheName, System.currentTimeMillis() -> toVector(repr)))
 
         def getFromCache(cacheName: String): F[Option[E#Repr[A]]] =
           cacheRef
@@ -50,7 +53,7 @@ object Caching {
                 case _ => cache
               }
             }
-            .flatMap(_ => cacheRef.get.map(_.get(cacheName).map(_._2)))
+            .flatMap(_ => cacheRef.get.map(_.get(cacheName).map { case (_, vs) => fromVector(vs) }))
 
         def stop(): F[Unit] = cacheRef.set(Map.empty)
       }
