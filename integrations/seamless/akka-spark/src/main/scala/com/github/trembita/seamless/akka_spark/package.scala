@@ -1,0 +1,25 @@
+package com.github.trembita.seamless
+
+import akka.NotUsed
+import akka.stream.Materializer
+import akka.stream.scaladsl._
+import cats.~>
+import com.github.trembita.operations.InjectTaggedK
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.SparkSession
+import scala.concurrent.Future
+import scala.reflect.ClassTag
+
+package object akka_spark {
+  def akkaToSpark[Mat](bufferLimit: Int)(implicit materializer: Materializer,
+                                         spark: SparkSession): InjectTaggedK[Source[?, Mat], λ[α => Future[RDD[α]]]] =
+    new InjectTaggedK[Source[?, Mat], λ[α => Future[RDD[α]]]] {
+      def apply[A: ClassTag](fa: Source[A, Mat]): Future[RDD[A]] = {
+        val rddSink   = Sink.fromGraph(new RDDSink[A](bufferLimit)(spark))
+        val futureRDD = fa.toMat(rddSink)(Keep.right).run()
+        futureRDD
+      }
+    }
+
+  implicit val sparkToAkka: InjectTaggedK[RDD, Source[?, NotUsed]] = InjectTaggedK.fromArrow[RDD, Source[?, NotUsed]](λ[RDD[?] ~> Source[?, NotUsed]](rdd => RDDSource(rdd)))
+}
