@@ -5,8 +5,10 @@ import scala.language.higherKinds
 import cats._
 import cats.effect.Sync
 import cats.implicits._
+import com.github.trembita.inputs.InputT
 import com.github.trembita.operations.LiftPipeline
 import internal._
+
 import scala.annotation.unchecked.uncheckedVariance
 import scala.reflect.ClassTag
 import scala.util.{Random, Success, Try}
@@ -95,6 +97,9 @@ object DataPipelineT {
         implicit F: Monad[F],
     ): DataPipelineT[F, A, E] =
       `input`(props)
+
+    @inline def empty[A: ClassTag](implicit F: Monad[F]): DataPipelineT[F, A, E] =
+      `input`.empty[A]
   }
 
   /**

@@ -11,7 +11,7 @@ credentials += Credentials(
   "Sonatype Nexus Repository Manager",
   "oss.sonatype.org",
   "vitalii-honta",
-  s"Murcielago@$password"
+  password
 )
 
 sonatypeProfileName := "com.github"

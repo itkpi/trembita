@@ -2,21 +2,21 @@ package com.github
 
 import scala.language.{higherKinds, implicitConversions}
 import cats._
-import com.github.trembita.inputs.{IterableInput, LowPriorityInputs}
 import com.github.trembita.internal._
 import com.github.trembita.operations._
-
+import com.github.trembita.outputs.internal.{lowPriorityTricks, standardOutputs, OutputDsl}
 import scala.reflect.ClassTag
 
-package object trembita extends standardMagnets with arrows with LowPriorityInputs {
+package object trembita extends standardMagnets with arrows with standardOutputs with lowPriorityTricks {
 
-  type DataPipeline[A, Ex <: Environment] = DataPipelineT[Id, A, Ex]
+  type DataPipeline[A, E <: Environment] = DataPipelineT[Id, A, E]
 
-  implicit class CommonOps[F[_], A, Ex <: Environment](
-      val `this`: DataPipelineT[F, A, Ex]
+  implicit class CommonOps[F[_], A, E <: Environment](
+      val `this`: DataPipelineT[F, A, E]
   ) extends AnyVal
-      with EnvironmentIndependentOps[F, A, Ex]
-      with EnvironmentDependentOps[F, A, Ex]
+      with EnvironmentIndependentOps[F, A, E]
+      with EnvironmentDependentOps[F, A, E]
+      with OutputDsl[F, A, E]
 
   implicit class SeqOps[F[_], A](val `this`: DataPipelineT[F, A, Sequential]) extends AnyVal with MagnetlessOps[F, A, Sequential]
 
@@ -54,7 +54,4 @@ package object trembita extends standardMagnets with arrows with LowPriorityInpu
 
   type Sequential = Environment.Sequential
   type Parallel   = Environment.Parallel
-
-  implicit val sequentialInput: InputT.Aux[Id, Sequential, Iterable] =
-    new IterableInput
 }

@@ -11,13 +11,15 @@ import scala.reflect.ClassTag
   * Typeclass for Stream or RDD-like abstractions
   * */
 trait ApplicativeFlatMap[F[_]] extends Serializable {
+
   /** Functor.map */
   def map[A, B: ClassTag](fa: F[A])(f: A => B): F[B]
 
   /** Allows to create [[F]] of [[B]] applying function from [[A]] to [[Iterable]] on each element of [[F]] */
-
   def mapConcat[A, B: ClassTag](fa: F[A])(f: A => Iterable[B]): F[B]
   def flatten[A: ClassTag](ffa: F[Iterable[A]]): F[A] = mapConcat(ffa)(identity)
+
+  def foreach[A](fa: F[A])(f: A => Unit): Unit = map(fa)(f)
 }
 trait TraverseTag[F[_], Run[_[_]]] extends Serializable {
   def traverse[G[_], A, B: ClassTag](fa: F[A])(f: A => G[B])(
@@ -69,7 +71,7 @@ trait Environment extends Serializable {
 }
 
 object Environment {
-  type ReprAux[Repr0[_]]  = Environment { type Repr[X]   = Repr0[X] }
+  type ReprAux[Repr0[_]] = Environment { type Repr[X] = Repr0[X] }
 
   sealed trait Sequential extends Environment {
     final type Repr[+X]  = Vector[X]

@@ -56,7 +56,7 @@ class FromIdSeq extends CanFSM[Id, Sequential] {
             initial match {
               case InitialState.Pure(s) => s
               case InitialState.FromFirstElement(
-                  f: (A => FSM.State[N, D, Id])
+                  f: (A => FSM.State[N, D, Id]) @unchecked
                   ) =>
                 f(elem)
             }
@@ -89,7 +89,7 @@ class FromIdParallel extends CanFSM[Id, Parallel] {
             initial match {
               case InitialState.Pure(s) => s
               case InitialState.FromFirstElement(
-                  f: (A => FSM.State[N, D, Id])
+                  f: (A => FSM.State[N, D, Id]) @unchecked
                   ) =>
                 f(elem)
             }
@@ -122,7 +122,7 @@ class FromSyncSequential[F[_]](implicit F: Sync[F]) extends CanFSM[F, Sequential
               initial match {
                 case InitialState.Pure(s) => s
                 case InitialState.FromFirstElement(
-                    f: (A => FSM.State[N, D, F])
+                    f: (A => FSM.State[N, D, F]) @unchecked
                     ) =>
                   f(elem)
               }
@@ -156,7 +156,7 @@ class FromSyncParallel[F[_]](implicit F: Sync[F]) extends CanFSM[F, Parallel] {
               initial match {
                 case InitialState.Pure(s) => s
                 case InitialState.FromFirstElement(
-                    f: (A => FSM.State[N, D, F])
+                    f: (A => FSM.State[N, D, F]) @unchecked
                     ) =>
                   f(elem)
               }
