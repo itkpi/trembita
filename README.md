@@ -209,6 +209,10 @@ Run scripts:
 - [ ] tensorflow
 - [ ] slick
 
+## Additional information
+My speec about trembita at Scalaua conference:
+https://youtu.be/PDBVCVv4mVc
+
 ## What means `trembita`?
 <img src="http://typical.if.ua/wp-content/uploads/2015/12/213.jpg" alt="trembita"/>
 
