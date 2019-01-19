@@ -93,9 +93,7 @@ object DataPipelineT {
     new inputDsl[F, E, input.Props](input)
 
   class inputDsl[F[_], E <: Environment, P0[_]](val `input`: InputT.Aux[F, E, P0]) extends AnyVal {
-    @inline def create[A: ClassTag](props: P0[A])(
-        implicit F: Monad[F],
-    ): DataPipelineT[F, A, E] =
+    @inline def create[A: ClassTag](props: P0[A])(implicit F: Monad[F]): DataPipelineT[F, A, E] =
       `input`(props)
 
     @inline def empty[A: ClassTag](implicit F: Monad[F]): DataPipelineT[F, A, E] =

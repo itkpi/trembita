@@ -3,9 +3,8 @@ package com.github.trembita.outputs.internal
 import cats.Monad
 import com.github.trembita._
 import com.github.trembita.outputs.Keep
-
 import scala.collection.generic.CanBuildFrom
-import scala.language.{higherKinds, implicitConversions}
+import scala.language.{existentials, higherKinds, implicitConversions}
 import scala.reflect.ClassTag
 
 trait OutputDsl[F[_], A, E <: Environment] extends Any {
@@ -94,33 +93,6 @@ class keepDslWithProps[F[_], A, E <: Environment, P0[_], Out0[_[_], _], P1[_], O
           .asInstanceOf[OutputWithPropsT.Aux[F, E, λ[a => (P0[a], P1[A])], λ[(G[_], a) => (Out0[G, a], Out1[G, a])]]]
       )
     )
-
-  @inline def keepBothBind[G0[_], G1[_]](
-      implicit ev0: Out0[F, _] <:< F[G0[_]],
-      ev1: Out1[F, _] <:< F[G1[_]]
-  ): outputWithPropsDsl[F, A, E, λ[a => (P0[a], P1[A])], λ[(G[_], a) => F[(G0[a], G1[a])]]] =
-    new outputWithPropsDsl[F, A, E, λ[a => (P0[a], P1[A])], λ[(G[_], a) => F[(G0[a], G1[a])]]](
-      (`this`._1, {
-        val keepBothOutput = Keep.both[Out0, Out1].newOutputWithProps[F, E, P0, P1](`this`._2, `this`._3)
-        val keepBindOutput =
-          new OutputWithPropsT[F, E] {
-            type Out[G[_], a] = G[(G0[a], G1[a])]
-            type Props[a]     = (P0[a], P1[a])
-
-            def apply[Ax: ClassTag](props: Props[Ax])(
-                pipeline: DataPipelineT[F, Ax, E]
-            )(implicit F: Monad[F], E: E, run: E#Run[F]): F[(G0[Ax], G1[Ax])] = {
-              val (left, right) = keepBothOutput[Ax](props)(pipeline)
-              F.product[G0[Ax], G1[Ax]](
-                ev0(left).asInstanceOf[F[G0[Ax]]],
-                ev1(right).asInstanceOf[F[G1[Ax]]]
-              )
-            }
-          }.asInstanceOf[OutputWithPropsT.Aux[F, E, λ[a => (P0[a], P1[A])], λ[(G[_], a) => F[(G0[a], G1[a])]]]]
-
-        keepBindOutput
-      })
-    )
 }
 
 class outputWithoutPropsDsl[F[_], A, E <: Environment, Out0[_[_], _]](
@@ -174,35 +146,6 @@ class keepDslCombinedLeft[F[_], A, E <: Environment, P0[_], Out0[_[_], _], Out1[
       )
     )
 
-  @inline def keepBothBind[G0[_], G1[_]](
-      implicit ev0: Out0[F, _] <:< F[G0[_]],
-      ev1: Out1[F, _] <:< F[G1[_]]
-  ): outputWithPropsDsl[F, A, E, P0, λ[(G[_], a) => F[(G0[a], G1[a])]]] =
-    new outputWithPropsDsl[F, A, E, P0, λ[(G[_], a) => F[(G0[a], G1[a])]]](
-      (`this`._1, {
-        val keepBothOutput =
-          CombinedOutput[F, A, E, P0, Out0, Out1, λ[(G[_], a) => (Out0[G, a], Out1[G, a])]](`this`._2, Keep.both[Out0, Out1], `this`._3)
-
-        val keepBindOutput =
-          new OutputWithPropsT[F, E] {
-            type Props[a]     = P0[a]
-            type Out[G[_], a] = F[(G0[a], G1[a])]
-            def apply[Ax: ClassTag](props: Props[Ax])(
-                pipeline: DataPipelineT[F, Ax, E]
-            )(implicit F: Monad[F], E: E, run: E#Run[F]): F[(G0[Ax], G1[Ax])] = {
-              val (left, right) = keepBothOutput(props)(pipeline)
-
-              F.product(
-                ev0(left).asInstanceOf[F[G0[Ax]]],
-                ev1(right).asInstanceOf[F[G1[Ax]]]
-              )
-            }
-          }.asInstanceOf[OutputWithPropsT.Aux[F, E, P0, λ[(G[_], a) => F[(G0[a], G1[a])]]]]
-
-        keepBindOutput
-      })
-    )
-
   @inline def ignoreBoth(
       implicit ev0: Out0[F, _] <:< F[_],
       ev1: Out1[F, _] <:< F[_]
@@ -250,11 +193,6 @@ class keepDslCombinedRight[F[_], A, E <: Environment, P0[_], Out0[_[_], _], Out1
 
   @inline def keepBoth: outputWithPropsDsl[F, A, E, P0, λ[(G[_], a) => (Out0[G, a], Out1[G, a])]] = leftDsl.keepBoth
 
-  @inline def keepBothBind[G0[_], G1[_]](
-      implicit ev0: Out0[F, _] <:< F[G0[_]],
-      ev1: Out1[F, _] <:< F[G1[_]]
-  ): outputWithPropsDsl[F, A, E, P0, λ[(G[_], a) => F[(G0[a], G1[a])]]] = leftDsl.keepBothBind[G0, G1]
-
   @inline def ignoreBoth(
       implicit ev0: Out0[F, _] <:< F[_],
       ev1: Out1[F, _] <:< F[_]
@@ -297,31 +235,6 @@ class keepDslWithoutProps[F[_], A, E <: Environment, Out0[_[_], _], Out1[_[_], _
       )
     )
 
-  @inline def keepBothBind[G0[_], G1[_]](
-      implicit ev0: Out0[F, _] <:< F[G0[_]],
-      ev1: Out1[F, _] <:< F[G1[_]]
-  ): outputWithoutPropsDsl[F, A, E, λ[(G[_], a) => F[(G0[a], G1[a])]]] =
-    new outputWithoutPropsDsl[F, A, E, λ[(G[_], a) => F[(G0[a], G1[a])]]](
-      (`this`._1, {
-        val keepBothOutput = Keep.both[Out0, Out1].newOutputWithoutProps[F, A, E](`this`._2, `this`._3)
-        val keepBindOutput =
-          new OutputT[F, A, E] {
-            type Out[G[_], a] = G[(G0[a], G1[a])]
-            def apply(
-                pipeline: DataPipelineT[F, A, E]
-            )(implicit F: Monad[F], E: E, run: E#Run[F], A: ClassTag[A]): F[(G0[A], G1[A])] = {
-              val (left, right) = keepBothOutput(pipeline)
-              F.product[G0[A], G1[A]](
-                ev0(left).asInstanceOf[F[G0[A]]],
-                ev1(right).asInstanceOf[F[G1[A]]]
-              )
-            }
-          }.asInstanceOf[OutputT.Aux[F, A, E, λ[(G[_], a) => F[(G0[a], G1[a])]]]]
-
-        keepBindOutput
-      })
-    )
-
   @inline def ignoreBoth[Tx, Ux](
       implicit ev0: Out0[F, A] <:< F[Tx],
       ev1: Out1[F, A] <:< F[Ux]
@@ -352,15 +265,18 @@ class keepDslWithoutProps[F[_], A, E <: Environment, Out0[_[_], _], Out1[_[_], _
   )
 }
 
-class collectionDsl[Col[x] <: Iterable[x]](val `dummy`: Boolean = true) extends AnyVal {
-  @inline def apply[F[_], A: ClassTag]() =
-    new SequentialCollectionOutput[Col, F]
-}
+class collectionDsl[Col[x] <: Iterable[x]](val `dummy`: Boolean = true) extends AnyVal
 
 object collectionDsl {
-  implicit def dslToOutput[F[_], A: ClassTag, Col[x] <: Iterable[x]](
+  implicit def dslToSeqOutput[F[_], Col[x] <: Iterable[x]](
       dsl: collectionDsl[Col]
-  ): OutputWithPropsT.Aux[F, Sequential, λ[A => CanBuildFrom[Col[A], A, Col[A]]], λ[(G[_], A) => G[Col[A]]]] = dsl[F, A]()
+  ): OutputWithPropsT.Aux[F, Sequential, λ[A => CanBuildFrom[Col[A], A, Col[A]]], λ[(G[_], A) => G[Col[A]]]] =
+    new SequentialCollectionOutput[Col, F]()
+
+  implicit def dslToParOutput[F[_], Col[x] <: Iterable[x]](
+      dsl: collectionDsl[Col]
+  ): OutputWithPropsT.Aux[F, Parallel, λ[A => CanBuildFrom[Col[A], A, Col[A]]], λ[(G[_], A) => G[Col[A]]]] =
+    new ParallelCollectionOutput[Col, F]()
 }
 
 class foreachDsl[A](val `f`: A => Unit) extends AnyVal {
@@ -374,6 +290,8 @@ object foreachDsl {
 }
 
 trait standardOutputs {
-  @inline def collection[Col[x] <: Iterable[x]] = new collectionDsl[Col]
-  @inline def foreach[A](f: A => Unit)          = new foreachDsl[A](f)
+  object Output {
+    @inline def collection[Col[x] <: Iterable[x]] = new collectionDsl[Col]
+    @inline def foreach[A](f: A => Unit)          = new foreachDsl[A](f)
+  }
 }

@@ -16,6 +16,9 @@ trait InputT[F[_], E <: Environment] {
 trait LowPriorityInputs {
   implicit def sequentialInputF[F[_]]: InputT.Aux[F, Sequential, λ[α => F[Iterable[α]]]] =
     new IterableInputF[F]
+
+  implicit def parallelInputF[F[_]]: InputT.Aux[F, Parallel, λ[α => F[Iterable[α]]]] =
+    new ParIterableInputF[F]
 }
 
 object InputT extends LowPriorityInputs {
@@ -25,4 +28,7 @@ object InputT extends LowPriorityInputs {
 
   implicit val sequentialInput: InputT.Aux[Id, Sequential, Iterable] =
     new IterableInput
+
+  implicit val parallelInput: InputT.Aux[Id, Parallel, Iterable] =
+    new ParIterableInput
 }

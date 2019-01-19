@@ -4,6 +4,7 @@ import cats.Monad
 import com.github.trembita._
 
 import scala.collection.generic.CanBuildFrom
+import scala.collection.parallel.immutable.ParVector
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
@@ -22,5 +23,11 @@ trait CollectionOutput[Col[x] <: Iterable[x], F[_], E <: Environment] extends Ou
 class SequentialCollectionOutput[Col[x] <: Iterable[x], F[_]] extends CollectionOutput[Col, F, Sequential] {
   protected def intoCollection[A: ClassTag](
       repr: Vector[A]
+  )(implicit F: Monad[F], cbf: CanBuildFrom[Col[A], A, Col[A]]): F[Col[A]] = F.pure(repr.to[Col])
+}
+
+class ParallelCollectionOutput[Col[x] <: Iterable[x], F[_]] extends CollectionOutput[Col, F, Parallel] {
+  protected def intoCollection[A: ClassTag](
+      repr: ParVector[A]
   )(implicit F: Monad[F], cbf: CanBuildFrom[Col[A], A, Col[A]]): F[Col[A]] = F.pure(repr.to[Col])
 }
