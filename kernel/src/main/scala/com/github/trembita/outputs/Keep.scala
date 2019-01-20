@@ -38,7 +38,7 @@ trait Keep[Out0[_[_], _], Out1[_[_], _]] { self =>
       right: OutputT.Aux[F, A, E, Out1]
   ): OutputT.Aux[F, A, E, Out] =
     new OutputT[F, A, E] {
-      type Out[G[_], Ax] = self.Out[G, Ax]
+      type Out[G[_], β] = self.Out[G, β]
 
       def apply(pipeline: DataPipelineT[F, A, E])(implicit F: Monad[F], E: E, run: E#Run[F], A: ClassTag[A]): Out[F, A] = {
         val ppln     = pipeline.memoize()
@@ -53,8 +53,8 @@ trait Keep[Out0[_[_], _], Out1[_[_], _]] { self =>
       right: OutputWithPropsT.Aux[F, E, P1, Out1]
   ): OutputWithPropsT.Aux[F, E, λ[a => (P0[a], P1[a])], Out] =
     new OutputWithPropsT[F, E] {
-      type Props[Ax]     = (P0[Ax], P1[Ax])
-      type Out[G[_], Ax] = self.Out[G, Ax]
+      type Props[β]     = (P0[β], P1[β])
+      type Out[G[_], β] = self.Out[G, β]
 
       def apply[A: ClassTag](props: (P0[A], P1[A]))(
           pipeline: DataPipelineT[F, A, E]

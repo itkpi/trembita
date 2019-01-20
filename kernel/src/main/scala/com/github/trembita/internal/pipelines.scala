@@ -276,10 +276,12 @@ protected[trembita] class HandleErrorWithPipelineT[F[_], +A, B, Ex <: Environmen
     )
 }
 
-protected[trembita] class MapMonadicPipelineT[F[_], +A, B, Ex <: Environment](
-    f: A => F[B],
-    source: DataPipelineT[F, A, Ex]
-)(F: Monad[F])(implicit B: ClassTag[B])
+protected[trembita] class MapMonadicPipelineT[
+    F[_],
+    +A,
+    B,
+    Ex <: Environment
+](f: A => F[B], source: DataPipelineT[F, A, Ex])(F: Monad[F])(implicit B: ClassTag[B])
     extends DataPipelineT[F, B, Ex] {
 
   /** Each next map will compose [[f]] with some other map function */
@@ -332,7 +334,7 @@ object BridgePipelineT {
       F: Monad[F]
   )(implicit A: ClassTag[A],
     run0: Ex0.Run[F],
-    @transient inject: InjectTaggedK[Ex0.Repr, λ[α => F[Ex1#Repr[α]]]]): DataPipelineT[F, A, Ex1] =
+    @transient inject: InjectTaggedK[Ex0.Repr, λ[β => F[Ex1#Repr[β]]]]): DataPipelineT[F, A, Ex1] =
     new SeqSource[F, A, Ex1](F) {
       override def handleErrorImpl[B >: A: ClassTag](
           f: Throwable => B
@@ -455,17 +457,6 @@ protected[trembita] class StrictSource[F[_], +A](
     F.map(iterF)(iter => iter.toVector.asInstanceOf[Ex.Repr[B]])
 }
 
-protected[trembita] class MemoizedPipelineT[F[_], +A, Ex <: Environment](
-    source: DataPipelineT[F, A, Ex],
-    F: Monad[F]
-)(implicit A: ClassTag[A])
-    extends SeqSource[F, A, Ex](F) {
-  protected[trembita] def evalFunc[B >: A](
-      Ex: Ex
-  )(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
-    F.map(source.evalFunc[A](Ex))(Ex.memoize(_)).asInstanceOf[F[Ex.Repr[B]]]
-}
-
 object MapKPipelineT {
   def make[F[_], G[_], A, Ex <: Environment](source: DataPipelineT[F, A, Ex], ex0: Ex, arrow: F ~> G, G: Monad[G])(
       implicit A: ClassTag[A],
@@ -545,7 +536,7 @@ object MapReprFPipeline {
       override def evalFunc[C >: B](
           Ex: E
       )(implicit run0: Ex.Run[F]): F[Ex.Repr[C]] =
-        F.flatMap(source.evalFunc[A](e)(run)){reprA =>
+        F.flatMap(source.evalFunc[A](e)(run)) { reprA =>
           f(reprA).asInstanceOf[F[Ex.Repr[C]]]
         }
     }

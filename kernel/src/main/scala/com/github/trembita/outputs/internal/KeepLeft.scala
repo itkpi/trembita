@@ -9,7 +9,7 @@ trait KeepLeft[Out0[_[_], _], Out1[_[_], _]] {
   def apply[F[_], A](left: Out0[F, A], right: Out1[F, A])(implicit F: Monad[F]): Out0[F, A]
 }
 
-@implicitNotFound("""Don't now how to keep left right for ${Out0} and ${Out1}""")
+@implicitNotFound("""Don't now how to keep right right for ${Out0} and ${Out1}""")
 trait KeepRight[Out0[_[_], _], Out1[_[_], _]] {
   def apply[F[_], A](left: Out0[F, A], right: Out1[F, A])(implicit F: Monad[F]): Out1[F, A]
 }
@@ -41,6 +41,11 @@ trait LowPriorityKeepLeft {
   implicit def simpleIgnoreRightA[U]: KeepLeft[λ[(G[_], a) => G[a]], λ[(G[_], a) => G[U]]] =
     new KeepLeft[λ[(G[_], a) => G[a]], λ[(G[_], a) => G[U]]] {
       def apply[F[_], A](left: F[A], right: F[U])(implicit F: Monad[F]): F[A] = F.productL(left)(right)
+    }
+
+  implicit def simpleIgnoreBothA[T, U]: KeepLeft[λ[(G[_], a) => G[T]], λ[(G[_], a) => G[U]]] =
+    new KeepLeft[λ[(G[_], a) => G[T]], λ[(G[_], a) => G[U]]] {
+      def apply[F[_], A](left: F[T], right: F[U])(implicit F: Monad[F]): F[T] = F.productL(left)(right)
     }
 }
 
@@ -106,6 +111,11 @@ trait LowPriorityKeepRight {
   implicit def simpleIgnoreRightA[U]: KeepRight[λ[(G[_], a) => G[a]], λ[(G[_], a) => G[U]]] =
     new KeepRight[λ[(G[_], a) => G[a]], λ[(G[_], a) => G[U]]] {
       def apply[F[_], A](left: F[A], right: F[U])(implicit F: Monad[F]): F[U] = F.productR(left)(right)
+    }
+
+  implicit def simpleIgnoreBothA[T, U]: KeepRight[λ[(G[_], a) => G[T]], λ[(G[_], a) => G[U]]] =
+    new KeepRight[λ[(G[_], a) => G[T]], λ[(G[_], a) => G[U]]] {
+      def apply[F[_], A](left: F[T], right: F[U])(implicit F: Monad[F]): F[U] = F.productR(left)(right)
     }
 }
 

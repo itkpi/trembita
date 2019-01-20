@@ -28,8 +28,8 @@ object InjectTaggedK {
   implicit val injectParVectorIntoSeq: InjectTaggedK[ParVector, Vector] =
     InjectTaggedK.fromArrow(λ[ParVector[?] ~> Vector[?]](_.seq))
 
-  def fromId[F0[_], F[_], G[_]](existing: InjectTaggedK[F, G])(implicit F0: Applicative[F0]): InjectTaggedK[F, λ[α => F0[G[α]]]] =
-    new InjectTaggedK[F, λ[α => F0[G[α]]]] {
+  def fromId[F0[_], F[_], G[_]](existing: InjectTaggedK[F, G])(implicit F0: Applicative[F0]): InjectTaggedK[F, λ[β => F0[G[β]]]] =
+    new InjectTaggedK[F, λ[β => F0[G[β]]]] {
       override def apply[A: ClassTag](fa: F[A]): F0[G[A]] = F0.pure(existing(fa))
     }
 }

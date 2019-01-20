@@ -2,7 +2,6 @@ package com.github.trembita.outputs.internal
 
 import cats.Monad
 import com.github.trembita._
-
 import scala.collection.generic.CanBuildFrom
 import scala.collection.parallel.immutable.ParVector
 import scala.language.higherKinds

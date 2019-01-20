@@ -2,12 +2,13 @@ package com.github
 
 import scala.language.{higherKinds, implicitConversions}
 import cats._
+import cats.data.Kleisli
 import com.github.trembita.internal._
 import com.github.trembita.operations._
-import com.github.trembita.outputs.internal.{lowPriorityTricks, standardOutputs, OutputDsl}
+import com.github.trembita.outputs.internal.{lowPriorityTricks, OutputDsl}
 import scala.reflect.ClassTag
 
-package object trembita extends standardMagnets with arrows with standardOutputs with lowPriorityTricks {
+package object trembita extends standardMagnets with arrows with lowPriorityTricks {
 
   type DataPipeline[A, E <: Environment] = DataPipelineT[Id, A, E]
 
@@ -52,6 +53,24 @@ package object trembita extends standardMagnets with arrows with standardOutputs
       )
   }
 
-  type Sequential = Environment.Sequential
-  type Parallel   = Environment.Parallel
+  type PipeT[F[_], A, B, E <: Environment] = Kleisli[DataPipelineT[F, ?, E], DataPipelineT[F, A, E], B]
+  type Pipe[A, B, E <: Environment]        = PipeT[Id, A, B, E]
+
+  @inline def pipeT[F[_], A, B, E <: Environment](f: DataPipelineT[F, A, E] => DataPipelineT[F, B, E]): PipeT[F, A, B, E] =
+    Kleisli[DataPipelineT[F, ?, E], DataPipelineT[F, A, E], B](f)
+
+  @inline def pipe[A, B, E <: Environment](f: DataPipeline[A, E] => DataPipeline[B, E]): Pipe[A, B, E] =
+    pipeT[Id, A, B, E](f)
+
+  type Create[F[_], A, E <: Environment] = () => DataPipelineT[F, A, E]
+  type Sequential                        = Environment.Sequential
+  type Parallel                          = Environment.Parallel
+
+  type FileInput   = inputs.FileInput
+  type RandomInput = inputs.RandomInput
+  type RepeatInput = inputs.RepeatInput
+
+  val FileInput   = inputs.FileInput
+  val RandomInput = inputs.RandomInput
+  val RepeatInput = inputs.RepeatInput
 }

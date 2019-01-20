@@ -19,14 +19,15 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
   type `max integer`    = Witness.`"max integer"`.T
 
   "A simple DataPipeline.query(...)" should "produce correct result" in {
-    val pipeline = DataPipeline[Int](3, 1, 2)
+    val pipeline = Input.sequential[Seq].create(Seq(3, 1, 2))
     val result: Vector[QueryResult[Int, (Boolean :@ `divisible by 2`) &:: GNil, (Int :@ sum) *:: RNil]] =
       pipeline
         .query(
           _.groupBy(expr[Int](_ % 2 == 0) as "divisible by 2")
             .aggregate(col[Int] agg sum as "sum")
         )
-        .eval
+        .into(Output.vector)
+        .run
 
     assert(
       result == Vector(
@@ -45,7 +46,7 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
   }
 
   "A simple DataPipeline.query(...) with ordering records" should "produce correct result" in {
-    val pipeline = DataPipeline[Int](3, 1, 2)
+    val pipeline = Input.sequential[Seq].create(Seq(3, 1, 2))
     val result: Vector[QueryResult[Int, (Boolean :@ `divisible by 2`) &:: GNil, (Int :@ sum) *:: RNil]] =
       pipeline
         .query(
@@ -53,7 +54,8 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
             .aggregate(col[Int] agg sum as "sum")
             .orderRecords
         )
-        .eval
+        .into(Output.vector)
+        .run
 
     assert(
       result == Vector(
@@ -72,7 +74,7 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
   }
 
   "A complicated DataPipeline.query(...)" should "produce correct result" in {
-    val pipeline = DataPipeline[Int](3, 1, 8, 2)
+    val pipeline = Input.sequential[Seq].create(Seq(3, 1, 8, 2))
     val result: Vector[QueryResult[
       Int,
       (Boolean :@ `divisible by 2`) &:: (Int :@ `reminder of 3`) &:: (Boolean :@ positive) &:: GNil,
@@ -91,7 +93,8 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
             )
             .ordered
         )
-        .eval
+        .into(Output.vector)
+        .run
 
     assert(
       result == Vector(
@@ -125,7 +128,7 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
         values: Vector[Int]
     )
 
-    val pipeline = DataPipeline[Int](3, 1, 8, 2)
+    val pipeline = Input.sequential[Seq].create(Seq(3, 1, 8, 2))
     val result: Vector[Numbers] =
       pipeline
         .query(
@@ -142,7 +145,8 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
             .ordered
         )
         .as[Numbers]
-        .eval
+        .into(Output.vector)
+        .run
 
     assert(
       result == Vector(

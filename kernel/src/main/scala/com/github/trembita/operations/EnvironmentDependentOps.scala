@@ -11,110 +11,11 @@ trait EnvironmentDependentOps[F[_], A, E <: Environment] extends Any {
   def `this`: DataPipelineT[F, A, E]
 
   /**
-    * Evaluates pipeline elements collecting them into Vector
-    * */
-  def eval(implicit F: Functor[F], E: E, run: E#Run[F], toVector: CanToVector[E#Repr]): F[toVector.Result[Vector[A]]] =
-    `this`
-      .evalFunc[A](E)(widen(run)(E))
-      .map(repr => toVector(repr))
-
-  /**
-    * Evaluates pipeline elements applying side-effect on each of them
-    * */
-  def foreach(
-      f: A => Unit
-  )(implicit E: E, run: E#Run[F], F: Functor[F]): F[E.Result[Unit]] =
-    `this`
-      .evalFunc[A](E)(widen(run)(E))
-      .map(E.foreach(_)(f))
-
-  /**
-    * Evaluates pipeline elements applying monadic side-effect on each of them
-    * */
-  def foreachF(
-      f: A => F[Unit]
-  )(implicit E: E, run: E#Run[F], F: Monad[F]): F[Unit] =
-    `this`
-      .evalFunc[A](E)(widen(run)(E))
-      .flatMap(E.foreachF(_)(f)(widen(run)(E), F))
-
-  /**
     * Evaluates environment-specific data representation
     * */
+  @internalAPI("Used in output DSL. Try to use output DSL instead because in most cases it allows to do what you want")
   def evalRepr(implicit E: E, run: E#Run[F]): F[E.Repr[A]] =
     `this`.evalFunc[A](E)(widen(run)(E))
-
-  private def mapEvaledRepr[B](
-      f: E#Repr[A] => B
-  )(implicit E: E, run: E#Run[F], F: Functor[F]): F[B] =
-    evalRepr.map(f)
-
-  /**
-    * Reduces [[DataPipelineT]]
-    * into single element
-    * having a [[Monoid]] defined for type [[A]]
-    *
-    * @param M - monoid for pipeline's elements
-    * @return - combined elements
-    **/
-  def combineAll(implicit M: Monoid[A],
-                 E: E,
-                 run: E#Run[F],
-                 F: Functor[F],
-                 canFold: CanFold[E#Repr],
-                 A: ClassTag[A]): F[canFold.Result[A]] =
-    mapEvaledRepr(canFold.reduce(_)(M.combine))
-
-  /**
-    * UNSAFE version of [[reduceOpt]]
-    *
-    * Reduces [[DataPipelineT]]
-    * into single element [[A]]
-    * using reducing function
-    *
-    * @param f - reducing function
-    * @return - combined elements
-    **/
-  def reduce(
-      f: (A, A) => A
-  )(implicit E: E, run: E#Run[F], F: Functor[F], canFold: CanFold[E#Repr], A: ClassTag[A]): F[canFold.Result[A]] =
-    mapEvaledRepr(canFold.reduce(_)(f))
-
-  /**
-    * SAFE version of [[combineAll]]
-    * handling empty [[DataPipelineT]]
-    *
-    * @param f - reducing function
-    * @return - combined elements
-    **/
-  def reduceOpt(
-      f: (A, A) => A
-  )(implicit E: E, run: E#Run[F], F: Functor[F], canFold: CanFold[E#Repr], A: ClassTag[A]): F[canFold.Result[Option[A]]] =
-    mapEvaledRepr(canFold.reduceOpt(_)(f))
-
-  /**
-    * Left oriented fold function
-    * returning a single instance of [[C]]
-    *
-    * @tparam C - type of the combiner
-    * @param zero - initial combiner
-    * @param f    - function for 'adding' a value of type [[A]] to the combiner [[C]]
-    * @return - a single instance of the combiner [[C]]
-    **/
-  def foldLeft[C: ClassTag](zero: C)(f: (C, A) => C)(
-      implicit E: E,
-      run: E#Run[F],
-      F: Functor[F],
-      canFold: CanFold[E#Repr],
-      A: ClassTag[A]
-  ): F[canFold.Result[C]] =
-    mapEvaledRepr(canFold.foldLeft(_)(zero)(f))
-
-  /**
-    * @return - size of the [[DataPipelineT]]
-    **/
-  def size(implicit F: Functor[F], E: E, run: E#Run[F], Result: Functor[E#Result], hasSize: HasSize[E#Repr]): F[hasSize.Result[Int]] =
-    mapEvaledRepr(hasSize.size(_))
 
   /**
     * Takes only first N elements of the pipeline
@@ -176,7 +77,7 @@ trait EnvironmentDependentOps[F[_], A, E <: Environment] extends Any {
       widen(run1)(E),
       InjectTaggedK
         .fromId[F, E#Repr, Ex2#Repr](injectK)
-        .asInstanceOf[InjectTaggedK[E.Repr, λ[α => F[Ex2#Repr[α]]]]]
+        .asInstanceOf[InjectTaggedK[E.Repr, λ[β => F[Ex2#Repr[β]]]]]
     )
 
   /**
@@ -189,12 +90,12 @@ trait EnvironmentDependentOps[F[_], A, E <: Environment] extends Any {
       run1: E#Run[F],
       A: ClassTag[A],
       F: Monad[F],
-      injectK: InjectTaggedK[E#Repr, λ[α => F[Ex2#Repr[α]]]]
+      injectK: InjectTaggedK[E#Repr, λ[β => F[Ex2#Repr[β]]]]
   ): DataPipelineT[F, A, Ex2] =
     BridgePipelineT.make[F, A, E, Ex2](`this`, E, F)(
       A,
       widen(run1)(E),
-      injectK.asInstanceOf[InjectTaggedK[E.Repr, λ[α => F[Ex2#Repr[α]]]]]
+      injectK.asInstanceOf[InjectTaggedK[E.Repr, λ[β => F[Ex2#Repr[β]]]]]
     )
 
   /**
@@ -288,6 +189,15 @@ trait EnvironmentDependentOps[F[_], A, E <: Environment] extends Any {
         )
       )(reprF => canFlatMap.flatten(reprF.asInstanceOf[E#Repr[E#Repr[B]]]))
     }
+
+  /**
+    * Forces evaluation of [[E]] internal representation so that further transformations won't be chained with previous ones.
+    * Examples:
+    * - for sequential pipeline it leads to intermediate collection allocation
+    * - for Akka / Spark pipelines it's not such necessary
+    * */
+  def memoize()(implicit F: Monad[F], E: E, run: E#Run[F], A: ClassTag[A]): DataPipelineT[F, A, E] =
+    EvaluatedSource.make[F, A, E](evalRepr.asInstanceOf[F[E#Repr[A]]] /* The cast is not redundant! Do not trust IDEA =) */, F)
 
   private def widen(run: E#Run[F])(implicit E: E): E.Run[F] =
     run.asInstanceOf[E.Run[F]]

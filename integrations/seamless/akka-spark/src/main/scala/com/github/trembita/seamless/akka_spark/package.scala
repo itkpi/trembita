@@ -12,8 +12,8 @@ import scala.reflect.ClassTag
 
 package object akka_spark {
   def akkaToSpark[Mat](bufferLimit: Int)(implicit materializer: Materializer,
-                                         spark: SparkSession): InjectTaggedK[Source[?, Mat], λ[α => Future[RDD[α]]]] =
-    new InjectTaggedK[Source[?, Mat], λ[α => Future[RDD[α]]]] {
+                                         spark: SparkSession): InjectTaggedK[Source[?, Mat], λ[β => Future[RDD[β]]]] =
+    new InjectTaggedK[Source[?, Mat], λ[β => Future[RDD[β]]]] {
       def apply[A: ClassTag](fa: Source[A, Mat]): Future[RDD[A]] = {
         val rddSink   = Sink.fromGraph(new RDDSink[A](bufferLimit)(spark))
         val futureRDD = fa.toMat(rddSink)(Keep.right).run()

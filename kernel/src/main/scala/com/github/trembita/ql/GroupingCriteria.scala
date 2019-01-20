@@ -118,11 +118,11 @@ object GroupingCriteria {
 AggFunc[${A}, ${Out}, ${Comb}]...
 Add {{{ com.github.trembita.ql._ }}} to your imports
 and check required implicits in your scope:
-- cats.Monoid[Ax] ∀ type Ax used in TaggedAgg[Ax, _, AggFunc.Type.Sum]
-- algebra.ring.Field[Ax] ∀ type Ax used in TaggedAgg[Ax, _, AggFunc.Type.Avg]
-- algebra.ring.Rng[Ax] ∀ type Ax used in TaggedAgg[Ax, _, AggFunc.Type.Product]
-- scala.Ordering[Ax] & com.github.trembita.ql.Default[Ax] ∀ type Ax used in TaggedAgg[Ax, _, AggFunc.Type.Min | AggFunc.Type.Max]
-- algebra.ring.Field[Ax] & spire.algebra.NRoot[Ax] ∀ type Ax used in TaggedAgg[Ax, _, AggFunc.Type.STDEV | AggFunc.Type.RMS]
+- cats.Monoid[β] ∀ type β used in TaggedAgg[β, _, AggFunc.Type.Sum]
+- algebra.ring.Field[β] ∀ type β used in TaggedAgg[β, _, AggFunc.Type.Avg]
+- algebra.ring.Rng[β] ∀ type β used in TaggedAgg[β, _, AggFunc.Type.Product]
+- scala.Ordering[β] & com.github.trembita.ql.Default[β] ∀ type β used in TaggedAgg[β, _, AggFunc.Type.Min | AggFunc.Type.Max]
+- algebra.ring.Field[β] & spire.algebra.NRoot[β] ∀ type β used in TaggedAgg[β, _, AggFunc.Type.STDEV | AggFunc.Type.RMS]
 """
 )
 trait AggFunc[-A, +Out, Comb] extends Serializable {

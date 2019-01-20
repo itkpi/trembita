@@ -4,27 +4,33 @@ import cats.effect.IO
 import scala.language.higherKinds
 
 object Sample extends App {
-  val ((vecIO, setIO), listIO) = DataPipelineT[IO, Parallel]
-    .create(IO(1 to 100))
+  val pipeline: DataPipelineT[IO, Int, Parallel] = Input
+    .parallelF[IO, Seq]
+    .create[Int](IO(1 to 100))
+
+  val (setIO, (strIO, sizeIO)) = pipeline
     .map(_ + 1)
     .into(Output.foreach((x: Int) => println(s"first: $x + 1 = ${x + 1}")))
     .alsoInto(Output.foreach((x: Int) => println(s"second: $x + 2 = ${x + 2}")))
     .ignoreBoth
     .alsoInto(Output.foreach((x: Int) => println(s"third: $x + 3 = ${x + 2}")))
     .ignoreBoth
-    .alsoInto(Output.collection[Vector])
+    .alsoInto(Output.foldLeft[Int, String](zero = "") {
+      case ("", i)  => i.toString
+      case (acc, i) => s"$acc & $i"
+    })
     .keepRight
-    .alsoInto(Output.collection[Set])
+    .alsoInto(Output.size)
     .keepBoth
-    .alsoInto(Output.collection[List])
+    .alsoInto(Output.collection[Set])
     .keepBoth
     .run
 
   val result = for {
-    vec  <- vecIO
+    str  <- strIO
     set  <- setIO
-    list <- listIO
-  } yield s"vector=$vec, set=$set, list=$list"
+    size <- sizeIO
+  } yield s"size: $size\nstr=$str\nset=$set"
 
   println(result.unsafeRunSync())
 }

@@ -1,8 +1,11 @@
 package com.github.trembita.outputs.internal
 
-import cats.Monad
+import cats.kernel.Monoid
+import cats.{~>, Applicative, Id, Monad}
 import com.github.trembita._
+import com.github.trembita.operations.{CanFold, HasSize}
 import com.github.trembita.outputs.Keep
+
 import scala.collection.generic.CanBuildFrom
 import scala.language.{existentials, higherKinds, implicitConversions}
 import scala.reflect.ClassTag
@@ -61,36 +64,36 @@ class outputWithPropsDsl[F[_], A, E <: Environment, P0[_], Out0[_[_], _]](
 class keepDslWithProps[F[_], A, E <: Environment, P0[_], Out0[_[_], _], P1[_], Out1[_[_], _]](
     val `this`: (DataPipelineT[F, A, E], OutputWithPropsT.Aux[F, E, P0, Out0], OutputWithPropsT.Aux[F, E, P1, Out1])
 ) extends AnyVal {
-  @inline def keepLeft(implicit keepLeft: KeepLeft[Out0, Out1]): outputWithPropsDsl[F, A, E, λ[a => (P0[a], P1[A])], Out0] =
-    new outputWithPropsDsl[F, A, E, λ[a => (P0[a], P1[A])], Out0](
+  @inline def keepLeft(implicit keepLeft: KeepLeft[Out0, Out1]): outputWithPropsDsl[F, A, E, λ[β => (P0[β], P1[A])], Out0] =
+    new outputWithPropsDsl[F, A, E, λ[β => (P0[β], P1[A])], Out0](
       (
         `this`._1,
         Keep
           .left[Out0, Out1]
           .newOutputWithProps[F, E, P0, P1](`this`._2, `this`._3)
-          .asInstanceOf[OutputWithPropsT.Aux[F, E, λ[a => (P0[a], P1[A])], Out0]]
+          .asInstanceOf[OutputWithPropsT.Aux[F, E, λ[β => (P0[β], P1[A])], Out0]]
       )
     )
 
-  @inline def keepRight(implicit keepRight: KeepRight[Out0, Out1]): outputWithPropsDsl[F, A, E, λ[a => (P0[a], P1[A])], Out1] =
-    new outputWithPropsDsl[F, A, E, λ[a => (P0[a], P1[A])], Out1](
+  @inline def keepRight(implicit keepRight: KeepRight[Out0, Out1]): outputWithPropsDsl[F, A, E, λ[β => (P0[β], P1[A])], Out1] =
+    new outputWithPropsDsl[F, A, E, λ[β => (P0[β], P1[A])], Out1](
       (
         `this`._1,
         Keep
           .right[Out0, Out1]
           .newOutputWithProps[F, E, P0, P1](`this`._2, `this`._3)
-          .asInstanceOf[OutputWithPropsT.Aux[F, E, λ[a => (P0[a], P1[A])], Out1]]
+          .asInstanceOf[OutputWithPropsT.Aux[F, E, λ[β => (P0[β], P1[A])], Out1]]
       )
     )
 
-  @inline def keepBoth: outputWithPropsDsl[F, A, E, λ[a => (P0[a], P1[A])], λ[(G[_], a) => (Out0[G, a], Out1[G, a])]] =
-    new outputWithPropsDsl[F, A, E, λ[a => (P0[a], P1[A])], λ[(G[_], a) => (Out0[G, a], Out1[G, a])]](
+  @inline def keepBoth: outputWithPropsDsl[F, A, E, λ[β => (P0[β], P1[A])], λ[(G[_], β) => (Out0[G, β], Out1[G, β])]] =
+    new outputWithPropsDsl[F, A, E, λ[β => (P0[β], P1[A])], λ[(G[_], β) => (Out0[G, β], Out1[G, β])]](
       (
         `this`._1,
         Keep
           .both[Out0, Out1]
           .newOutputWithProps[F, E, P0, P1](`this`._2, `this`._3)
-          .asInstanceOf[OutputWithPropsT.Aux[F, E, λ[a => (P0[a], P1[A])], λ[(G[_], a) => (Out0[G, a], Out1[G, a])]]]
+          .asInstanceOf[OutputWithPropsT.Aux[F, E, λ[β => (P0[β], P1[A])], λ[(G[_], β) => (Out0[G, β], Out1[G, β])]]]
       )
     )
 }
@@ -134,11 +137,11 @@ class keepDslCombinedLeft[F[_], A, E <: Environment, P0[_], Out0[_[_], _], Out1[
       )
     )
 
-  @inline def keepBoth: outputWithPropsDsl[F, A, E, P0, λ[(G[_], a) => (Out0[G, a], Out1[G, a])]] =
-    new outputWithPropsDsl[F, A, E, P0, λ[(G[_], a) => (Out0[G, a], Out1[G, a])]](
+  @inline def keepBoth: outputWithPropsDsl[F, A, E, P0, λ[(G[_], β) => (Out0[G, β], Out1[G, β])]] =
+    new outputWithPropsDsl[F, A, E, P0, λ[(G[_], β) => (Out0[G, β], Out1[G, β])]](
       (
         `this`._1,
-        CombinedOutput[F, A, E, P0, Out0, Out1, λ[(G[_], a) => (Out0[G, a], Out1[G, a])]](
+        CombinedOutput[F, A, E, P0, Out0, Out1, λ[(G[_], β) => (Out0[G, β], Out1[G, β])]](
           `this`._2.widen,
           Keep.both[Out0, Out1],
           `this`._3.widen
@@ -153,12 +156,12 @@ class keepDslCombinedLeft[F[_], A, E <: Environment, P0[_], Out0[_[_], _], Out1[
     (
       `this`._1, {
         val keepBothOutput =
-          CombinedOutput[F, A, E, P0, Out0, Out1, λ[(G[_], a) => (Out0[G, a], Out1[G, a])]](`this`._2, Keep.both[Out0, Out1], `this`._3)
+          CombinedOutput[F, A, E, P0, Out0, Out1, λ[(G[_], β) => (Out0[G, β], Out1[G, β])]](`this`._2, Keep.both[Out0, Out1], `this`._3)
 
         val keepBindOutput =
           new OutputWithPropsT[F, E] {
-            type Props[a]     = P0[a]
-            type Out[G[_], a] = G[Unit]
+            type Props[β]     = P0[β]
+            type Out[G[_], β] = G[Unit]
             def apply[Ax: ClassTag](props: Props[Ax])(
                 pipeline: DataPipelineT[F, Ax, E]
             )(implicit F: Monad[F], E: E, run: E#Run[F]): F[Unit] = {
@@ -191,7 +194,7 @@ class keepDslCombinedRight[F[_], A, E <: Environment, P0[_], Out0[_[_], _], Out1
 
   @inline def keepRight(implicit keepLeft: KeepLeft[Out0, Out1]): outputWithPropsDsl[F, A, E, P0, Out0] = leftDsl.keepLeft
 
-  @inline def keepBoth: outputWithPropsDsl[F, A, E, P0, λ[(G[_], a) => (Out0[G, a], Out1[G, a])]] = leftDsl.keepBoth
+  @inline def keepBoth: outputWithPropsDsl[F, A, E, P0, λ[(G[_], β) => (Out0[G, β], Out1[G, β])]] = leftDsl.keepBoth
 
   @inline def ignoreBoth(
       implicit ev0: Out0[F, _] <:< F[_],
@@ -224,14 +227,14 @@ class keepDslWithoutProps[F[_], A, E <: Environment, Out0[_[_], _], Out1[_[_], _
       )
     )
 
-  @inline def keepBoth: outputWithoutPropsDsl[F, A, E, λ[(G[_], a) => (Out0[G, a], Out1[G, a])]] =
-    new outputWithoutPropsDsl[F, A, E, λ[(G[_], a) => (Out0[G, a], Out1[G, a])]](
+  @inline def keepBoth: outputWithoutPropsDsl[F, A, E, λ[(G[_], β) => (Out0[G, β], Out1[G, β])]] =
+    new outputWithoutPropsDsl[F, A, E, λ[(G[_], β) => (Out0[G, β], Out1[G, β])]](
       (
         `this`._1,
         Keep
           .both[Out0, Out1]
           .newOutputWithoutProps[F, A, E](`this`._2, `this`._3)
-          .asInstanceOf[OutputT.Aux[F, A, E, λ[(G[_], a) => (Out0[G, a], Out1[G, a])]]]
+          .asInstanceOf[OutputT.Aux[F, A, E, λ[(G[_], β) => (Out0[G, β], Out1[G, β])]]]
       )
     )
 
@@ -242,7 +245,7 @@ class keepDslWithoutProps[F[_], A, E <: Environment, Out0[_[_], _], Out1[_[_], _
     (
       `this`._1, {
         val keepIgnore = new OutputT[F, A, E] {
-          type Out[G[_], a] = G[Unit]
+          type Out[G[_], β] = G[Unit]
 
           def apply(
               pipeline: DataPipelineT[F, A, E]
@@ -284,14 +287,125 @@ class foreachDsl[A](val `f`: A => Unit) extends AnyVal {
     new ForeachOutput[F, A, E](`f`)
 }
 
-object foreachDsl {
-  implicit def dslToOutput[F[_], A, E <: Environment](dsl: foreachDsl[A]): OutputT.Aux[F, A, E, λ[(F[_], a) => F[Unit]]] =
+trait LowPriorityForeachConversions {
+  implicit def dslToOutputT[F[_], A, E <: Environment](dsl: foreachDsl[A]): OutputT.Aux[F, A, E, λ[(F[_], β) => F[Unit]]] =
     dsl()
 }
 
-trait standardOutputs {
-  object Output {
-    @inline def collection[Col[x] <: Iterable[x]] = new collectionDsl[Col]
-    @inline def foreach[A](f: A => Unit)          = new foreachDsl[A](f)
-  }
+object foreachDsl extends LowPriorityForeachConversions {
+  implicit def dslToOutputId[A, E <: Environment](dsl: foreachDsl[A]): OutputT.Aux[Id, A, E, λ[(F[_], β) => F[Unit]]] =
+    dsl()
+}
+
+class reduceDsl[A](val `f`: (A, A) => A) extends AnyVal {
+  @inline def apply[F[_], E <: Environment](ev: CanFold[E#Repr])(arrow: ev.Result ~> F) =
+    new ReduceOutput[F, A, E, ev.Result](`f`)(ev)(arrow)
+}
+
+trait LowPriorityReduceConversions {
+  implicit def dslToOutput[F[_], A, E <: Environment, R0[_]](dsl: reduceDsl[A])(
+      implicit canFold: CanFold.Aux[E#Repr, R0],
+      arrow: R0 ~> F
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[β]]] = dsl[F, E](canFold)(arrow)
+
+  implicit def dslToOutputApplicative[F[_]: Applicative, A, E <: Environment](dsl: reduceDsl[A])(
+      implicit canFold: CanFold.Aux[E#Repr, Id]
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[β]]] = dsl[F, E](canFold)(idToAnyApplicative[F])
+}
+
+object reduceDsl extends LowPriorityReduceConversions {
+  implicit def dslToOutputId[A, E <: Environment](dsl: reduceDsl[A])(
+      implicit canFold: CanFold.Aux[E#Repr, Id]
+  ): OutputT.Aux[Id, A, E, λ[(G[_], β) => G[β]]] = dsl[Id, E](canFold)(identityK[Id])
+}
+
+class reduceOptDsl[A](val `f`: (A, A) => A) extends AnyVal {
+  @inline def apply[F[_], E <: Environment](ev: CanFold[E#Repr])(arrow: ev.Result ~> F) =
+    new ReduceOptOutput[F, A, E, ev.Result](`f`)(ev)(arrow)
+}
+
+trait LowPriorityReduceOptDsl {
+  implicit def dslToOutputT[F[_], A, E <: Environment, R0[_]](dsl: reduceOptDsl[A])(
+      implicit canFold: CanFold.Aux[E#Repr, R0],
+      arrow: R0 ~> F
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[Option[β]]]] = dsl[F, E](canFold)(arrow)
+
+  implicit def dslToOutputApplicative[F[_]: Applicative, A, E <: Environment](dsl: reduceOptDsl[A])(
+      implicit canFold: CanFold.Aux[E#Repr, Id]
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[Option[β]]]] = dsl[F, E](canFold)(idToAnyApplicative)
+}
+
+object reduceOptDsl extends LowPriorityReduceOptDsl {
+  implicit def dslToOutputId[A, E <: Environment](dsl: reduceOptDsl[A])(
+      implicit canFold: CanFold.Aux[E#Repr, Id]
+  ): OutputT.Aux[Id, A, E, λ[(G[_], β) => G[Option[β]]]] = dsl[Id, E](canFold)(identityK[Id])
+}
+
+class foldDsl[A](val `this`: (A, (A, A) => A)) extends AnyVal {
+  @inline def apply[F[_], E <: Environment](ev: CanFold[E#Repr])(arrow: ev.Result ~> F) =
+    new FoldOutput[F, A, E, ev.Result](`this`._1)(`this`._2)(ev)(arrow)
+}
+
+trait LowPriorityFoldConversions {
+  implicit def dslToOutputT[F[_], A, E <: Environment, R0[_]](dsl: foldDsl[A])(
+      implicit canFold: CanFold.Aux[E#Repr, R0],
+      arrow: R0 ~> F
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[β]]] = dsl[F, E](canFold)(arrow)
+
+  implicit def dslToOutputApplicative[F[_]: Applicative, A, E <: Environment](dsl: foldDsl[A])(
+      implicit canFold: CanFold.Aux[E#Repr, Id]
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[β]]] = dsl[F, E](canFold)(idToAnyApplicative[F])
+}
+
+object foldDsl extends LowPriorityFoldConversions {
+  implicit def dslToOutputId[A, E <: Environment](dsl: foldDsl[A])(
+      implicit canFold: CanFold.Aux[E#Repr, Id]
+  ): OutputT.Aux[Id, A, E, λ[(G[_], β) => G[β]]] = dsl[Id, E](canFold)(identityK[Id])
+}
+
+class foldLeftDsl[A, B](val `this`: (B, (B, A) => B)) extends AnyVal {
+  @inline def apply[F[_], E <: Environment](ev: CanFold[E#Repr])(arrow: ev.Result ~> F)(implicit B: ClassTag[B]) =
+    new FoldLeftOutput[F, A, B, E, ev.Result](`this`._1)(`this`._2)(ev)(arrow)
+}
+
+trait LowPriorityFoldLeftConversions {
+  implicit def dslToOutputT[F[_], A, B: ClassTag, E <: Environment, R0[_]](dsl: foldLeftDsl[A, B])(
+      implicit canFold: CanFold.Aux[E#Repr, R0],
+      arrow: R0 ~> F
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[B]]] = dsl[F, E](canFold)(arrow)
+
+  implicit def dslToOutputApplicative[F[_]: Applicative, A, B: ClassTag, E <: Environment](dsl: foldLeftDsl[A, B])(
+      implicit canFold: CanFold.Aux[E#Repr, Id]
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[B]]] = dsl[F, E](canFold)(idToAnyApplicative[F])
+}
+
+object foldLeftDsl extends LowPriorityFoldLeftConversions {
+  implicit def dslToOutputId[A, B: ClassTag, E <: Environment](dsl: foldLeftDsl[A, B])(
+      implicit canFold: CanFold.Aux[E#Repr, Id]
+  ): OutputT.Aux[Id, A, E, λ[(G[_], β) => G[B]]] = dsl[Id, E](canFold)(identityK[Id])
+}
+
+class sizeDsl(val `dummy`: Boolean = true) extends AnyVal {
+  def apply[F[_], A, E <: Environment](ev: HasSize[E#Repr])(arrow: ev.Result ~> F) =
+    new SizeOutput[F, A, E, ev.Result](ev)(arrow)
+}
+
+trait LowPrioritySizeConversions {
+  implicit def dslToOutputT[F[_], A, E <: Environment, R0[_]](dsl: sizeDsl)(
+      implicit hasSize: HasSize.Aux[E#Repr, R0],
+      arrow: R0 ~> F
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[Int]]] =
+    dsl[F, A, E](hasSize)(arrow)
+
+  implicit def dslToOutputApplicative[F[_]: Applicative, A, E <: Environment, R0[_]](dsl: sizeDsl)(
+      implicit hasSize: HasSize.Aux[E#Repr, Id]
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[Int]]] =
+    dsl[F, A, E](hasSize)(idToAnyApplicative[F])
+}
+
+object sizeDsl extends LowPrioritySizeConversions {
+  implicit def dslToOutputId[A, E <: Environment, R0[_]](dsl: sizeDsl)(
+      implicit hasSize: HasSize.Aux[E#Repr, Id]
+  ): OutputT.Aux[Id, A, E, λ[(G[_], β) => G[Int]]] =
+    dsl[Id, A, E](hasSize)(identityK[Id])
 }

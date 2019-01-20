@@ -2,7 +2,7 @@ package com.github.trembita.operations
 import cats.data.Kleisli
 import cats.{~>, Monad, MonadError}
 import com.github.trembita.internal._
-import com.github.trembita.{operations, DataPipelineT, Environment}
+import com.github.trembita.{operations, DataPipelineT, Environment, PipeT}
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.higherKinds
@@ -13,15 +13,6 @@ trait EnvironmentIndependentOps[F[_], A, E <: Environment] extends Any {
 
   def flatten[B: ClassTag](implicit ev: A <:< Iterable[B], F: Monad[F]): DataPipelineT[F, B, E] =
     `this`.mapConcatImpl(ev)
-
-  /**
-    * Forces evaluation of [[E]] internal representation so that further transformations won't be chained with previous ones.
-    * Examples:
-    * - for sequential pipeline it leads to intermediate collection allocation
-    * - for Akka / Spark pipelines it's not such necessary
-    * */
-  def memoize()(implicit A: ClassTag[A], F: Monad[F]): DataPipelineT[F, A, E] =
-    new MemoizedPipelineT[F, A, E](`this`, F)
 
   /**
     * Groups the pipeline using given grouping criteria.
@@ -149,8 +140,8 @@ trait EnvironmentIndependentOps[F[_], A, E <: Environment] extends Any {
   /**
     * Allows apply transformations defined as [[Kleisli]] on given pipeline
     * */
-  def through[B](kleisli: Kleisli[DataPipelineT[F, ?, E], DataPipelineT[F, A, E], B]): DataPipelineT[F, B, E] =
-    kleisli.run(`this`)
+  def through[B](pipe: PipeT[F, A, B, E]): DataPipelineT[F, B, E] =
+    pipe.run(`this`)
 
   /**
     * Like [[groupBy]] with the following difference:
