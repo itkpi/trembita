@@ -15,13 +15,13 @@ import scala.reflect.ClassTag
     Unable to pause elements evaluation within ${E} using ${F}.
     Please ensure right implicits in scope or provide your own implementation
     """)
-trait CanPause[F[_], E <: Environment] {
+trait CanPause[F[_], E <: Environment] extends Serializable {
   def pausedWith[A: ClassTag](pipeline: DataPipelineT[F, A, E])(getPause: A => FiniteDuration): DataPipelineT[F, A, E]
   def paused[A: ClassTag](pipeline: DataPipelineT[F, A, E])(pause: FiniteDuration): DataPipelineT[F, A, E] =
     pausedWith(pipeline)(_ => pause)
 }
 
-trait LowPriorityPause {
+trait LowPriorityPause extends Serializable  {
   implicit def canPauseSequential[F[_]](implicit F: Sync[F], timer: Timer[F]): CanPause[F, Sequential] = new CanPause[F, Sequential] {
     def pausedWith[A: ClassTag](pipeline: DataPipelineT[F, A, Sequential])(
         getPause: A => FiniteDuration

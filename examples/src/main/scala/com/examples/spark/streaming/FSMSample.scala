@@ -13,6 +13,7 @@ import com.github.trembita.fsm._
 import org.apache.spark.sql.{Encoder, Encoders, SparkSession}
 import com.github.trembita.collections._
 import com.github.trembita.experimental.spark.AsyncTimeout
+import com.github.trembita.spark.streaming.SparkStreaming
 import org.apache.spark.streaming.{StreamingContext, Duration => StreamingDuration}
 
 import scala.concurrent.duration._

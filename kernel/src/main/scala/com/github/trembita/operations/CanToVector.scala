@@ -9,7 +9,7 @@ import scala.language.higherKinds
     ${F} does not support conversion to scala.Vector natively.
     Please provide an implicit instance in scope if necessary
     """)
-trait CanToVector[F[_]] {
+trait CanToVector[F[_]]extends Serializable  {
   type Result[X]
   def apply[A](fa: F[A]): Result[Vector[A]]
 }

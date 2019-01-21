@@ -13,7 +13,7 @@ import scala.reflect.ClassTag
     In most cases ${E} requires specific implicits in scope.
     Please look up ${E} definition for more info or provide an implicit instance in scope if necessary
     """)
-trait LiftPipeline[F[_], E <: Environment] {
+trait LiftPipeline[F[_], E <: Environment]extends Serializable  {
   def liftIterable[A: ClassTag](xs: Iterable[A]): DataPipelineT[F, A, E]
   def liftIterableF[A: ClassTag](fa: F[Iterable[A]]): DataPipelineT[F, A, E]
 }

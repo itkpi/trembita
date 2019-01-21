@@ -13,7 +13,7 @@ import scala.collection.parallel.immutable.ParVector
     or define your custom CanFlatMap for ${E}
   """
 )
-trait CanFlatMap[E <: Environment] {
+trait CanFlatMap[E <: Environment] extends Serializable {
   def flatMap[A, B](fa: E#Repr[A])(f: A => E#Repr[B]): E#Repr[B]
   def flatten[A](ffa: E#Repr[E#Repr[A]]): E#Repr[A] = flatMap(ffa)(identity)
 }

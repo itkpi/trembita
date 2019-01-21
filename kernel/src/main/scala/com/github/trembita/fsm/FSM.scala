@@ -136,7 +136,7 @@ object FSM {
     def push[B](
         f: D => B
     )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
-      F.pure(this → List(f(data)))
+      F.pure(this -> List(f(data)))
 
     def modPush[B](
         f: D => (D, Option[B])
@@ -148,7 +148,7 @@ object FSM {
     def pushF[B](
         f: D => F[B]
     )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
-      F.map(f(data))(b => this → List(b))
+      F.map(f(data))(b => this -> List(b))
 
     /**
       * Produces the same value
@@ -160,36 +160,36 @@ object FSM {
     def push[B](
         value: B
     )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
-      F.pure(this → List(value))
+      F.pure(this -> List(value))
 
     def pushF[B](
         valueF: F[B]
     )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
-      F.map(valueF)(v => this → List(v))
+      F.map(valueF)(v => this -> List(v))
 
     def dontPush[B](
         implicit F: Applicative[F]
-    ): F[(State[N, D, F], Iterable[B])] = F.pure(this → Nil)
+    ): F[(State[N, D, F], Iterable[B])] = F.pure(this -> Nil)
 
     def spam[B](
         f: D => Iterable[B]
     )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
-      F.pure(this → f(data))
+      F.pure(this -> f(data))
 
     def spamF[B](
         f: D => F[Iterable[B]]
     )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
-      F.map(f(data))(this → _)
+      F.map(f(data))(this -> _)
 
     def spam[B](
         values: Iterable[B]
     )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
-      F.pure(this → values)
+      F.pure(this -> values)
 
     def spamF[B](
         valuesF: F[Iterable[B]]
     )(implicit F: Applicative[F]): F[(State[N, D, F], Iterable[B])] =
-      F.map(valuesF)(this → _)
+      F.map(valuesF)(this -> _)
   }
 
   /**
@@ -224,7 +224,7 @@ object FSM {
       **/
     case class WithState[A, S]() extends Result[A, S] {
       type Out = (S, A)
-      def apply(state: S, value: A): Out = state → value
+      def apply(state: S, value: A): Out = state -> value
     }
 
     /**

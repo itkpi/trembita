@@ -8,7 +8,7 @@ import scala.language.higherKinds
     ${F} does not support `join` operation natively.
     Please provide an implicit instance in scope if necessary
     """)
-trait CanJoin[F[_]] {
+trait CanJoin[F[_]]extends Serializable  {
   def join[A, B](fa: F[A], fb: F[B])(on: (A, B) => Boolean): F[(A, B)]
 
   def joinLeft[A, B](fa: F[A], fb: F[B])(

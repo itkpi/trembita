@@ -28,7 +28,7 @@ object Keep {
   }
 }
 
-trait Keep[Out0[_[_], _], Out1[_[_], _]] { self =>
+trait Keep[Out0[_[_], _], Out1[_[_], _]] extends Serializable { self =>
   type Out[G[_], A]
 
   def apply[F[_], A](left: Out0[F, A], right: Out1[F, A])(implicit F: Monad[F]): Out[F, A]

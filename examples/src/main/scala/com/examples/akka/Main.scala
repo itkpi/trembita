@@ -1,6 +1,7 @@
 package com.examples.akka
 
 import java.nio.file.Paths
+
 import akka.NotUsed
 import cats.effect._
 import cats.syntax.functor._
@@ -10,7 +11,9 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl._
 import akka.util.ByteString
+import com.github.trembita.akka.{Akka, Parallelism}
 import com.github.trembita.experimental.akka._
+
 import scala.concurrent.ExecutionContext
 
 object Main extends IOApp {

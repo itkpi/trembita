@@ -1,6 +1,7 @@
 package com.examples.spark
 
 import java.util.concurrent.Executors
+
 import cats.effect.{ExitCode, IO, IOApp}
 import com.github.trembita._
 import com.github.trembita.experimental.spark._
@@ -8,6 +9,8 @@ import com.github.trembita.logging._
 import org.apache.spark._
 import cats.syntax.all._
 import cats.effect.Console.io._
+import com.github.trembita.spark.Spark
+
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 

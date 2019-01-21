@@ -5,12 +5,12 @@ import scala.annotation.implicitNotFound
 import scala.language.higherKinds
 
 @implicitNotFound("""Don't now how to keep left value for ${Out0} and ${Out1}""")
-trait KeepLeft[Out0[_[_], _], Out1[_[_], _]] {
+trait KeepLeft[Out0[_[_], _], Out1[_[_], _]] extends Serializable {
   def apply[F[_], A](left: Out0[F, A], right: Out1[F, A])(implicit F: Monad[F]): Out0[F, A]
 }
 
 @implicitNotFound("""Don't now how to keep right right for ${Out0} and ${Out1}""")
-trait KeepRight[Out0[_[_], _], Out1[_[_], _]] {
+trait KeepRight[Out0[_[_], _], Out1[_[_], _]] extends Serializable {
   def apply[F[_], A](left: Out0[F, A], right: Out1[F, A])(implicit F: Monad[F]): Out1[F, A]
 }
 
@@ -27,7 +27,7 @@ trait KeepRight[Out0[_[_], _], Out1[_[_], _]] {
  *
  * ===================================================================
  * */
-trait LowPriorityKeepLeft {
+trait LowPriorityKeepLeft extends Serializable {
   implicit val simple: KeepLeft[λ[(G[_], a) => G[a]], λ[(G[_], a) => G[a]]] =
     new KeepLeft[λ[(G[_], a) => G[a]], λ[(G[_], a) => G[a]]] {
       def apply[F[_], A](left: F[A], right: F[A])(implicit F: Monad[F]): F[A] = F.productL(left)(right)
@@ -97,7 +97,7 @@ object KeepLeft extends LowPriorityKeepLeft {
     }
 }
 
-trait LowPriorityKeepRight {
+trait LowPriorityKeepRight extends Serializable {
   implicit val forFlatMap: KeepRight[λ[(G[_], a) => G[a]], λ[(G[_], a) => G[a]]] =
     new KeepRight[λ[(G[_], a) => G[a]], λ[(G[_], a) => G[a]]] {
       def apply[F[_], A](left: F[A], right: F[A])(implicit F: Monad[F]): F[A] = F.productR(left)(right)

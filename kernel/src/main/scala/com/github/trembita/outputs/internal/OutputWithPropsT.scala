@@ -7,7 +7,7 @@ import com.github.trembita.{DataPipelineT, Environment}
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
-trait BaseOutputT[F[_], +A, E <: Environment] {
+trait BaseOutputT[F[_], +A, E <: Environment] extends Serializable {
   type Out[G[_], x]
 }
 

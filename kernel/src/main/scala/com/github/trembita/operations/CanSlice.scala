@@ -7,11 +7,11 @@ import scala.language.higherKinds
     ${F} does not support `slice` operation natively.
     Please provide an implicit instance in scope if necessary
     """)
-trait CanSlice[F[_]] {
+trait CanSlice[F[_]] extends Serializable {
   def slice[A](fa: F[A], from: Int, to: Int): F[A]
 }
 
-trait LowPriorityCanSlice {
+trait LowPriorityCanSlice extends Serializable {
   implicit def fromTakeAndDrop[F[_]](implicit canTake: CanTake[F], canDrop: CanDrop[F]): CanSlice[F] =
     new CanSlice[F] {
       def slice[A](fa: F[A], from: Int, to: Int): F[A] =

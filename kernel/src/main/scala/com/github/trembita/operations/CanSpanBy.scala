@@ -9,7 +9,7 @@ import scala.reflect.ClassTag
     ${F} does not support spanBy operation or it is not efficient.
     If you want to spanBy ${F}, please provide an implicit instance in scope
   """)
-trait CanSpanBy[F[_]] {
+trait CanSpanBy[F[_]] extends Serializable {
   def spanBy[K: ClassTag, V: ClassTag](fa: F[V])(f: V => K): F[(K, Iterable[V])]
 }
 

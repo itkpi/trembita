@@ -10,6 +10,8 @@ import cats.effect.Console.io._
 import com.github.trembita.fsm._
 import org.apache.spark.sql.{Encoder, Encoders, SparkSession}
 import com.github.trembita.collections._
+import com.github.trembita.spark.Spark
+
 import scala.concurrent.duration._
 
 /**

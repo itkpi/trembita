@@ -9,7 +9,7 @@ import scala.reflect.ClassTag
     ${F} does not support `zip` operation natively.
     Please provide an implicit instance in scope if necessary
     """)
-trait CanZip[F[_]] {
+trait CanZip[F[_]] extends Serializable {
   def zip[A: ClassTag, B: ClassTag](fa: F[A], fb: F[B]): F[(A, B)]
 }
 

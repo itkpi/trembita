@@ -9,7 +9,7 @@ import scala.reflect.ClassTag
     ${F} does not support sorting natively.
     Please provide an implicit instance in scope if necessary
     """)
-trait CanSort[F[_]] {
+trait CanSort[F[_]] extends Serializable {
   def sorted[A: Ordering: ClassTag](fa: F[A]): F[A]
   def sortedBy[A: ClassTag, B: Ordering: ClassTag](fa: F[A])(f: A => B): F[A]
 }

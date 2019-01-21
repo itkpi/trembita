@@ -8,6 +8,8 @@ import com.examples.kernel.NumbersReport
 import cats.effect.Console.io._
 import com.github.trembita.experimental.spark._
 import com.github.trembita.ql._
+import com.github.trembita.spark.Spark
+
 import scala.concurrent.duration._
 import shapeless.syntax.singleton._
 

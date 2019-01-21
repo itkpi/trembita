@@ -12,6 +12,8 @@ import com.github.trembita.fsm._
 import com.github.trembita.collections._
 import com.github.trembita.experimental.akka._
 import cats.implicits._
+import com.github.trembita.akka.Akka
+
 import scala.concurrent.ExecutionContext
 import scala.io.StdIn
 import scala.util.Random

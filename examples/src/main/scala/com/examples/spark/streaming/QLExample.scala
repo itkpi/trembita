@@ -9,6 +9,7 @@ import cats.effect.Console.io._
 import com.github.trembita.experimental.spark._
 import com.github.trembita.experimental.spark.streaming._
 import com.github.trembita.ql._
+import com.github.trembita.spark.streaming.SparkStreaming
 import org.apache.spark.SparkContext
 import org.apache.spark.streaming.{StreamingContext, Duration => StreamingDuration}
 

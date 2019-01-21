@@ -7,7 +7,7 @@ import scala.language.higherKinds
     ${F} does not support `take` operation natively.
     Please provide an implicit instance in scope if necessary
     """)
-trait CanTake[F[_]] {
+trait CanTake[F[_]] extends Serializable {
   def take[A](fa: F[A], n: Int): F[A]
 }
 

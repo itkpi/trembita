@@ -107,7 +107,9 @@ lazy val trembita_spark =
       libraryDependencies ++= {
         Seq(
           Spark.core % "provided",
+          Spark.core % "test",
           Spark.sql  % "provided",
+          Spark.sql  % "test",
           Macros.resetallattrs
         )
       }

@@ -8,7 +8,7 @@ object Sample extends App {
     .parallelF[IO, Seq]
     .create[Int](IO(1 to 100))
 
-  val (setIO, (strIO, sizeIO)) = pipeline
+  val (setIO, (strIO, sizeIO)): (IO[Set[Int]], (IO[String], IO[Int])) = pipeline
     .map(_ + 1)
     .into(Output.foreach((x: Int) => println(s"first: $x + 1 = ${x + 1}")))
     .alsoInto(Output.foreach((x: Int) => println(s"second: $x + 2 = ${x + 2}")))

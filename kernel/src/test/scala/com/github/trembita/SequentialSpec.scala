@@ -162,10 +162,10 @@ class SequentialSpec extends FlatSpec {
   }
 
   "PairPipeline transformations" should "work correctly" in {
-    val pipeline = Input.sequential[Seq].create(Seq("a" → 1, "b" → 2, "c" → 3))
+    val pipeline = Input.sequential[Seq].create(Seq("a" -> 1, "b" -> 2, "c" -> 3))
 
     val result1: Vector[(String, Int)] = pipeline.mapValues(_ + 1).into(Output.vector).run
-    assert(result1 == Vector("a" → 2, "b" → 3, "c" → 4))
+    assert(result1 == Vector("a" -> 2, "b" -> 3, "c" -> 4))
 
     val result2: Vector[String] = pipeline.keys.into(Output.vector).run
     assert(result2 == Vector("a", "b", "c"))
@@ -210,7 +210,7 @@ class SequentialSpec extends FlatSpec {
     val resultIO = Input
       .sequentialF[IO, Seq]
       .create[(String, Int)](
-        IO(List("a" → 1, "b" → 2, "c" → 3, "a" → 3, "c" → 10))
+        IO(List("a" -> 1, "b" -> 2, "c" -> 3, "a" -> 3, "c" -> 10))
       )
       .groupBy(_._1)
       .mapValues(_.foldLeft(0) { case (acc, (_, x)) => acc + x } * 10)

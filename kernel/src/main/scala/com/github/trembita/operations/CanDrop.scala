@@ -7,7 +7,7 @@ import scala.language.higherKinds
     ${F} does not support `drop` operation natively.
     Please provide an implicit instance in scope if necessary
     """)
-trait CanDrop[F[_]] {
+trait CanDrop[F[_]] extends Serializable {
   def drop[A](fa: F[A], n: Int): F[A]
 }
 

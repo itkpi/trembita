@@ -9,7 +9,7 @@ import scala.reflect.ClassTag
     ${F} does not support groupBy operation or it is not efficient.
     If you want to groupBy ${F}, please provide an implicit instance in scope
   """)
-trait CanGroupBy[F[_]] {
+trait CanGroupBy[F[_]] extends Serializable {
   def groupBy[K: ClassTag, V: ClassTag](fa: F[V])(f: V => K): F[(K, Iterable[V])]
 }
 

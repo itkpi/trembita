@@ -1,14 +1,17 @@
 package com.examples.spark.streaming
 
 import java.util.concurrent.Executors
+
 import cats.effect.{ExitCode, IO, IOApp}
 import com.github.trembita._
 import com.github.trembita.experimental.spark._
 import com.github.trembita.experimental.spark.streaming._
 import org.apache.spark._
-import org.apache.spark.streaming.{Duration => StreamingDuration, StreamingContext}
+import org.apache.spark.streaming.{StreamingContext, Duration => StreamingDuration}
 import cats.syntax.all._
 import cats.effect.Console.io._
+import com.github.trembita.spark.streaming.SparkStreaming
+
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
