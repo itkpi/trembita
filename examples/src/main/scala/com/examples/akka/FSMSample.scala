@@ -1,17 +1,17 @@
 package com.examples.akka
 
+import trembita.akka_streams._
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, KillSwitches, UniqueKillSwitch}
 import akka.stream.scaladsl._
 import cats.effect.{ExitCode, IO, IOApp}
-import com.github.trembita.DataPipelineT
 import cats.effect.Console.io._
-import com.github.trembita._
-import com.github.trembita.fsm._
-import com.github.trembita.collections._
-import com.github.trembita.experimental.akka._
+import trembita._
+import trembita.fsm._
+import trembita.collections._
 import cats.implicits._
+
 import scala.concurrent.ExecutionContext
 import scala.io.StdIn
 import scala.util.Random
@@ -23,8 +23,8 @@ object FSMSample extends IOApp {
 
   def akkaTrembitaFsmSample(implicit mat: ActorMaterializer, ec: ExecutionContext): IO[Unit] = {
     val pipeline: DataPipelineT[IO, Int, Akka[NotUsed]] =
-      DataPipelineT.fromRepr[IO, Int, Akka[NotUsed]](
-        Source.fromIterator(() => Iterator.continually(Random.nextInt()))
+      Input.fromSourceF[IO, Int, NotUsed](
+        IO(Source.fromIterator(() => Iterator.continually(Random.nextInt())))
       )
 
     val withDoorState =
@@ -54,17 +54,12 @@ object FSMSample extends IOApp {
           }
         })
 
-    val killSwitchIO: IO[UniqueKillSwitch] =
-      withDoorState.evalRepr
-        .flatMap(
-          source =>
-            IO {
-              source
-                .viaMat(KillSwitches.single)(Keep.right)
-                .to(Sink.foreach(println))
-                .run()
-          }
-        )
+    val killSwitchIO =
+      withDoorState
+        .through(KillSwitches.single)
+        .into(Output.foreach[Int](println))
+        .keepMat
+        .run
 
     for {
       killSwitch <- killSwitchIO

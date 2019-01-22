@@ -1,20 +1,17 @@
 package com.examples.spark.streaming
 
 import java.nio.file.FileSystems
-
 import cats.Id
 import cats.effect.{ExitCode, IO, IOApp}
-import com.github.trembita._
-import com.github.trembita.experimental.spark.streaming._
-import org.apache.spark._
 import cats.syntax.all._
-import cats.effect.Console.io._
-import com.github.trembita.fsm._
-import org.apache.spark.sql.{Encoder, Encoders, SparkSession}
-import com.github.trembita.collections._
-import com.github.trembita.experimental.spark.AsyncTimeout
+import trembita._
+import trembita.collections._
+import trembita.fsm._
+import trembita.spark._
+import trembita.spark.streaming._
+import org.apache.spark._
+import org.apache.spark.sql.{Encoder, Encoders}
 import org.apache.spark.streaming.{StreamingContext, Duration => StreamingDuration}
-
 import scala.concurrent.duration._
 
 object FSMSample extends IOApp {
@@ -29,10 +26,10 @@ object FSMSample extends IOApp {
   def sparkSample(implicit ssc: StreamingContext): IO[Unit] = {
     implicit val timeout: AsyncTimeout = AsyncTimeout(5.minutes)
 
-    val pipeline: DataPipelineT[Id, Int, SparkStreaming] =
-      DataPipelineT.liftF[Id, Int, SparkStreaming](
-        Vector.tabulate(5000)(i => scala.util.Random.nextInt() + i)
-      )
+    val pipeline: DataPipeline[Int, SparkStreaming] =
+      Input
+        .lift[SparkStreaming]
+        .create(Vector.tabulate(5000)(i => scala.util.Random.nextInt() + i))
 
     val withDoorState =
       pipeline
@@ -59,16 +56,14 @@ object FSMSample extends IOApp {
               _.goto(Closed).change(Map.empty).dontPush
             }
           })
-        .mapK(idToIO)
+        .mapK(idTo[IO])
         .map(_ + 1)
 
-    withDoorState.evalRepr
-      .map(_.print())
-      .map { _ =>
-        ssc.start()
-        ssc.awaitTermination()
-      }
-      .void
+    withDoorState
+      .tapRepr(_.print())
+      .into(Output.start)
+      .run
+      .flatMap(_ => IO { ssc.awaitTermination() })
   }
   def run(args: List[String]): IO[ExitCode] =
     IO(

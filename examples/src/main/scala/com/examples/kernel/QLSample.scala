@@ -2,8 +2,8 @@ package com.examples.kernel
 
 import cats.implicits._
 import cats.effect._
-import com.github.trembita._
-import com.github.trembita.ql._
+import trembita._
+import trembita.ql._
 import cats.effect.Console.io._
 import shapeless.syntax.singleton._
 import shapeless._
@@ -11,7 +11,7 @@ import shapeless._
 object QLSample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val numbers: DataPipelineT[IO, Long, Parallel] =
-      DataPipelineT.liftF[IO, Long, Parallel](IO { 1L to 20L })
+      Input.parallelF[IO, Seq].create(IO { 1L to 20L })
 
     val result = numbers
       .query(
@@ -28,10 +28,12 @@ object QLSample extends IOApp {
             expr[Long](_.toString) agg sum as "some name"
           )
       )
-      .eval
+      .into(Output.vector)
+      .run
 
-    val numbersDP = DataPipelineT
-      .liftF[IO, Long, Sequential](IO { 15L to 40L })
+    val numbersDP = Input
+      .parallelF[IO, Seq]
+      .create(IO { 15L to 40L })
       .query(
         _.groupBy(
           expr[Long](_ % 2 == 0) as "divisible by 2",
@@ -48,7 +50,8 @@ object QLSample extends IOApp {
           .having(agg[String]("some name")(_.contains('1')))
       )
       .as[NumbersReport] // transforms directly into case class
-      .eval
+      .into(Output.vector)
+      .run
       .flatTap { report =>
         putStrLn(s"Report: $report")
       }

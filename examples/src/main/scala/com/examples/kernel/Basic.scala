@@ -2,7 +2,7 @@ package com.examples.kernel
 
 import cats.effect._
 import cats.implicits._
-import com.github.trembita._
+import trembita._
 import cats.effect.Console.io._
 import scala.util.{Random, Success, Try}
 import scala.util.control.NonFatal
@@ -10,7 +10,7 @@ import scala.util.control.NonFatal
 object Basic extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val pipeline: DataPipelineT[IO, String, Sequential] =
-      DataPipelineT("1 2 3", "4 5 6", "7 8 9", "xyz")
+      Input.sequentialF[IO, Seq].create(IO(Seq("1 2 3", "4 5 6", "7 8 9", "xyz")))
 
     val numbers: DataPipelineT[IO, Int, Parallel] = pipeline
       .to[Parallel]
@@ -19,10 +19,11 @@ object Basic extends IOApp {
       .recoverNonFatal(_ => -100)
 
     val result1: IO[String] =
-      numbers.eval.map(_.mkString(", ")).flatTap(putStrLn)
+      numbers.into(Output.collection[Seq]).run.map(_.mkString(", ")).flatTap(putStrLn)
 
-    val strings: DataPipelineT[IO, String, Parallel] = DataPipelineT
-      .randomInts[IO](20)
+    val strings: DataPipelineT[IO, String, Parallel] = Input
+      .randomF[IO]
+      .create(RandomInput.propsT[IO, Int](n = 20, count = 10)(x => IO { x + 1 }))
       .map(_ + 1)
       .to[Parallel]
       .mapConcat(i => i :: (48 + i) :: Nil)
@@ -36,7 +37,7 @@ object Basic extends IOApp {
       .mapG(str => Try { str + "/Try" })
       .mapM(str => IO { str + "/IO" })
 
-    val result2: IO[Vector[String]] = strings.eval
+    val result2: IO[Vector[String]] = strings.into(Output.collection[Vector]).run
 
     result1.flatTap { result1 =>
       putStrLn(s"result1: $result1") *>

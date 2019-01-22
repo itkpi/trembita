@@ -1,13 +1,13 @@
 package com.examples.spark
 
+import trembita._
+import trembita.ql._
+import trembita.spark._
 import cats.effect.{ExitCode, IO, IOApp}
 import org.apache.spark.sql._
-import com.github.trembita._
 import cats.implicits._
 import com.examples.kernel.NumbersReport
 import cats.effect.Console.io._
-import com.github.trembita.experimental.spark._
-import com.github.trembita.ql._
 import scala.concurrent.duration._
 import shapeless.syntax.singleton._
 
@@ -23,8 +23,9 @@ object QLExample extends IOApp {
         import spark.implicits._
         implicit val timeout: AsyncTimeout = AsyncTimeout(5.minutes)
         val numbers: DataPipelineT[IO, Long, Spark] =
-          DataPipelineT
-            .liftF[IO, Long, Sequential](IO { 1L to 2000L })
+          Input
+            .sequentialF[IO, Seq]
+            .create(IO { 1L to 2000L })
             .to[Spark]
 
         val result = numbers
@@ -47,7 +48,7 @@ object QLExample extends IOApp {
           )
           .as[NumbersReport]
 
-        result.eval.flatTap(vs => putStrLn(vs.mkString("\n")))
+        result.into(Output.array).run.flatMap(vs => putStrLn(vs.mkString("\n")))
       })(
         release = spark =>
           IO {
