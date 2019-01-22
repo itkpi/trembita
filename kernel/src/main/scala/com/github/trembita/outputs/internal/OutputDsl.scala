@@ -315,7 +315,7 @@ trait LowPriorityReduceConversions extends Serializable {
 
   implicit def dslToOutputApplicative[F[_]: Applicative, A, E <: Environment](dsl: reduceDsl[A])(
       implicit canFold: CanFold.Aux[E#Repr, Id]
-  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[β]]] = dsl[F, E](canFold)(idToAnyApplicative[F])
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[β]]] = dsl[F, E](canFold)(idTo[F])
 }
 
 object reduceDsl extends LowPriorityReduceConversions {
@@ -337,7 +337,7 @@ trait LowPriorityReduceOptDsl extends Serializable {
 
   implicit def dslToOutputApplicative[F[_]: Applicative, A, E <: Environment](dsl: reduceOptDsl[A])(
       implicit canFold: CanFold.Aux[E#Repr, Id]
-  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[Option[β]]]] = dsl[F, E](canFold)(idToAnyApplicative)
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[Option[β]]]] = dsl[F, E](canFold)(idTo)
 }
 
 object reduceOptDsl extends LowPriorityReduceOptDsl {
@@ -359,7 +359,7 @@ trait LowPriorityFoldConversions extends Serializable {
 
   implicit def dslToOutputApplicative[F[_]: Applicative, A, E <: Environment](dsl: foldDsl[A])(
       implicit canFold: CanFold.Aux[E#Repr, Id]
-  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[β]]] = dsl[F, E](canFold)(idToAnyApplicative[F])
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[β]]] = dsl[F, E](canFold)(idTo[F])
 }
 
 object foldDsl extends LowPriorityFoldConversions {
@@ -381,7 +381,7 @@ trait LowPriorityFoldLeftConversions extends Serializable {
 
   implicit def dslToOutputApplicative[F[_]: Applicative, A, B: ClassTag, E <: Environment](dsl: foldLeftDsl[A, B])(
       implicit canFold: CanFold.Aux[E#Repr, Id]
-  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[B]]] = dsl[F, E](canFold)(idToAnyApplicative[F])
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[B]]] = dsl[F, E](canFold)(idTo[F])
 }
 
 object foldLeftDsl extends LowPriorityFoldLeftConversions {
@@ -405,7 +405,7 @@ trait LowPrioritySizeConversions extends Serializable {
   implicit def dslToOutputApplicative[F[_]: Applicative, A, E <: Environment, R0[_]](dsl: sizeDsl)(
       implicit hasSize: HasSize.Aux[E#Repr, Id]
   ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[Int]]] =
-    dsl[F, A, E](hasSize)(idToAnyApplicative[F])
+    dsl[F, A, E](hasSize)(idTo[F])
 }
 
 object sizeDsl extends LowPrioritySizeConversions {

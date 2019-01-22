@@ -19,7 +19,7 @@ trait arrows {
   implicit val ioToTry: IO ~> Try =
     λ[IO[?] ~> Try[?]](ioa => Try { ioa.unsafeRunSync() })
 
-  @inline implicit def idToAnyApplicative[F[_]](implicit F: Applicative[F]): Id ~> F =
+  @inline implicit def idTo[F[_]](implicit F: Applicative[F]): Id ~> F =
     λ[Id[?] ~> F[?]](a => F.pure(a))
 
   implicit val tryToFuture: Try ~> Future =

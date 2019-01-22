@@ -1,9 +1,10 @@
 package com.github.trembita.spark.streaming
+
 import com.github.trembita.operations.InjectTaggedK
 import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.dstream.DStream
-
+import scala.language.higherKinds
 import scala.collection.mutable
 import scala.reflect.ClassTag
 

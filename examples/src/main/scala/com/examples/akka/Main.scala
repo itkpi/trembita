@@ -1,20 +1,16 @@
 package com.examples.akka
 
 import java.nio.file.Paths
-
-import akka.NotUsed
+import akka.actor.ActorSystem
+import akka.stream.scaladsl._
+import akka.stream.{ActorMaterializer, IOResult}
+import akka.util.ByteString
+import cats.effect.Console.io._
 import cats.effect._
 import cats.syntax.functor._
 import com.github.trembita._
-import cats.effect.Console.io._
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl._
-import akka.util.ByteString
-import com.github.trembita.akka.{Akka, Parallelism}
-import com.github.trembita.experimental.akka._
-
-import scala.concurrent.ExecutionContext
+import com.github.trembita.akka_streams._
+import scala.concurrent.{ExecutionContext, Future}
 
 object Main extends IOApp {
   def akkaSample(implicit mat: ActorMaterializer, ec: ExecutionContext): IO[Unit] = {
@@ -22,14 +18,12 @@ object Main extends IOApp {
     implicit val parallelism: Parallelism = Parallelism(8, ordered = false)
 
     val fileLines =
-      DataPipelineT
-        .fromReprF[IO, ByteString, Akka[NotUsed]](IO {
-          FileIO
-            .fromPath(Paths.get(getClass.getResource("/words.txt").toURI))
-            .mapMaterializedValue(_ => NotUsed)
-        })
+      Input.fromSourceF[IO, ByteString, Future[IOResult]](IO {
+        FileIO
+          .fromPath(Paths.get(getClass.getResource("/words.txt").toURI))
+      })
 
-    val wordsCount: DataPipelineT[IO, String, Akka[NotUsed]] = fileLines
+    val wordsCount: DataPipelineT[IO, String, Akka[Future[IOResult]]] = fileLines
       .map(_.utf8String)
       .mapConcat(_.split("\\s"))
       .groupBy(identity _)
@@ -40,7 +34,11 @@ object Main extends IOApp {
       )
 
     wordsCount
-      .runForeachF(putStrLn)
+      .into(Output.foreach[String](println))
+      .keepMat
+      .run
+      .flatMap(fa => IO.fromFuture(IO(fa)))
+      .flatMap(res => putStrLn(res.toString))
   }
 
   def run(args: List[String]): IO[ExitCode] =

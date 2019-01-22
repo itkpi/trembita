@@ -9,7 +9,7 @@ import scala.reflect.ClassTag
     ${F} does not support groupByOrdered operation or it is not efficient.
     If you want to groupByOrdered ${F}, please provide an implicit instance in scope
   """)
-trait CanGroupByOrdered[F[_]]extends Serializable  {
+trait CanGroupByOrdered[F[_]] extends Serializable {
   def groupBy[K: ClassTag: Ordering, V: ClassTag](fa: F[V])(f: V => K): F[(K, Iterable[V])]
 }
 

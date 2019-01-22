@@ -24,6 +24,7 @@ package object spark extends LowPriorityInstancesForSpark {
   val SerializableFuture = SerializableFutureImpl
 
   implicit val futureToSerializableArrow: Future ~> SerializableFuture = λ[Future[?] ~> SerializableFuture[?]](SerializableFuture.widen(_))
+  implicit val serializableFutureToIO: SerializableFuture ~> IO        = λ[SerializableFuture[?] ~> IO[?]](fa => IO.fromFuture(IO(fa)))
 
   implicit class SerializableFutureOps[A](private val self: SerializableFuture[A]) extends AnyVal {
     def bind[B](f: A => SerializableFuture[B]): SerializableFuture[B] =
@@ -41,6 +42,8 @@ package object spark extends LowPriorityInstancesForSpark {
       SerializableFuture.widen(self.map(a => Right[Throwable, A](a)).recover {
         case NonFatal(t) => Left(t)
       })
+
+    def where(p: A => Boolean): SerializableFuture[A] = SerializableFuture.widen(self.filter(p)(globalSafeEc))
 
     def fmap[B](f: A => B): SerializableFuture[B] = SerializableFuture.widen(self.map(f))
   }
@@ -241,8 +244,19 @@ package object spark extends LowPriorityInstancesForSpark {
     }
   }
 
-  implicit class OutputCompanionExtensions(private val self: Output.type) extends AnyVal {
-    @inline def array[A]          = new ArrayOutput[Id, A]
-    @inline def arrayF[F[+ _], A] = new ArrayOutput[F, A]
+  class ArrayOutputDSL(val `dummy`: Boolean = true) extends AnyVal {
+    def apply[F[_], A] = new ArrayOutput[F, A]
+  }
+
+  trait LowPriorityArrayOutputDsl {
+    implicit def toOutputF[F[_], A](dsl: ArrayOutputDSL): ArrayOutput[F, A] = dsl[F, A]
+  }
+
+  object ArrayOutputDSL extends LowPriorityArrayOutputDsl {
+    implicit def toOutputId[A](dsl: ArrayOutputDSL): ArrayOutput[Id, A] = dsl[Id, A]
+  }
+
+  implicit class OutputCompanionSparkExtensions(private val self: Output.type) extends AnyVal {
+    @inline def array = new ArrayOutputDSL
   }
 }

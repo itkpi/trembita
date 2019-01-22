@@ -3,15 +3,13 @@ package com.examples.spark
 import cats.Id
 import cats.effect.{ExitCode, IO, IOApp}
 import com.github.trembita._
-import com.github.trembita.experimental.spark._
-import org.apache.spark._
+import com.github.trembita.spark._
 import cats.syntax.all._
 import cats.effect.Console.io._
 import com.github.trembita.fsm._
 import org.apache.spark.sql.{Encoder, Encoders, SparkSession}
 import com.github.trembita.collections._
 import com.github.trembita.spark.Spark
-
 import scala.concurrent.duration._
 
 /**
@@ -34,7 +32,7 @@ object FSMSample extends IOApp {
     implicit val timeout: AsyncTimeout = AsyncTimeout(5.minutes)
 
     val pipeline: DataPipelineT[Id, Int, Spark] =
-      DataPipelineT.fromRepr[Id, Int, Spark](
+      Input.rdd.create(
         spark.sparkContext.parallelize(
           List.tabulate(5000)(i => scala.util.Random.nextInt() + i)
         )
@@ -65,13 +63,13 @@ object FSMSample extends IOApp {
               _.goto(Closed).change(Map.empty).dontPush
             }
           })
-        .mapK(idToIO)
+        .mapK(idTo[IO])
         .map(_ + 1)
 
     withDoorState
-      .eval
-      .flatTap(s => putStrLn(s.toString))
-      .void
+      .into(Output.array)
+      .run
+      .flatMap(s => putStrLn(s.toString))
   }
   def run(args: List[String]): IO[ExitCode] =
     IO(

@@ -21,5 +21,6 @@ package object akka_spark {
       }
     }
 
-  implicit val sparkToAkka: InjectTaggedK[RDD, Source[?, NotUsed]] = InjectTaggedK.fromArrow[RDD, Source[?, NotUsed]](λ[RDD[?] ~> Source[?, NotUsed]](rdd => RDDSource(rdd)))
+  implicit val sparkToAkka: InjectTaggedK[RDD, Source[?, NotUsed]] =
+    InjectTaggedK.fromArrow[RDD, Source[?, NotUsed]](λ[RDD[?] ~> Source[?, NotUsed]](rdd => RDDSource(rdd)))
 }

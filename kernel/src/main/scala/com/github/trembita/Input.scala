@@ -2,6 +2,8 @@ package com.github.trembita
 
 import cats.Id
 import com.github.trembita.inputs._
+import com.github.trembita.operations.LiftPipeline
+
 import scala.collection.generic.CanBuildFrom
 import scala.language.higherKinds
 import scala.reflect.ClassTag
@@ -11,6 +13,14 @@ object Input {
   @inline def repeatF[F[+ _]]: InputT[F, Sequential, RepeatInput.PropsT[F, ?]]                                = new RepeatInputT[F]
   @inline def fileF[F[+ _]]: InputT[F, Sequential, FileInput.PropsT[F, ?]]                                    = new FileInputF[F]
   @inline def randomF[F[+ _]](implicit ctgF: ClassTag[F[_]]): InputT[F, Sequential, RandomInput.PropsT[F, ?]] = new RandomInputF[F]
+
+  @inline def lift[E <: Environment](implicit liftPipeline: LiftPipeline[Id, E])       = liftF[Id, E]
+  @inline def liftF[F[_], E <: Environment](implicit liftPipeline: LiftPipeline[F, E]) = new liftDsl[F, E](liftPipeline)
+
+  class liftDsl[F[_], E <: Environment](val `this`: LiftPipeline[F, E]) extends AnyVal {
+    def create[A: ClassTag](xs: Iterable[A]): DataPipelineT[F, A, E]     = `this`.liftIterable(xs)
+    def createF[A: ClassTag](fa: F[Iterable[A]]): DataPipelineT[F, A, E] = `this`.liftIterableF(fa)
+  }
 
   @inline def sequentialF[F[+ _], Col[+x] <: Iterable[x]](
       implicit cbf: CanBuildFrom[Col[_], _, Col[_]]

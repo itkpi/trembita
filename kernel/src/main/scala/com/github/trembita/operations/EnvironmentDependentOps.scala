@@ -152,6 +152,16 @@ trait EnvironmentDependentOps[F[_], A, E <: Environment] extends Any {
       widen(run)(E)
     )
 
+  def tapRepr[U: ClassTag](f: E#Repr[A] => U)(
+      implicit F: Monad[F],
+      E: E,
+      run: E#Run[F],
+      A: ClassTag[A]
+  ): DataPipelineT[F, A, E] = mapRepr[A] { repr =>
+    f(repr)
+    repr
+  }
+
   /**
     * Allows to transform [[E]] environment internal data representation within [[F]] context.
     * For instance, using [[mapRepr]] you can call [[E#Repr]] specific functions

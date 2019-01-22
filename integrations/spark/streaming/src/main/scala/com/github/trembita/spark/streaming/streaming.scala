@@ -11,7 +11,6 @@ import com.github.trembita.ql.QueryBuilder.Query
 import com.github.trembita.ql.{AggDecl, AggRes, GroupingCriteria, QueryBuilder, QueryResult}
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.dstream.DStream
-
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.reflect.ClassTag
@@ -28,10 +27,7 @@ package object streaming extends injections {
       F: Monad[F],
       A: ClassTag[A]): DataPipelineT[F, QueryResult[A, G, R], SparkStreaming] =
       `this`.mapRepr(trembitaqlForSparkStreaming.apply(_, queryF))
-  }
-  implicit class SparkStreamingFsmByKey[F[_], A](
-      private val self: DataPipelineT[F, A, SparkStreaming]
-  ) extends AnyVal {
+
     def fsmByKey[K: ClassTag, N, D, B: ClassTag](getKey: A => K)(
         initial: InitialState[N, D, F]
     )(fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B])(
@@ -40,16 +36,16 @@ package object streaming extends injections {
         F: SerializableMonad[F],
         run: Spark#Run[F]
     ): DataPipelineT[F, B, SparkStreaming] =
-      self.mapRepr[B](sparkFSM.byKey[A, K, N, D, B](_)(getKey, initial)(fsmF))
+      `this`.mapRepr[B](sparkFSM.byKey[A, K, N, D, B](_)(getKey, initial)(fsmF))
+
+    def mapM[B: ClassTag](
+        magnet: MagnetF[F, A, B, SparkStreaming]
+    )(implicit F: SerializableMonad[F]): DataPipelineT[F, B, SparkStreaming] =
+      `this`.mapMImpl[A, B](magnet.prepared)
+
   }
 
   implicit class SparkIOOps[A](val `this`: DataPipelineT[IO, A, SparkStreaming]) extends AnyVal with MagnetlessSparkStreamingIOOps[A]
-  implicit class SparkFutureOps[A](private val `this`: DataPipelineT[Future, A, SparkStreaming]) extends AnyVal {
-    def mapM[B: ClassTag](
-        magnet: MagnetF[Future, A, B, SparkStreaming]
-    )(implicit F: Monad[Future]): DataPipelineT[Future, B, SparkStreaming] =
-      `this`.mapMImpl[A, B](magnet.prepared)
-  }
 
   implicit def magnetFFromSpark[F[_], A, B](
       f: A => F[B]
@@ -120,8 +116,21 @@ package object streaming extends injections {
     }
   }
 
-  implicit class OutputCompanionExtensions(private val self: Output.type) extends AnyVal {
-    @inline def start[A]                             = new StartOutput[Id, A](thunk => thunk())
-    @inline def startF[F[_], A](implicit F: Sync[F]) = new StartOutput[F, A](thunk => F.delay(thunk()))
+  class StartDsl(val `dummy`: Boolean = true) extends AnyVal {
+    def apply[F[+ _], A](sync: (() => Unit) => F[Unit]) = new StartOutput[F, A](sync)
+  }
+
+  trait LowPriorityStartDsl {
+    implicit def toOutput[F[+ _], A](dsl: StartDsl)(implicit F: Sync[F]): StartOutput[F, A] =
+      new StartOutput[F, A](thunk => F.delay(thunk()))
+  }
+
+  object StartDsl extends LowPriorityStartDsl {
+    implicit def toOutputId[A](dsl: StartDsl): StartOutput[Id, A] =
+      new StartOutput[Id, A](thunk => thunk())
+  }
+
+  implicit class OutputCompanionSparkStreamingExtensions(val `this`: Output.type) extends AnyVal {
+    @inline def start = new StartDsl
   }
 }

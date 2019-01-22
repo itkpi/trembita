@@ -1,14 +1,10 @@
 package com.github.trembita.spark
 
-import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.locks.ReadWriteLock
-
 import cats.effect.IO
-
 import scala.concurrent.duration.Duration
 import scala.concurrent.{CanAwait, ExecutionContext, Future, Promise}
-import scala.util.{Failure, Success, Try}
 import scala.language.{higherKinds, implicitConversions}
+import scala.util.{Failure, Success, Try}
 
 sealed abstract class SerializableFutureNewType {
   private[trembita] trait Tag
@@ -27,12 +23,12 @@ object FutureIsSerializable {
 object SerializableFutureImpl extends SerializableFutureNewType {
   final type NewType[+A] = Future[A] with Serializable with Tag
 
-  def lift[A](fa: FutureIsSerializable[A]): NewType[A] = fa()
-  def pure[A](a: A): NewType[A]                        = new CompleteFuture[A](Success(a)).asInstanceOf[NewType[A]]
-  def raiseError[A](e: Throwable): NewType[A]          = fromTry(Failure(e))
-  def fromTry[A](fa: Try[A]): NewType[A]               = new CompleteFuture[A](fa).asInstanceOf[NewType[A]]
-  def start[A](thunk: => A)(implicit ec: ExecutionContext): NewType[A] =
-    new StartedFuture[A](() => Try { thunk })(ec).asInstanceOf[NewType[A]]
+  def lift[A](fa: FutureIsSerializable[A]): SerializableFuture[A] = fa()
+  def pure[A](a: A): SerializableFuture[A]                        = new CompleteFuture[A](Success(a)).asInstanceOf[SerializableFuture[A]]
+  def raiseError[A](e: Throwable): SerializableFuture[A]          = fromTry(Failure(e))
+  def fromTry[A](fa: Try[A]): SerializableFuture[A]               = new CompleteFuture[A](fa).asInstanceOf[SerializableFuture[A]]
+  def start[A](thunk: => A)(implicit ec: ExecutionContext): SerializableFuture[A] =
+    new StartedFuture[A](() => Try { thunk })(ec).asInstanceOf[SerializableFuture[A]]
 
   private[trembita] def widen[A](fa: Future[A]): NewType[A] = fa.asInstanceOf[NewType[A]]
 }

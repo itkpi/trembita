@@ -29,13 +29,13 @@ class SparkSpec extends FlatSpec with BeforeAndAfterAll {
 
   "DataPipeline.map(square)" should "be mapped squared" in {
     val pipeline        = Input.rdd.create(sc.parallelize(Seq(1, 2, 3)))
-    val res: Array[Int] = pipeline.map(i => i * i).into(Output.array[Int]).run
+    val res: Array[Int] = pipeline.map(i => i * i).into(Output.array).run
     assert(res sameElements Array(1, 4, 9))
   }
 
   "DataPipeline.filter(isEven)" should "contain only even numbers" in {
     val pipeline        = Input.rdd.create(sc.parallelize(Seq(1, 2, 3)))
-    val res: Array[Int] = pipeline.filter(_ % 2 == 0).into(Output.array[Int]).run
+    val res: Array[Int] = pipeline.filter(_ % 2 == 0).into(Output.array).run
     assert(res sameElements Array(2))
   }
 
@@ -45,7 +45,7 @@ class SparkSpec extends FlatSpec with BeforeAndAfterAll {
       .collect {
         case str if str.forall(_.isDigit) => str.toInt
       }
-      .into(Output.array[Int])
+      .into(Output.array)
       .run
     assert(res sameElements Array(1, 2, 3))
   }
@@ -57,7 +57,7 @@ class SparkSpec extends FlatSpec with BeforeAndAfterAll {
         SerializableFuture.start(str.toInt)
       }
       .recover { case e: NumberFormatException => -10 }
-      .into(Output.arrayF[SerializableFuture, Int])
+      .into(Output.array)
       .run
 
     assert(Await.result(res, asyncTimeout.duration) sameElements Array(1, 2, 3, -10))
@@ -65,19 +65,19 @@ class SparkSpec extends FlatSpec with BeforeAndAfterAll {
 
   "DataPipeline.flatMap(getWords)" should "be a pipeline of words" in {
     val pipeline           = Input.rdd.create(sc.parallelize(Seq("Hello world", "hello you to")))
-    val res: Array[String] = pipeline.mapConcat(_.split("\\s")).into(Output.array[String]).run
+    val res: Array[String] = pipeline.mapConcat(_.split("\\s")).into(Output.array).run
     assert(res sameElements Array("Hello", "world", "hello", "you", "to"))
   }
 
   "DataPipeline.sorted" should "be sorted" in {
     val pipeline           = Input.rdd.create(sc.parallelize(Seq(5, 4, 3, 1)))
-    val sorted: Array[Int] = pipeline.sorted.into(Output.array[Int]).run
+    val sorted: Array[Int] = pipeline.sorted.into(Output.array).run
     assert(sorted sameElements Array(1, 3, 4, 5))
   }
 
   "DataPipeline.sortBy(_.length)" should "be sorted by length" in {
     val pipeline           = Input.rdd.create(sc.parallelize(Vector("a", "abcd", "bcd")))
-    val res: Array[String] = pipeline.sortBy(_.length).into(Output.array[String]).run
+    val res: Array[String] = pipeline.sortBy(_.length).into(Output.array).run
     assert(res sameElements Array("a", "bcd", "abcd"))
   }
 
@@ -87,7 +87,7 @@ class SparkSpec extends FlatSpec with BeforeAndAfterAll {
       .groupBy(_ % 2 == 0)
       .mapValues(_.toList)
       .sortBy(_._1)
-      .into(Output.array[(Boolean, List[Int])])
+      .into(Output.array)
       .run
 
     assert(grouped sameElements Array(false -> List(1, 3), true -> List(2, 4)))
@@ -95,34 +95,34 @@ class SparkSpec extends FlatSpec with BeforeAndAfterAll {
 
   "DataPipeline.distinct" should "work" in {
     val pipeline             = Input.rdd.create(sc.parallelize(Seq(1, 2, 3, 1, 3, 2, 1)))
-    val distinct: Array[Int] = pipeline.distinct.into(Output.array[Int]).run
+    val distinct: Array[Int] = pipeline.distinct.into(Output.array).run
     assert(distinct.sorted sameElements Array(1, 2, 3))
   }
 
   "PairPipeline transformations" should "work correctly" in {
     val pipeline = Input.rdd.create(sc.parallelize(Seq("a" -> 1, "b" -> 2, "c" -> 3)))
 
-    val result1: Array[(String, Int)] = pipeline.mapValues(_ + 1).into(Output.array[(String, Int)]).run
+    val result1: Array[(String, Int)] = pipeline.mapValues(_ + 1).into(Output.array).run
     assert(result1 sameElements Array("a" -> 2, "b" -> 3, "c" -> 4))
 
-    val result2: Array[String] = pipeline.keys.into(Output.array[String]).run
+    val result2: Array[String] = pipeline.keys.into(Output.array).run
     assert(result2 sameElements Array("a", "b", "c"))
 
-    val result3: Array[Int] = pipeline.values.into(Output.array[Int]).run
+    val result3: Array[Int] = pipeline.values.into(Output.array).run
     assert(result3 sameElements Array(1, 2, 3))
   }
 
   "DataPipeline.zip" should "work correctly for pipelines" in {
     val p1                           = Input.rdd.create(sc.parallelize(Seq(1, 2, 3)))
     val p2                           = Input.rdd.create(sc.parallelize(Seq("a", "b", "c")))
-    val result: Array[(Int, String)] = p1.zip(p2).into(Output.array[(Int, String)]).run
+    val result: Array[(Int, String)] = p1.zip(p2).into(Output.array).run
     assert(result sameElements Array(1 -> "a", 2 -> "b", 3 -> "c"))
   }
 
   "DataPipeline.++" should "work correctly for pipelines" in {
     val p1                 = Input.rdd.create(sc.parallelize(Seq(1, 2, 3, 4)))
     val p2                 = Input.rdd.create(sc.parallelize(Seq(5, 6, 7)))
-    val result: Array[Int] = (p1 ++ p2).sorted.into(Output.array[Int]).run
+    val result: Array[Int] = (p1 ++ p2).sorted.into(Output.array).run
     assert(result.toSeq == Vector(1, 2, 3, 4, 5, 6, 7))
   }
 
@@ -137,7 +137,7 @@ class SparkSpec extends FlatSpec with BeforeAndAfterAll {
       .mapValues(_.foldLeft(0) { case (acc, (_, x)) => acc + x } * 10)
       .map { case (k, v) => s"{key=$k, value=$v}" }
       .sorted
-      .into(Output.arrayF[IO, String])
+      .into(Output.array)
       .run
       .map(_.toList.mkString(", "))
 

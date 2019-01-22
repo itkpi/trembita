@@ -1,53 +1,31 @@
 package com.github.trembita
 
-import _root_.akka.stream.{ActorMaterializer, DelayOverflowStrategy, Materializer}
-import _root_.akka.stream.scaladsl._
 import _root_.akka.NotUsed
-import cats.{~>, Monad}
+import _root_.akka.stream._
+import _root_.akka.stream.scaladsl._
 import cats.effect.{Effect, IO, Timer}
+import cats.{Id, Monad}
 import com.github.trembita.fsm.{CanFSM, FSM, InitialState}
-import com.github.trembita.{DataPipelineT, Environment}
+import com.github.trembita.internal.EvaluatedSource
 import com.github.trembita.operations._
+import com.github.trembita.outputs.internal.{outputWithoutPropsDsl, OutputDsl, OutputT}
 
 import scala.collection.immutable.SortedMap
-import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.{ExecutionContext, Future}
-import scala.language.higherKinds
-import scala.language.implicitConversions
-import scala.reflect.ClassTag
-import cats.syntax.all._
-import com.github.trembita.util.LiftFuture
-
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.{ExecutionContext, Future}
+import scala.language.{higherKinds, implicitConversions}
+import scala.reflect.ClassTag
 
-package object akka {
+package object akka_streams {
   implicit class AkkaOps[F[_], A, Mat](
       val `this`: DataPipelineT[F, A, Akka[Mat]]
   ) extends AnyVal
-      with MagnetlessOps[F, A, Akka[Mat]] {
-
-    def runForeach(
-        f: A => Unit
-    )(implicit e: Akka[Mat], run: Akka[Mat]#Run[F], F: Monad[F], arrow: Akka[Mat]#Result ~> F): F[Unit] =
-      F.flatMap(`this`.foreach(f))(arrow(_))
-
-    def runForeachF(
-        f: A => F[Unit]
-    )(implicit e: Akka[Mat], run: Akka[Mat]#Run[F], F: Monad[F], arrow: Akka[Mat]#Result ~> F): F[Unit] =
-      `this`.foreachF(f)
-
-    def runAndForget()(
-        implicit e: Akka[Mat],
-        run: Akka[Mat]#Run[F],
-        F: Monad[F],
-        mat: ActorMaterializer,
-        liftFuture: LiftFuture[F]
-    ): F[Unit] =
-      `this`.evalRepr.flatMap { source =>
-        liftFuture {
-          source.runWith(Sink.ignore)
-        }.void
-      }
+      with MagnetlessOps[F, A, Akka[Mat]]
+      with OutputDslAkka[F, A, Mat] {
+    def through[B: ClassTag, Mat2](
+        flow: Graph[FlowShape[A, B], Mat2]
+    )(implicit E: Akka[Mat], run: Akka[Mat]#Run[F], F: Monad[F]): DataPipelineT[F, B, Akka[Mat2]] =
+      EvaluatedSource.make[F, B, Akka[Mat2]](F.map(`this`.evalRepr)(_.viaMat(flow)(Keep.right)), F)
   }
 
   implicit def deriveAkka[Mat](
@@ -56,7 +34,7 @@ package object akka {
   ): Akka[Mat] with Environment.ReprAux[Source[?, Mat]] =
     Akka.akka(ec, mat)
 
-  implicit def liftToAkka[F[_]: Monad](
+  implicit def liftToAkka[F[+ _]: Monad](
       implicit mat: Materializer,
       ec: ExecutionContext
   ): LiftPipeline[F, Akka[NotUsed]] = new LiftAkkaPipeline[F]
@@ -155,4 +133,38 @@ package object akka {
       override type Result[X] = Future[X]
       override def apply[A](fa: Source[A, Mat]): Future[Vector[A]] = fa.runWith(Sink.collection[A, Vector[A]])
     }
+
+  implicit class InputCompanionExtensions(private val self: Input.type) extends AnyVal {
+    def fromSource[A: ClassTag, Mat](source: Source[A, Mat]): DataPipeline[A, Akka[Mat]] = Input.repr[Akka[Mat]].create(source)
+    def fromSourceF[F[+ _], A: ClassTag, Mat](sourceF: F[Source[A, Mat]])(implicit F: Monad[F]): DataPipelineT[F, A, Akka[Mat]] =
+      Input.reprF[F, Akka[Mat]].create(sourceF)
+  }
+
+  implicit class OutputCompanionExtensions(private val self: Output.type) extends AnyVal {
+    def fromSink[A: ClassTag, Mat](
+        sink: Sink[A, Mat]
+    )(implicit materializer: Materializer): OutputT.Aux[Id, A, Akka[Mat], λ[(G[_], a) => Mat]] =
+      new OutputT[Id, A, Akka[Mat]] {
+        type Out[G[_], a] = Mat
+        def apply(pipeline: DataPipelineT[Id, A, Akka[Mat]])(
+            implicit F: Monad[Id],
+            E: Akka[Mat],
+            run: RunAkka[Id],
+            A: ClassTag[A]
+        ): Mat = pipeline.evalRepr.runWith(sink)
+      }
+
+    def fromSinkF[F[_], A: ClassTag, Mat0, Mat1](
+        sink: Sink[A, Mat1]
+    )(implicit materializer: Materializer): OutputT.Aux[F, A, Akka[Mat0], λ[(G[_], a) => F[Mat1]]] =
+      new OutputT[F, A, Akka[Mat0]] {
+        type Out[G[_], a] = F[Mat1]
+        def apply(pipeline: DataPipelineT[F, A, Akka[Mat0]])(
+            implicit F: Monad[F],
+            E: Akka[Mat0],
+            run: RunAkka[F],
+            A: ClassTag[A]
+        ): F[Mat1] = F.map(pipeline.evalRepr)(_.runWith(sink))
+      }
+  }
 }

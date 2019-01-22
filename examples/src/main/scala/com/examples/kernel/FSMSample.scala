@@ -15,7 +15,7 @@ object FSMSample extends IOApp {
 
   def run(args: List[String]): IO[ExitCode] = {
     val pipeline: DataPipelineT[IO, Int, Sequential] =
-      DataPipelineT.randomInts(20, 100)
+      Input.randomF[IO].create(RandomInput.propsT[IO, Int](n = 20, count = 100)(x => IO { x + 2 }))
 
     val withDoorState =
       pipeline.fsm[DoorState, Map[DoorState, Int], Int](
@@ -44,7 +44,7 @@ object FSMSample extends IOApp {
           }
         })
 
-    val result: IO[Vector[Int]] = withDoorState.eval
+    val result: IO[Vector[Int]] = withDoorState.into(Output.collection[Vector]).run
     result
       .flatTap { result =>
         putStrLn("Map with state:") *>

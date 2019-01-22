@@ -21,7 +21,7 @@ trait CanPause[F[_], E <: Environment] extends Serializable {
     pausedWith(pipeline)(_ => pause)
 }
 
-trait LowPriorityPause extends Serializable  {
+trait LowPriorityPause extends Serializable {
   implicit def canPauseSequential[F[_]](implicit F: Sync[F], timer: Timer[F]): CanPause[F, Sequential] = new CanPause[F, Sequential] {
     def pausedWith[A: ClassTag](pipeline: DataPipelineT[F, A, Sequential])(
         getPause: A => FiniteDuration

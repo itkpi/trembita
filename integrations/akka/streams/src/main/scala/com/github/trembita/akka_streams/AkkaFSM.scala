@@ -1,10 +1,10 @@
-package com.github.trembita.akka
+package com.github.trembita.akka_streams
 
-import com.github.trembita.fsm.{CanFSM, FSM, InitialState}
-import com.github.trembita._
 import akka.stream._
 import akka.stream.scaladsl._
 import akka.stream.stage._
+import com.github.trembita.fsm.{CanFSM, FSM, InitialState}
+import com.github.trembita._
 import cats.arrow.FunctionK
 import cats.effect.IO
 import cats._
@@ -36,7 +36,7 @@ object AkkaFSM {
           fsmF: FSM.Empty[Id, N, D, A, B] => FSM.Func[Id, N, D, A, B]
       ): Source[B, Mat] = {
         val stage =
-          new FSMGraphF[Id, A, N, D, B](initial, fsmF, toFuture = idToFuture)
+          new FSMGraphF[Id, A, N, D, B](initial, fsmF, toFuture = idTo[Future])
         source.via(stage)
       }
     }
@@ -139,7 +139,7 @@ class FSMGraphF[F[_], A, N, D, B](
                 initial match {
                   case InitialState.Pure(s) => s
                   case InitialState
-                        .FromFirstElement(f: (A => FSM.State[N, D, Future])) =>
+                        .FromFirstElement(f: (A => FSM.State[N, D, Future]) @unchecked) =>
                     f(a)
                 }
               case Some(s) => s

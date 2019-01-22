@@ -1,4 +1,4 @@
-package com.github.trembita.akka
+package com.github.trembita.akka_streams
 
 import akka.stream.Materializer
 import scala.language.higherKinds

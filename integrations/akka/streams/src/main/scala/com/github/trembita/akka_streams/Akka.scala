@@ -1,11 +1,11 @@
-package com.github.trembita.akka
+package com.github.trembita.akka_streams
 
 import akka.NotUsed
+import akka.stream.scaladsl._
 import akka.stream.Materializer
 import scala.language.{existentials, higherKinds}
 import com.github.trembita._
 import com.github.trembita.collections._
-import akka.stream.scaladsl._
 import cats.{~>, Functor, Monad}
 import scala.annotation.implicitNotFound
 import scala.concurrent.{ExecutionContext, Future}

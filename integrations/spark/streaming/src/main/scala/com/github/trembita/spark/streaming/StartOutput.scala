@@ -4,6 +4,7 @@ import cats.Monad
 import com.github.trembita.DataPipelineT
 import com.github.trembita.outputs.internal.OutputT
 import scala.reflect.ClassTag
+import scala.language.higherKinds
 
 class StartOutput[F[_], A] private[trembita] (sync: (() => Unit) => F[Unit]) extends OutputT[F, A, SparkStreaming] {
   final type Out[G[_], b] = G[Unit]

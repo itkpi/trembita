@@ -29,7 +29,7 @@ class InfinispanDefaultCacheSpec extends FlatSpec with BeforeAndAfterAll {
       InfinispanDefaultCaching[IO, Sequential, Int](IO(cacheManager.getCache[String, Vector[Int]]("test-1")), ExpirationTimeout(5.seconds))
         .unsafeRunSync()
 
-    val pipeline = DataPipelineT[IO, Int](1, 2, 3, 4)
+    val pipeline = Input.sequentialF[IO, Seq].create(IO { 1 to 4 })
 
     val resultPipeline = pipeline
       .map { i =>
@@ -37,23 +37,25 @@ class InfinispanDefaultCacheSpec extends FlatSpec with BeforeAndAfterAll {
       }
       .cached("numbers")
 
-    val result = resultPipeline.eval.unsafeRunSync()
+    val result = resultPipeline.into(Output.vector).run.unsafeRunSync()
     assert(result == Vector(2, 3, 4, 5))
 
-    val result2 = resultPipeline.eval.unsafeRunSync()
+    val result2 = resultPipeline.into(Output.vector).run.unsafeRunSync()
     assert(result2 == Vector(2, 3, 4, 5))
   }
 
   it should "evaluate pipeline before caching" in {
     val mockCache = mock(classOf[BasicCache[String, Vector[Int]]])
-    when(mockCache.getAsync("numbers")).thenReturn(CompletableFuture.supplyAsync(new Supplier[Vector[Int]] { override def get(): Vector[Int] = null }))
+    when(mockCache.getAsync("numbers")).thenReturn(CompletableFuture.supplyAsync(new Supplier[Vector[Int]] {
+      override def get(): Vector[Int] = null
+    }))
     when(mockCache.putIfAbsentAsync("numbers", Vector(2, 3, 4, 5))).thenReturn(CompletableFuture.completedFuture(Vector(2, 3, 4, 5)))
 
     implicit val caching: Caching[IO, Sequential, Int] =
       InfinispanDefaultCaching[IO, Sequential, Int](IO(mockCache), `5 seconds`)
         .unsafeRunSync()
 
-    val pipeline = DataPipelineT[IO, Int](1, 2, 3, 4)
+    val pipeline = Input.sequentialF[IO, Seq].create(IO { 1 to 4 })
 
     val resultPipeline = pipeline
       .map { i =>
@@ -61,7 +63,7 @@ class InfinispanDefaultCacheSpec extends FlatSpec with BeforeAndAfterAll {
       }
       .cached("numbers")
 
-    val result = try resultPipeline.eval.unsafeRunSync()
+    val result = try resultPipeline.into(Output.vector).run.unsafeRunSync()
     catch {
       case e: Throwable =>
         println(e)
@@ -85,7 +87,7 @@ class InfinispanDefaultCacheSpec extends FlatSpec with BeforeAndAfterAll {
       InfinispanDefaultCaching[IO, Sequential, Int](IO(mockCache), `5 seconds`)
         .unsafeRunSync()
 
-    val pipeline = DataPipelineT[IO, Int](1, 2, 3, 4)
+    val pipeline = Input.sequentialF[IO, Seq].create(IO { 1 to 4 })
 
     val resultPipeline = pipeline
       .map { i =>
@@ -93,7 +95,7 @@ class InfinispanDefaultCacheSpec extends FlatSpec with BeforeAndAfterAll {
       }
       .cached("numbers")
 
-    val result = resultPipeline.eval.unsafeRunSync()
+    val result = resultPipeline.into(Output.vector).run.unsafeRunSync()
     assert(result == Vector(2, 3, 4, 5))
 
     verify(mockCache, times(1)).start()

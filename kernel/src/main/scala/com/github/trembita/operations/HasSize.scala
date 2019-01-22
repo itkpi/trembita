@@ -9,7 +9,7 @@ import scala.language.higherKinds
     ${F} does not provide an efficient way to calculate its size.
     Please provide an implicit instance in scope if necessary
     """)
-trait HasSize[F[_]]extends Serializable  {
+trait HasSize[F[_]] extends Serializable {
   type Result[_]
   def size[A](fa: F[A]): Result[Int]
 }
