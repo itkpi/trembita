@@ -31,7 +31,7 @@ object FSMSample extends IOApp {
     import spark.implicits._
     implicit val timeout: AsyncTimeout = AsyncTimeout(5.minutes)
 
-    val pipeline: DataPipelineT[Id, Int, Spark] =
+    val pipeline: DataPipeline[Int, Spark] =
       Input.rdd.create(
         spark.sparkContext.parallelize(
           List.tabulate(5000)(i => scala.util.Random.nextInt() + i)
@@ -69,7 +69,7 @@ object FSMSample extends IOApp {
     withDoorState
       .into(Output.array)
       .run
-      .flatMap(s => putStrLn(s.toString))
+      .flatMap(s => putStrLn(s.mkString("[", ", ", "]")))
   }
   def run(args: List[String]): IO[ExitCode] =
     IO(

@@ -20,7 +20,7 @@ object Main extends IOApp {
     val fileLines =
       Input.fromSourceF[IO, ByteString, Future[IOResult]](IO {
         FileIO
-          .fromPath(Paths.get(getClass.getResource("/words.txt").toURI))
+          .fromPath(Paths.get("examples/src/main/resources/words.txt"))
       })
 
     val wordsCount: DataPipelineT[IO, String, Akka[Future[IOResult]]] = fileLines
@@ -34,11 +34,11 @@ object Main extends IOApp {
       )
 
     wordsCount
-      .into(Output.foreach[String](println))
-      .keepMat
+      .into(Output.fromSinkF[IO, String, Future[IOResult], Future[Vector[String]]](Sink.collection[String, Vector[String]]))
       .run
-      .flatMap(fa => IO.fromFuture(IO(fa)))
-      .flatMap(res => putStrLn(res.toString))
+      .map(IO(_))
+      .flatMap(IO.fromFuture)
+      .flatMap(res => putStrLn(res.mkString("")))
   }
 
   def run(args: List[String]): IO[ExitCode] =

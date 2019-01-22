@@ -144,8 +144,10 @@ class ParallelSpec extends FlatSpec {
         x += 1; i
       }
     val res1: Vector[Int] = pipeline.into(Output.vector).run
+    res1.size
     assert(x == 3)
     val res2: Vector[Int] = pipeline.into(Output.vector).run
+    res2.size
     assert(x == 6)
   }
 

@@ -92,14 +92,9 @@ package object spark extends LowPriorityInstancesForSpark {
 
   implicit val runIdOnSpark: RunOnSpark[cats.Id] = new RunIdOnSpark
 
-  implicit def runFutureOnSpark(
-      implicit timeout: AsyncTimeout
-  ): RunOnSpark[Future] =
-    new RunFutureOnSpark(timeout)
-
   implicit def runSerializableFutureOnSpark(
       implicit timeout: AsyncTimeout
-  ): RunOnSpark[SerializableFuture] = runFutureOnSpark.asInstanceOf[RunOnSpark[SerializableFuture]]
+  ): RunOnSpark[SerializableFuture] = new RunFutureOnSpark(timeout)
 
   implicit def runIOOnSpark(implicit timeout: AsyncTimeout): RunOnSpark[IO] =
     new RunIOOnSpark(timeout)

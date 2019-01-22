@@ -26,7 +26,7 @@ object FSMSample extends IOApp {
   def sparkSample(implicit ssc: StreamingContext): IO[Unit] = {
     implicit val timeout: AsyncTimeout = AsyncTimeout(5.minutes)
 
-    val pipeline: DataPipelineT[Id, Int, SparkStreaming] =
+    val pipeline: DataPipeline[Int, SparkStreaming] =
       Input
         .lift[SparkStreaming]
         .create(Vector.tabulate(5000)(i => scala.util.Random.nextInt() + i))
@@ -63,6 +63,7 @@ object FSMSample extends IOApp {
       .tapRepr(_.print())
       .into(Output.start)
       .run
+      .flatMap(_ => IO { ssc.awaitTermination() })
   }
   def run(args: List[String]): IO[ExitCode] =
     IO(

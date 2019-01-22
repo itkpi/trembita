@@ -50,6 +50,7 @@ object QLExample extends IOApp {
           .tapRepr(_.print())
           .into(Output.start)
           .run
+          .flatMap(_ => IO { ssc.awaitTermination() })
       })(
         release = spark =>
           IO {

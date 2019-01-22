@@ -39,7 +39,7 @@ class rewrite(val c: whitebox.Context) {
     val A       = weakTypeOf[A].dealias
     val B       = weakTypeOf[B].dealias
     val FutureB = weakTypeOf[SerializableFuture[B]].dealias
-    val MagnetF = weakTypeOf[MagnetF[SerializableFuture, A, B, BaseSpark]].dealias
+    val MagnetF = weakTypeOf[MagnetF[SerializableFuture, A, B, BaseSpark]]
 
     if (B.typeConstructor =:= Future) {
       c.abort(

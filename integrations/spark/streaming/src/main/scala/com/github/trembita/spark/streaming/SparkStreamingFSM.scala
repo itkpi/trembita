@@ -45,7 +45,7 @@ class SparkStreamingIDFsm extends SparkStreamingFSM[Id] {
             initial match {
               case InitialState.Pure(state) => Some(state)
               case InitialState
-                    .FromFirstElement(f: (A => FSM.State[N, D, Id])) =>
+                    .FromFirstElement(f: (A => FSM.State[N, D, Id]) @unchecked) =>
                 v.map(f)
             }
         }
@@ -88,7 +88,7 @@ class SparkStreamingIOFsm extends SparkStreamingFSM[IO] {
             initial match {
               case InitialState.Pure(state) => Some(state)
               case InitialState
-                    .FromFirstElement(f: (A => FSM.State[N, D, IO])) =>
+                    .FromFirstElement(f: (A => FSM.State[N, D, IO]) @unchecked) =>
                 v.map(f)
             }
         }

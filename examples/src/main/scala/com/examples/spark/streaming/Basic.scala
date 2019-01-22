@@ -53,11 +53,11 @@ object Basic extends IOApp {
           .mapK(serializableFutureToIO)
           .map(_.getOrElse(-100500))
 
-        numbers.evalRepr
-          .map(_.print()) *> IO.delay {
-          ssc.start()
-          ssc.awaitTermination()
-        }
+        numbers
+          .tapRepr(_.print())
+          .into(Output.start)
+          .run
+          .flatMap(_ => IO { ssc.awaitTermination() })
       })(release = sc => IO { sc.stop() })
       .as(ExitCode.Success)
 }

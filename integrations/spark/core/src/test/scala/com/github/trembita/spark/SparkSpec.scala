@@ -12,7 +12,7 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 
 class SparkSpec extends FlatSpec with BeforeAndAfterAll {
-  @transient implicit val spark: SparkSession = SparkSession.builder().master("local[2]").appName("test").getOrCreate()
+  @transient implicit val spark: SparkSession = SparkSession.builder().master("local[*]").appName("test").getOrCreate()
   @transient val sc: SparkContext             = spark.sparkContext
   implicit val asyncTimeout: AsyncTimeout     = AsyncTimeout(10.seconds)
 

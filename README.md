@@ -1,6 +1,6 @@
 ---
 Project: Trembita
-Current version: 0.7.2-SNAPSHOT
+Current version: 0.8.0-SNAPSHOT
 Scala version: 2.11.12, 2.12.8
 ---
 
@@ -19,15 +19,15 @@ Trembita allows you to make complicated transformation pipelines where some of t
 ```scala
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 libraryDependencies ++= {
-  val trembitaV = "0.7.2-SNAPSHOT"
+  val trembitaV = "0.8.0-SNAPSHOT"
   Seq(
-    "com.github.vitaliihonta.trembita" %% "trembita-kernel" % trembitaV, // kernel,
+    "ua.pp.itkpi" %% "trembita-kernel" % trembitaV, // kernel,
     
-    "com.github.vitaliihonta.trembita" %% "trembita-cassandra-connector" % trembitaV, // cassandra
+    "ua.pp.itkpi" %% "trembita-cassandra-connector" % trembitaV, // cassandra
     
-    "com.github.vitaliihonta.trembita" %% "trembita-cassandra-connector-phantom" % trembitaV, // phantom
+    "ua.pp.itkpi" %% "trembita-cassandra-connector-phantom" % trembitaV, // phantom
     
-    "com.github.vitaliihonta.trembita" %% "trembita-slf4j" % trembitaV // slf4j, for logging    
+    "ua.pp.itkpi" %% "trembita-slf4j" % trembitaV // slf4j, for logging    
   )
 }
 ```
@@ -61,13 +61,13 @@ libraryDependencies ++= {
  - [trembita slf4j](./utils/logging/slf4j) - provides [slf4j](https://www.slf4j.org/) logging support. Use it with any compatible logging backend (for instance [logback](https://logback.qos.ch/))
  - [trembita log4j](./utils/logging/log4j) - provides [log4j](https://logging.apache.org/log4j/2.x/manual/scala-api.html) logging support.
  
- ## Experimental: Spark support
+ ## Spark support
  ### Introducing spark pipelines 
 You can run some your transformations on [spark](http://spark.apache.org/) cluster. 
 To do that, add the following dependencies:
 ```scala
 libraryDependencies ++= Seq(
-    "com.github.vitaliihonta.trembita" %% "trembita-spark" % trembitaV,
+    "ua.pp.itkpi" %% "trembita-spark" % trembitaV,
     "org.apache.spark" %% "spark-core" % "2.4.0" // first spark version with scala 2.12 support
 )
 ```
@@ -75,7 +75,7 @@ libraryDependencies ++= Seq(
 Using spark integration you can even easily run asynchronous computations on spark with Futures:
 ```scala
 import com.github.trembita._
-import com.github.trembita.experimental.spark._
+import com.github.trembita.spark._
 import org.apache.spark._
 import scala.concurrent.{ExecutionContext, Future}
 import java.util.concurrent.Executors
@@ -87,25 +87,42 @@ implicit val ec: ExecutionContext = ???
 val cachedThreadPool =
     ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
     
-val numbers = DataPipelineT[Future, Int](1, 2, 3, 20, 40, 60) // some basic pipeline
-  // will be executed on spark
-numbers
+Input
+  .sequentialF[SerializableFuture, Seq]
+  .create(SerializableFuture.pure(Seq(1, 2, 3, 20, 40, 60)))
   .to[Spark]
-   // below transformations will be executed on spark
+  // will be executed on spark
   .map(_ + 1)
   .mapM { i: Int =>
-    val n = Future { i + 1 }(cachedThreadPool)
-    val b = Future {
-      val x = 1 + 2
-      x * 3
-    }
+    val n = SerializableFuture.start { i + 1 }(cahedThreadPool)
+    val b = SerializableFuture
+      .start {
+        val x = 1 + 2
+        x * 3
+      }
+      .flatTap(
+        xx =>
+          SerializableFuture.start {
+            println(s"spark debug: $xx") // you won't see this in submit logs
+        }
+      )
 
-    for {
-      nx <- n
-      bx <- b
-    } yield nx + bx
+    val result: SerializableFuture[Int] =
+      n.bind { nx =>
+        b.where(nx > _).fmap(_ + nx)
+      }
+
+    result.attempt
   }
-  .eval // collects results into driver program
+  .mapK(serializableFutureToIO)
+  .map(_.getOrElse(-100500))
+  .mapM { i =>
+    IO { scala.util.Random.nextInt(10) + i }
+  }
+  // will be executed locally in parallel
+  .to[Parallel]
+  .info(i => s"parallel debug: $i") // you will see it in console
+  .map(_ + 1)
 ```
 Trembita will do the best to transform async lambda into serializable format.
 By default a special macro detects all references to `ExecutionContext` within lambda you pass into `mapM`.
@@ -154,25 +171,23 @@ sh examples/src/main/resources/spark/cluster/run_ql.sh
 
 Before running QL please remove [spire](https://github.com/non/spire) jars from spark classpath to avoid dependency conflicts
 
-## Experimental: Akka streams support
+## Akka streams support
 Trembita now supports running a part of your transformations on [akka-streams](https://doc.akka.io/docs/akka/current/stream/).
 To use it, add the following dependency:
 ```scala
-libraryDependencies += "com.github.vitaliihonta.trembita" %% "trembita-akka-streams" % trembitaV
+libraryDependencies += "ua.pp.itkpi" %% "trembita-akka-streams" % trembitaV
 ```
 
 You can run existing pipeline through akka stream or create a pipeline from source directly:
 ```scala
 import akka.stream.scaladsl._
-import com.github.trembita.experimental.akka._
+import com.github.trembita.akka._
 
 val fileLines =
-  DataPipelineT
-    .fromReprF[IO, ByteString, Akka](IO {
-      FileIO
-        .fromPath(Paths.get(getClass.getResource("/words.txt").toURI))
-        .mapMaterializedValue(_ => NotUsed)
-    })
+  Input.fromSourceF[IO, ByteString, Future[IOResult]](IO {
+    FileIO
+      .fromPath(Paths.get("examples/src/main/resources/words.txt"))
+  })
 ```
 
 Akka streaming pipelines also support `FSM` using custom graph state:
@@ -185,16 +200,16 @@ You can find full examples [here](./examples/src/main/scala/com/examples/akka)
 ## Seamless Akka to Spark integration
 Add the following dependency if you wan't to run your pipeline through both akka streams and spark RDD:
 ```scala
-libraryDependencies += "com.github.vitaliihonta.trembita" %% "trembita-seamless-akka-spark" % trembitaV
+libraryDependencies += "ua.pp.itkpi" %% "trembita-seamless-akka-spark" % trembitaV
 ```
 It goal is to avoid additional overhead when switching between akka and spark.
 `Akka -> Spark` is implemented using custom Sink.
 `Spark -> Akka` is implemented using `toLocalIterator`
 
-## Experimental: Spark streaming support
+## Spark streaming support
 Trembita now allows to write `QL` and `FSM` upon [spark DStreams](https://spark.apache.org/docs/latest/streaming-programming-guide.html).
 ```scala
-libraryDependencies += "com.github.vitaliihonta.trembita" %%  "trembita-spark-streaming" % trembitaV
+libraryDependencies += "ua.pp.itkpi" %%  "trembita-spark-streaming" % trembitaV
 ```
 
 For examples see [here](./examples/src/main/scala/com/examples/spark/streaming)
@@ -207,9 +222,14 @@ Run scripts:
 - [x] caching
 - [x] integration with distributed streaming frameworks
 - [ ] tensorflow
-- [ ] slick
+- [ ] slick (in progress)
 
 ## What means `trembita`?
 <img src="http://typical.if.ua/wp-content/uploads/2015/12/213.jpg" alt="trembita"/>
 
 Trembita is a alpine horn made of wood. It is common among Ukrainian highlanders Hutsuls who used to live in western Ukraine, eastern Poland, Slovakia and northern Romania. In southern Poland it's called trombita, bazuna in the North and ligawka in central Poland.
+
+## Contributors
+
+- [Vitalii Honta](https://github.com/vitaliihonta)
+- You =)

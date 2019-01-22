@@ -3,7 +3,7 @@ import Dependencies._
 
 lazy val snapshot: Boolean = true
 lazy val v: String = {
-  val vv = "0.7.2"
+  val vv = "0.8.0"
   if (!snapshot) vv
   else vv + "-SNAPSHOT"
 }
@@ -12,7 +12,9 @@ lazy val scalaReflect = Def.setting {
   "org.scala-lang" % "scala-reflect" % scalaVersion.value
 }
 
-organization in ThisBuild := "com.github.vitaliihonta.trembita"
+organization in ThisBuild := "ua.pp.itkpi"
+
+val ScalaVersions = Seq(`scala-2-12`, `scala-2-11`)
 
 def sonatypeProject(id: String, base: File) =
   Project(id, base)
@@ -22,7 +24,7 @@ def sonatypeProject(id: String, base: File) =
       isSnapshot := snapshot,
       version := v,
       scalaVersion := `scala-2-12`,
-      crossScalaVersions := Seq(`scala-2-11`, `scala-2-12`),
+      crossScalaVersions := ScalaVersions,
       publishTo := {
         val nexus = "https://oss.sonatype.org/"
         if (isSnapshot.value)
@@ -107,9 +109,7 @@ lazy val trembita_spark =
       libraryDependencies ++= {
         Seq(
           Spark.core % "provided",
-          Spark.core % "test",
           Spark.sql  % "provided",
-          Spark.sql  % "test",
           Macros.resetallattrs
         )
       }
@@ -209,7 +209,7 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     version := v,
     scalacOptions += "-Ypartial-unification",
     scalaVersion := `scala-2-12`,
-    crossScalaVersions := Seq(`scala-2-11`, `scala-2-12`),
+    crossScalaVersions := ScalaVersions,
     isSnapshot := snapshot,
     skip in publish := true,
     publish := {},
@@ -271,7 +271,7 @@ lazy val root = Project(id = "trembita", base = file("."))
     name := "trembita",
     version := v,
     scalaVersion := `scala-2-12`,
-    crossScalaVersions := Seq(`scala-2-11`, `scala-2-12`),
+    crossScalaVersions := ScalaVersions,
     scalacOptions += "-Ypartial-unification",
     isSnapshot := snapshot,
     skip in publish := true,
