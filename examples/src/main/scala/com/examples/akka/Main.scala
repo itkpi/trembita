@@ -8,8 +8,8 @@ import akka.util.ByteString
 import cats.effect.Console.io._
 import cats.effect._
 import cats.syntax.functor._
-import com.github.trembita._
-import com.github.trembita.akka_streams._
+import trembita._
+import trembita.akka_streams._
 import scala.concurrent.{ExecutionContext, Future}
 
 object Main extends IOApp {

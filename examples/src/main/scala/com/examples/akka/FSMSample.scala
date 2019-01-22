@@ -1,18 +1,16 @@
 package com.examples.akka
 
-import com.github.trembita.akka_streams._
+import trembita.akka_streams._
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, KillSwitches, UniqueKillSwitch}
 import akka.stream.scaladsl._
 import cats.effect.{ExitCode, IO, IOApp}
-import com.github.trembita.DataPipelineT
 import cats.effect.Console.io._
-import com.github.trembita._
-import com.github.trembita.fsm._
-import com.github.trembita.collections._
+import trembita._
+import trembita.fsm._
+import trembita.collections._
 import cats.implicits._
-import com.github.trembita.akka_streams.Akka
 
 import scala.concurrent.ExecutionContext
 import scala.io.StdIn

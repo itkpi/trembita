@@ -2,17 +2,16 @@ package com.examples.spark.streaming
 
 import cats.effect.{ExitCode, IO, IOApp}
 import org.apache.spark.sql._
-import com.github.trembita._
 import cats.implicits._
 import com.examples.kernel.NumbersReport
 import cats.effect.Console.io._
-import com.github.trembita.spark._
-import com.github.trembita.spark.streaming._
-import com.github.trembita.ql._
-import com.github.trembita.spark.streaming.SparkStreaming
+import trembita._
+import trembita.ql._
+import trembita.spark._
+import trembita.spark.streaming._
+import trembita.spark.streaming.SparkStreaming
 import org.apache.spark.SparkContext
 import org.apache.spark.streaming.{StreamingContext, Duration => StreamingDuration}
-
 import scala.concurrent.duration._
 import shapeless.syntax.singleton._
 

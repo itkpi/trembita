@@ -4,11 +4,11 @@ import java.nio.file.FileSystems
 import cats.Id
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.syntax.all._
-import com.github.trembita._
-import com.github.trembita.collections._
-import com.github.trembita.fsm._
-import com.github.trembita.spark.AsyncTimeout
-import com.github.trembita.spark.streaming.{SparkStreaming, _}
+import trembita._
+import trembita.collections._
+import trembita.fsm._
+import trembita.spark._
+import trembita.spark.streaming._
 import org.apache.spark._
 import org.apache.spark.sql.{Encoder, Encoders}
 import org.apache.spark.streaming.{StreamingContext, Duration => StreamingDuration}

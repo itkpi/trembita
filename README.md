@@ -4,9 +4,8 @@ Current version: 0.8.0-SNAPSHOT
 Scala version: 2.11.12, 2.12.8
 ---
 
-[![codecov](https://codecov.io/gh/vitaliihonta/trembita/branch/master/graph/badge.svg)](https://codecov.io/gh/vitaliihonta/trembita)
-[![Build Status](https://travis-ci.com/vitaliihonta/trembita.svg?branch=master)](https://travis-ci.com/vitaliihonta/trembita)
-
+[![codecov](https://codecov.io/gh/itkpi/trembita/branch/master/graph/badge.svg)](https://codecov.io/gh/itkpi/trembita)
+[![Build Status](https://travis-ci.com/itkpi/trembita.svg?branch=master)](https://travis-ci.com/itkpi/trembita)
 ![Cats Friendly Badge](https://typelevel.org/cats/img/cats-badge-tiny.png) 
 
 <img src="https://raw.githubusercontent.com/vitaliihonta/trembita/master/assets/trembita-p.png" alt="trembita"/>
@@ -23,9 +22,9 @@ libraryDependencies ++= {
   Seq(
     "ua.pp.itkpi" %% "trembita-kernel" % trembitaV, // kernel,
     
-    "ua.pp.itkpi" %% "trembita-cassandra-connector" % trembitaV, // cassandra
+    "ua.pp.itkpi" %% "trembita-cassandra" % trembitaV, // cassandra
     
-    "ua.pp.itkpi" %% "trembita-cassandra-connector-phantom" % trembitaV, // phantom
+    "ua.pp.itkpi" %% "trembita-phantom" % trembitaV, // phantom
     
     "ua.pp.itkpi" %% "trembita-slf4j" % trembitaV // slf4j, for logging    
   )
@@ -74,8 +73,8 @@ libraryDependencies ++= Seq(
 ### Asynchronous computations in spark
 Using spark integration you can even easily run asynchronous computations on spark with Futures:
 ```scala
-import com.github.trembita._
-import com.github.trembita.spark._
+import trembita._
+import trembita.spark._
 import org.apache.spark._
 import scala.concurrent.{ExecutionContext, Future}
 import java.util.concurrent.Executors
@@ -181,7 +180,7 @@ libraryDependencies += "ua.pp.itkpi" %% "trembita-akka-streams" % trembitaV
 You can run existing pipeline through akka stream or create a pipeline from source directly:
 ```scala
 import akka.stream.scaladsl._
-import com.github.trembita.akka._
+import trembita.akka_streams._
 
 val fileLines =
   Input.fromSourceF[IO, ByteString, Future[IOResult]](IO {

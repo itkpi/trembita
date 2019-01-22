@@ -2,8 +2,8 @@ package com.examples.kernel
 
 import cats.implicits._
 import cats.effect._
-import com.github.trembita._
-import com.github.trembita.ql._
+import trembita._
+import trembita.ql._
 import cats.effect.Console.io._
 import shapeless.syntax.singleton._
 import shapeless._

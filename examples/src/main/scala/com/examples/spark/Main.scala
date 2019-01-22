@@ -4,12 +4,12 @@ import java.util.concurrent.Executors
 import cats.effect.Console.io._
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.syntax.all._
-import com.github.trembita._
-import com.github.trembita.spark.{Spark, _}
+import trembita._
+import trembita.spark._
 import org.apache.spark._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import com.github.trembita.logging._
+import trembita.logging._
 
 /**
   * To run this example, you need a spark-cluster.

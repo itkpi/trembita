@@ -2,14 +2,13 @@ package com.examples.spark
 
 import cats.Id
 import cats.effect.{ExitCode, IO, IOApp}
-import com.github.trembita._
-import com.github.trembita.spark._
+import trembita._
+import trembita.spark._
 import cats.syntax.all._
 import cats.effect.Console.io._
-import com.github.trembita.fsm._
+import trembita.fsm._
 import org.apache.spark.sql.{Encoder, Encoders, SparkSession}
-import com.github.trembita.collections._
-import com.github.trembita.spark.Spark
+import trembita.collections._
 import scala.concurrent.duration._
 
 /**

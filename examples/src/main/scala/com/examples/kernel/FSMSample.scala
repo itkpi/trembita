@@ -1,11 +1,10 @@
 package com.examples.kernel
 
 import cats.effect.{ExitCode, IO, IOApp}
-import com.github.trembita.DataPipelineT
 import cats.effect.Console.io._
-import com.github.trembita._
-import com.github.trembita.fsm._
-import com.github.trembita.collections._
+import trembita._
+import trembita.fsm._
+import trembita.collections._
 import cats.implicits._
 
 object FSMSample extends IOApp {

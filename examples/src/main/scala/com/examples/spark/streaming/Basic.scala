@@ -1,11 +1,10 @@
 package com.examples.spark.streaming
 
 import java.util.concurrent.Executors
-
 import cats.effect.{ExitCode, IO, IOApp}
-import com.github.trembita._
-import com.github.trembita.spark._
-import com.github.trembita.spark.streaming._
+import trembita._
+import trembita.spark._
+import trembita.spark.streaming._
 import org.apache.spark._
 import org.apache.spark.streaming.{StreamingContext, Duration => StreamingDuration}
 import cats.syntax.all._

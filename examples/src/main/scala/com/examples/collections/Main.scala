@@ -3,7 +3,7 @@ package com.examples.collections
 import shapeless._
 import shapeless.nat._
 import cats.implicits._
-import com.github.trembita.collections.SizedAtLeast
+import trembita.collections.SizedAtLeast
 
 object Main {
   def main(args: Array[String]): Unit = {
