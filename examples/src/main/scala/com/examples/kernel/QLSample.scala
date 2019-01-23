@@ -6,7 +6,6 @@ import trembita._
 import trembita.ql._
 import cats.effect.Console.io._
 import shapeless.syntax.singleton._
-import shapeless._
 
 object QLSample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
@@ -52,11 +51,11 @@ object QLSample extends IOApp {
       .as[NumbersReport] // transforms directly into case class
       .into(Output.vector)
       .run
-      .flatTap { report =>
+      .flatMap { report =>
         putStrLn(s"Report: $report")
       }
 
-    (result.flatTap { result =>
+    (result.flatMap { result =>
       putStrLn("First one:") *>
         putStrLn(result.mkString("\n")) *>
         putStrLn("-------------------------")

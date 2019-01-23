@@ -278,5 +278,5 @@ lazy val root = Project(id = "trembita", base = file("."))
     publish := {},
     publishLocal := {},
     coverageExcludedPackages := ".*operations.*",
-    coverageExcludedFiles := ".*orderingInstances | .*arrows* | .*ToCaseClass*"
+    coverageExcludedFiles := ".*orderingInstances | .*arrows* | .*ToCaseClass* | .*22*"
   )

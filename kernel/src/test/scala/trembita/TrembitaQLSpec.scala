@@ -20,11 +20,12 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
 
   "A simple DataPipeline.query(...)" should "produce correct result" in {
     val pipeline = Input.sequential[Seq].create(Seq(3, 1, 2))
-    val result: Vector[QueryResult[Int, (Boolean :@ `divisible by 2`) &:: GNil, (Int :@ sum) *:: RNil]] =
+    val result =
       pipeline
         .query(
-          _.groupBy(expr[Int](_ % 2 == 0) as "divisible by 2")
-            .aggregate(col[Int] agg sum as "sum")
+          _.groupBy(
+            expr[Int](_ % 2 == 0) as "divisible by 2"
+          ).aggregate(col[Int] agg sum as "sum")
         )
         .into(Output.vector)
         .run
@@ -47,7 +48,7 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
 
   "A simple DataPipeline.query(...) with ordering records" should "produce correct result" in {
     val pipeline = Input.sequential[Seq].create(Seq(3, 1, 2))
-    val result: Vector[QueryResult[Int, (Boolean :@ `divisible by 2`) &:: GNil, (Int :@ sum) *:: RNil]] =
+    val result =
       pipeline
         .query(
           _.groupBy(expr[Int](_ % 2 == 0) as "divisible by 2")
@@ -75,11 +76,7 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
 
   "A complicated DataPipeline.query(...)" should "produce correct result" in {
     val pipeline = Input.sequential[Seq].create(Seq(3, 1, 8, 2))
-    val result: Vector[QueryResult[
-      Int,
-      (Boolean :@ `divisible by 2`) &:: (Int :@ `reminder of 3`) &:: (Boolean :@ positive) &:: GNil,
-      (String :@ `all digits`) *:: (Double :@ `avg number`) *:: (Int :@ `max integer`) *:: RNil
-    ]] =
+    val result =
       pipeline
         .query(
           _.groupBy(

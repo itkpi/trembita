@@ -1,6 +1,7 @@
 package trembita
 
 import cats._
+
 import language.{higherKinds, implicitConversions}
 import language.experimental.macros
 import shapeless._
@@ -9,6 +10,8 @@ import ql.AggDecl._
 import ql.QueryBuilder._
 import ql.GroupingCriteria._
 import shapeless.syntax.SingletonOps
+
+import scala.annotation.implicitNotFound
 import scala.reflect.ClassTag
 
 package object ql extends orderingInstances with aggregationInstances with monoidInstances with spire.std.AnyInstances with AggFunc.types {
@@ -29,6 +32,28 @@ package object ql extends orderingInstances with aggregationInstances with monoi
     @inline def apply[U](f: A => U): tagDsl[A, U] = new tagDsl[A, U](f)
   }
   class havingDsl[A, T](val `f`: A => Boolean) extends AnyVal
+  object havingDsl {
+    trait Converter[A, T] {
+      type AggR <: AggRes
+
+      def apply(dsl: havingDsl[A, T]): AggR => Boolean
+    }
+    object Converter {
+      @implicitNotFound("""
+      Cannot perform having operation on aggregation result ${AggR0} using predicate for ${A} :@ ${T}
+      Probably you using wrong aggregation tag for type ${A}.
+      Please inspect what aggregation result you'd tagged with ${T}"""
+      )
+      type Aux[A, T, AggR0 <: AggRes] = Converter[A, T] { type AggR = AggR0 }
+
+      implicit def fromGet[A, T, AggR0 <: AggRes](implicit gget: AggRes.Get.Aux[AggR0, T, A]): Converter.Aux[A, T, AggR0] =
+        new Converter[A, T] {
+          type AggR = AggR0
+
+          def apply(dsl: havingDsl[A, T]): AggR0 => Boolean = aggR => dsl.`f`(gget(aggR))
+        }
+    }
+  }
 
   @inline def expr[A]: exprDsl[A]                                         = new exprDsl[A]()
   @inline def col[A]: tagDsl[A, A]                                        = new tagDsl[A, A](identity)
