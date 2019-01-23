@@ -33,20 +33,4 @@ object ExprMagnet {
 
       def apply(): A => T %:: DNil = a => f(a) %:: DNil
     }
-
-  implicit def fromTupleExpr[A, T, D](t: T)(implicit ev: FromTuple.Aux[T, A => D]): ExprMagnet.Aux[T, A => D] =
-    new ExprMagnet[T] {
-      type Out = A => D
-
-      override def apply(): A => D = ev(t)
-    }
-
-  implicit def havingDslMagnet[A, T, AggR <: AggRes](dsl: havingDsl[A, T])(
-      implicit gget: AggRes.Get.Aux[AggR, T, A]
-  ): ExprMagnet.Aux[havingDsl[A, T], AggR => Boolean] =
-    new ExprMagnet[havingDsl[A, T]] {
-      type Out = AggR => Boolean
-
-      def apply(): AggR => Boolean = aggR => dsl.`f`(gget(aggR))
-    }
 }
