@@ -3,7 +3,7 @@ package trembita.outputs.internal
 import cats.kernel.Monoid
 import cats.{~>, Applicative, Id, Monad}
 import trembita._
-import trembita.operations.{CanFold, HasSize}
+import trembita.operations.{CanFold, CanReduce, HasSize}
 import trembita.outputs.Keep
 
 import scala.collection.generic.CanBuildFrom
@@ -303,47 +303,47 @@ object foreachDsl extends LowPriorityForeachConversions {
 }
 
 class reduceDsl[A](val `f`: (A, A) => A) extends AnyVal with Serializable {
-  @inline def apply[F[_], E <: Environment](ev: CanFold[E#Repr])(arrow: ev.Result ~> F) =
+  @inline def apply[F[_], E <: Environment](ev: CanReduce[E#Repr])(arrow: ev.Result ~> F) =
     new ReduceOutput[F, A, E, ev.Result](`f`)(ev)(arrow)
 }
 
 trait LowPriorityReduceConversions extends Serializable {
   implicit def dslToOutput[F[_], A, E <: Environment, R0[_]](dsl: reduceDsl[A])(
-      implicit canFold: CanFold.Aux[E#Repr, R0],
+      implicit canReduce: CanReduce.Aux[E#Repr, R0],
       arrow: R0 ~> F
-  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[β]]] = dsl[F, E](canFold)(arrow)
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[β]]] = dsl[F, E](canReduce)(arrow)
 
   implicit def dslToOutputApplicative[F[_]: Applicative, A, E <: Environment](dsl: reduceDsl[A])(
-      implicit canFold: CanFold.Aux[E#Repr, Id]
-  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[β]]] = dsl[F, E](canFold)(idTo[F])
+      implicit canReduce: CanReduce.Aux[E#Repr, Id]
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[β]]] = dsl[F, E](canReduce)(idTo[F])
 }
 
 object reduceDsl extends LowPriorityReduceConversions {
   implicit def dslToOutputId[A, E <: Environment](dsl: reduceDsl[A])(
-      implicit canFold: CanFold.Aux[E#Repr, Id]
-  ): OutputT.Aux[Id, A, E, λ[(G[_], β) => G[β]]] = dsl[Id, E](canFold)(identityK[Id])
+      implicit canReduce: CanReduce.Aux[E#Repr, Id]
+  ): OutputT.Aux[Id, A, E, λ[(G[_], β) => G[β]]] = dsl[Id, E](canReduce)(identityK[Id])
 }
 
 class reduceOptDsl[A](val `f`: (A, A) => A) extends AnyVal with Serializable {
-  @inline def apply[F[_], E <: Environment](ev: CanFold[E#Repr])(arrow: ev.Result ~> F) =
+  @inline def apply[F[_], E <: Environment](ev: CanReduce[E#Repr])(arrow: ev.Result ~> F) =
     new ReduceOptOutput[F, A, E, ev.Result](`f`)(ev)(arrow)
 }
 
 trait LowPriorityReduceOptDsl extends Serializable {
   implicit def dslToOutputT[F[_], A, E <: Environment, R0[_]](dsl: reduceOptDsl[A])(
-      implicit canFold: CanFold.Aux[E#Repr, R0],
+      implicit canReduce: CanReduce.Aux[E#Repr, R0],
       arrow: R0 ~> F
-  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[Option[β]]]] = dsl[F, E](canFold)(arrow)
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[Option[β]]]] = dsl[F, E](canReduce)(arrow)
 
   implicit def dslToOutputApplicative[F[_]: Applicative, A, E <: Environment](dsl: reduceOptDsl[A])(
-      implicit canFold: CanFold.Aux[E#Repr, Id]
-  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[Option[β]]]] = dsl[F, E](canFold)(idTo)
+      implicit canReduce: CanReduce.Aux[E#Repr, Id]
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[Option[β]]]] = dsl[F, E](canReduce)(idTo)
 }
 
 object reduceOptDsl extends LowPriorityReduceOptDsl {
   implicit def dslToOutputId[A, E <: Environment](dsl: reduceOptDsl[A])(
-      implicit canFold: CanFold.Aux[E#Repr, Id]
-  ): OutputT.Aux[Id, A, E, λ[(G[_], β) => G[Option[β]]]] = dsl[Id, E](canFold)(identityK[Id])
+      implicit canReduce: CanReduce.Aux[E#Repr, Id]
+  ): OutputT.Aux[Id, A, E, λ[(G[_], β) => G[Option[β]]]] = dsl[Id, E](canReduce)(identityK[Id])
 }
 
 class foldDsl[A](val `this`: (A, (A, A) => A)) extends AnyVal with Serializable {

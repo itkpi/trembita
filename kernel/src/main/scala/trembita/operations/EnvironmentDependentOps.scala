@@ -209,6 +209,31 @@ trait EnvironmentDependentOps[F[_], A, E <: Environment] extends Any {
   def memoize()(implicit F: Monad[F], E: E, run: E#Run[F], A: ClassTag[A]): DataPipelineT[F, A, E] =
     EvaluatedSource.make[F, A, E](evalRepr.asInstanceOf[F[E#Repr[A]]] /* The cast is not redundant! Do not trust IDEA =) */, F)
 
+  /**
+    * Special case of [[distinctBy]]
+    * Guarantees that each element of pipeline is unique
+    *
+    * CONTRACT: the caller is responsible for correct {{{equals}}}
+    * implemented for type [[A]]
+    *
+    * @return - pipeline with only unique elements
+    **/
+  def distinct(implicit canDistinct: CanDistinct[E#Repr], A: ClassTag[A], F: Monad[F], E: E, run: E#Run[F]): DataPipelineT[F, A, E] =
+    `this`.mapRepr(canDistinct.distinct)
+
+  /**
+    * Guarantees that each element of pipeline is unique
+    * according to the given criteria
+    *
+    * CONTRACT: the caller is responsible for correct {{{equals}}}
+    *
+    * @return - pipeline with only unique elements
+    **/
+  def distinctBy[K: ClassTag](
+      f: A => K
+  )(implicit canDistinctBy: CanDistinctBy[E#Repr], F: Monad[F], A: ClassTag[A], E: E, run: E#Run[F]): DataPipelineT[F, A, E] =
+    `this`.mapRepr(canDistinctBy.distinctBy(_)(f))
+
   private def widen(run: E#Run[F])(implicit E: E): E.Run[F] =
     run.asInstanceOf[E.Run[F]]
 

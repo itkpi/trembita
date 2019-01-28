@@ -18,7 +18,7 @@ Trembita allows you to make complicated transformation pipelines where some of t
 ```scala
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 libraryDependencies ++= {
-  val trembitaV = "0.8.0-SNAPSHOT"
+  val trembitaV = "0.8.1-SNAPSHOT"
   Seq(
     "ua.pp.itkpi" %% "trembita-kernel" % trembitaV, // kernel,
     
@@ -45,6 +45,7 @@ libraryDependencies ++= {
 - [Cassandra](http://cassandra.apache.org/)
 - Cassandra using [phantom](https://github.com/outworkers/phantom))
 - [Infinispan](http://infinispan.org/)
+- [Java8 streams](https://www.oracle.com/technetwork/articles/java/ma14-java-se-8-streams-2177646.html)
 
 ## Processing modules
 - [kernel](./kernel) - lazy (parallel) data pipelines, QL for grouping/aggregations and stateful computations using [Cats](https://github.com/typelevel/cats) and [Shapeless](https://github.com/milessabin/shapeless) 
@@ -216,6 +217,13 @@ Run scripts:
 - [basic](./examples/src/main/resources/spark/cluster/run_streaming.sh)
 - [FSM](./examples/src/main/resources/spark/cluster/run_streaming_fsm.sh)
 - [QL](./examples/src/main/resources/spark/cluster/run_streaming_ql.sh)
+
+## java.util.stream integration
+```scala
+libraryDependencies += "ua.pp.itkpi" %%  "trembita-java-streams" % trembitaV
+```
+
+See [sources](integrations/java/streams) and [tests](integrations/java/streams/src/test/scala/trembita/jstreams) for examples
 
 ## To be done
 - [x] caching
