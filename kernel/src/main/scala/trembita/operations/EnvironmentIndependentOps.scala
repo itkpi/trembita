@@ -40,29 +40,6 @@ trait EnvironmentIndependentOps[F[_], A, E <: Environment] extends Any {
       A: ClassTag[A]
   ): DataPipelineT[F, (K, Iterable[A]), E] = GroupByOrderedPipelineT.make[F, K, A, E](f, `this`, F, canGroupByOrdered)
 
-  /**
-    * Special case of [[distinctBy]]
-    * Guarantees that each element of pipeline is unique
-    *
-    * CONTRACT: the caller is responsible for correct {{{equals}}}
-    * implemented for type [[A]]
-    *
-    * @return - pipeline with only unique elements
-    **/
-  def distinct(implicit canGroupBy: CanGroupBy[E#Repr], A: ClassTag[A], F: Monad[F]): DataPipelineT[F, A, E] =
-    distinctBy(identity)
-
-  /**
-    * Guarantees that each element of pipeline is unique
-    * according to the given criteria
-    *
-    * CONTRACT: the caller is responsible for correct {{{equals}}}
-    *
-    * @return - pipeline with only unique elements
-    **/
-  def distinctBy[K: ClassTag](f: A => K)(implicit canGroupBy: CanGroupBy[E#Repr], F: Monad[F], A: ClassTag[A]): DataPipelineT[F, A, E] =
-    groupBy(f).mapImpl(_._2.head)
-
   def zip[B: ClassTag](
       that: DataPipelineT[F, B, E]
   )(implicit A: ClassTag[A], F: Monad[F], canZip: CanZip[E#Repr]): DataPipelineT[F, (A, B), E] =

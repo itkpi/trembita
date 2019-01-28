@@ -3,7 +3,7 @@ import Dependencies._
 
 lazy val snapshot: Boolean = true
 lazy val v: String = {
-  val vv = "0.8.0"
+  val vv = "0.8.1"
   if (!snapshot) vv
   else vv + "-SNAPSHOT"
 }
@@ -190,6 +190,20 @@ lazy val trembita_caching_infinispan =
       )
     )
 
+lazy val trembita_java_streams =
+  sonatypeProject(id = "trembita-java-streams", base = file("./integrations/java/streams"))
+    .dependsOn(kernel)
+    .settings(
+      name := "trembita_java_streams",
+      version := v,
+      scalacOptions ++= Seq(
+        "-Ypartial-unification",
+        "-language:experimental.macros",
+        "-target:jvm-1.8"
+      ),
+      libraryDependencies += ScalaCompat.java8compat
+    )
+
 lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
   .dependsOn(
     collection_extentions,
@@ -202,7 +216,8 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     seamless_akka_spark,
     trembita_spark_streaming,
     trembita_caching,
-    trembita_caching_infinispan
+    trembita_caching_infinispan,
+    trembita_java_streams
   )
   .settings(
     name := "trembita-examples",
@@ -265,7 +280,8 @@ lazy val root = Project(id = "trembita", base = file("."))
     trembita_caching,
     trembita_caching_infinispan,
     log4j,
-    logging_commons
+    logging_commons,
+    trembita_java_streams
   )
   .settings(
     name := "trembita",

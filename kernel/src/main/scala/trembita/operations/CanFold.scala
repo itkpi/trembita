@@ -11,14 +11,11 @@ import scala.reflect.ClassTag
     ${F} does not support fold operation or it is not efficient.
     If you want to fold ${F}, please provide an implicit instance in scope
   """)
-trait CanFold[F[_]] extends Serializable {
+trait CanFold[F[_]] extends CanReduce[F] {
   type Result[_]
+
   def fold[A: ClassTag](fa: F[A])(zero: A)(f: (A, A) => A): Result[A] =
     foldLeft(fa)(zero)(f)
-
-  def reduceOpt[A: ClassTag](fa: F[A])(f: (A, A) => A): Result[Option[A]]
-
-  def reduce[A: ClassTag](fa: F[A])(f: (A, A) => A): Result[A]
 
   def foldLeft[A: ClassTag, B: ClassTag](fa: F[A])(zero: B)(
       f: (B, A) => B

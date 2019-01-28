@@ -2,12 +2,12 @@ package trembita.outputs.internal
 
 import cats.{~>, Monad}
 import trembita._
-import trembita.operations.{CanFold, HasSize}
+import trembita.operations.{CanFold, CanReduce, HasSize}
 import scala.reflect.ClassTag
 import scala.language.higherKinds
 
 class ReduceOutput[F[_], @specialized(Specializable.BestOfBreed) A, E <: Environment, R0[_]](f: (A, A) => A)(
-    canFold: CanFold.Aux[E#Repr, R0]
+    canFold: CanReduce.Aux[E#Repr, R0]
 )(arrow: R0 ~> F)
     extends OutputT[F, A, E] {
   final type Out[G[_], β] = G[β]
@@ -19,7 +19,7 @@ class ReduceOutput[F[_], @specialized(Specializable.BestOfBreed) A, E <: Environ
 }
 
 class ReduceOptOutput[F[_], @specialized(Specializable.BestOfBreed) A, E <: Environment, R0[_]](f: (A, A) => A)(
-    canFold: CanFold.Aux[E#Repr, R0]
+    canFold: CanReduce.Aux[E#Repr, R0]
 )(arrow: R0 ~> F)
     extends OutputT[F, A, E] {
   type Out[G[_], β] = G[Option[β]]

@@ -186,6 +186,12 @@ package object spark extends LowPriorityInstancesForSpark {
 
   implicit val canGroupByRDD: CanGroupBy[RDD] = new CanGroupBy[RDD] {
     def groupBy[K: ClassTag, V: ClassTag](fa: RDD[V])(f: V => K): RDD[(K, Iterable[V])] = fa.groupBy(f)
+
+    def distinctBy[A: ClassTag, B: ClassTag](fa: RDD[A])(
+        f: A => B
+    ): RDD[A] = fa.map(a => f(a) -> a).reduceByKey((a, b) => a).map(_._2)
+
+    override def distinct[A: ClassTag](fa: RDD[A]): RDD[A] = fa.distinct()
   }
 
   implicit val canZipRDD: CanZip[RDD] = new CanZip[RDD] {

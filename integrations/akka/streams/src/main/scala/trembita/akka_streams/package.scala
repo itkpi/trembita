@@ -11,6 +11,7 @@ import trembita.operations._
 import trembita.outputs.internal.{outputWithoutPropsDsl, OutputDsl, OutputT}
 
 import scala.collection.immutable.SortedMap
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.{higherKinds, implicitConversions}
@@ -84,6 +85,21 @@ package object akka_streams {
         }
 
       vs.map(v => f(v) -> v).via(groupFlow)
+    }
+
+    def distinctBy[A: ClassTag, B: ClassTag](fa: Source[A, Mat])(
+        f: A => B
+    ): Source[A, Mat] = {
+      val distinctByFlow: Flow[A, A, NotUsed] = Flow[A]
+        .fold((Set.empty[B], Vector.empty[A])) {
+          case (acc0 @ (seen, values), a) =>
+            val b = f(a)
+            if (seen(b)) acc0
+            else (seen + b, values :+ a)
+        }
+        .mapConcat(_._2)
+
+      fa.via(distinctByFlow)
     }
   }
 
