@@ -1,6 +1,6 @@
 ---
 Project: Trembita
-Current version: 0.8.0-SNAPSHOT
+Current version: 0.8.1-SNAPSHOT
 Scala version: 2.11.12, 2.12.8
 ---
 

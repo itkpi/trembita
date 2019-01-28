@@ -32,6 +32,7 @@ def sonatypeProject(id: String, base: File) =
         else
           Some("releases" at nexus + "service/local/staging/deploy/maven2")
       },
+      updateOptions := updateOptions.value.withGigahorse(false),
       scalacOptions ++= Seq("-Ypartial-unification", "-feature"),
       sourceDirectory in Jmh := (sourceDirectory in Test).value,
       classDirectory in Jmh := (classDirectory in Test).value,
