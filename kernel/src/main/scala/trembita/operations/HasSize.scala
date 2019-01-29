@@ -1,6 +1,7 @@
 package trembita.operations
 
-import cats.Id
+import cats.{Functor, Id}
+
 import scala.annotation.implicitNotFound
 import scala.collection.parallel.immutable.ParVector
 import scala.language.higherKinds
@@ -27,4 +28,16 @@ object HasSize {
       type Result[X] = X
       def size[A](fa: ParVector[A]): Int = fa.size
     }
+}
+@implicitNotFound("""
+    ${F} does not provide an efficient way to calculate its (potentially big) size.
+    Please provide an implicit instance in scope if necessary
+    """)
+trait HasBigSize[F[_]] extends Serializable {
+  type Result[_]
+  def size[A](fa: F[A]): Result[Long]
+}
+
+object HasBigSize {
+  type Aux[F[_], R0[_]] = HasBigSize[F] { type Result[X] = R0[X] }
 }

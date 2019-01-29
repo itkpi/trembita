@@ -1,6 +1,6 @@
 ---
 Project: Trembita
-Current version: 0.8.1-SNAPSHOT
+Current version: 0.8.2-SNAPSHOT
 Scala version: 2.11.12, 2.12.8
 ---
 
@@ -18,7 +18,7 @@ Trembita allows you to make complicated transformation pipelines where some of t
 ```scala
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 libraryDependencies ++= {
-  val trembitaV = "0.8.1-SNAPSHOT"
+  val trembitaV = "0.8.2-SNAPSHOT"
   Seq(
     "ua.pp.itkpi" %% "trembita-kernel" % trembitaV, // kernel,
     

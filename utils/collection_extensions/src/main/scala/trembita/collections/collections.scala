@@ -2,10 +2,14 @@ package trembita
 import cats.{Monad, Monoid}
 import cats.implicits._
 
+import scala.collection.{GenIterable, GenMap, GenTraversable, GenTraversableOnce}
+import scala.collection.generic.CanBuildFrom
 import scala.collection.immutable.SortedMap
+import scala.collection.parallel.ParMap
+import scala.language.higherKinds
 
 package object collections {
-  implicit class IterableExtended[A](val self: Iterable[A]) extends AnyVal {
+  implicit class IterableExtended[A](val self: GenIterable[A]) extends AnyVal {
     def minMax(implicit cmp: Ordering[A]): (A, A) = {
       if (self.isEmpty)
         throw new UnsupportedOperationException("empty.minMax")
@@ -37,16 +41,17 @@ package object collections {
       if (self.isEmpty) None
       else Some(self.minMaxBy(f))
 
-    def mergeConcat[K, V](
-        rhs: Map[K, V]
-    )(concatOp: (V, V) => V)(implicit ev: A <:< (K, V)): Map[K, V] = {
+    def mergeConcat[K, V, Col[_]](
+        rhs: GenTraversable[(K, V)]
+    )(concatOp: (V, V) => V)(implicit ev: A <:< (K, V), cbf: CanBuildFrom[Nothing, (K, V), Col[(K, V)]]): Col[(K, V)] = {
       val lfs = self.toMap[K, V]
       lfs
-        .foldLeft(rhs.map { case (k, v) => k -> (v :: Nil) }) {
+        .foldLeft(rhs.map { case (k, v) => k -> (v :: Nil) }.toMap) {
           case (acc, (k, v)) if acc contains k => acc.updated(k, v :: acc(k))
           case (acc, (k, v))                   => acc + (k -> (v :: Nil))
         }
-        .mapValues(_.reduce[V](concatOp))
+        .map { case (k, vs) => k -> vs.reduce[V](concatOp) }
+        .to[Col]
     }
 
     def merge[K, V: Monoid](

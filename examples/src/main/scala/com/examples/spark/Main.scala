@@ -54,7 +54,7 @@ object Main extends IOApp {
           }
           .mapK(serializableFutureToIO)
           .map(_.getOrElse(-100500))
-          .mapM { i =>
+          .mapM { i: Int =>
             IO { scala.util.Random.nextInt(10) + i }
           }
           // will be executed locally in parallel

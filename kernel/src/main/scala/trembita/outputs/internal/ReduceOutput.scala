@@ -1,8 +1,9 @@
 package trembita.outputs.internal
 
-import cats.{~>, Monad}
+import cats.{Monad, ~>}
 import trembita._
-import trembita.operations.{CanFold, CanReduce, HasSize}
+import trembita.operations.{CanFold, CanReduce, HasBigSize, HasSize}
+
 import scala.reflect.ClassTag
 import scala.language.higherKinds
 
@@ -58,5 +59,13 @@ class SizeOutput[F[_], @specialized(Specializable.BestOfBreed) A, E <: Environme
   type Out[G[_], β] = G[Int]
 
   def apply(pipeline: DataPipelineT[F, A, E])(implicit F: Monad[F], E: E, run: E#Run[F], A: ClassTag[A]): F[Int] =
+    F.flatMap(pipeline.evalRepr)(repr => arrow(hasSize.size(repr)))
+}
+
+class SizeOutput2[F[_], @specialized(Specializable.BestOfBreed) A, E <: Environment, R0[_]](hasSize: HasBigSize.Aux[E#Repr, R0])(arrow: R0 ~> F)
+  extends OutputT[F, A, E] {
+  type Out[G[_], β] = G[Long]
+
+  def apply(pipeline: DataPipelineT[F, A, E])(implicit F: Monad[F], E: E, run: E#Run[F], A: ClassTag[A]): F[Long] =
     F.flatMap(pipeline.evalRepr)(repr => arrow(hasSize.size(repr)))
 }

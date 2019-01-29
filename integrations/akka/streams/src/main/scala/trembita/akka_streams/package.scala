@@ -16,6 +16,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.{higherKinds, implicitConversions}
 import scala.reflect.ClassTag
+import trembita.collections._
 
 package object akka_streams {
   implicit class AkkaOps[F[_], A, Mat](
@@ -182,5 +183,37 @@ package object akka_streams {
             A: ClassTag[A]
         ): F[Mat1] = F.map(pipeline.evalRepr)(_.runWith(sink))
       }
+  }
+
+  implicit def canReduceStreamByKey[Mat]: CanReduceByKey[Source[?, Mat]] = new CanReduceByKey[Source[?, Mat]] {
+    def reduceByKey[K: ClassTag, V: ClassTag](fa: Source[(K, V), Mat])(
+        reduce: (V, V) => V
+    ): Source[(K, V), Mat] = {
+      val reduceByKeyFlow: Flow[(K, V), (K, V), NotUsed] = Flow[(K, V)]
+        .fold(Map.empty[K, V]) {
+          case (m, (k, v)) if m contains k => m.updated(k, reduce(m(k), v))
+          case (m, (k, v))                 => m + (k -> v)
+        }
+        .mapConcat { x =>
+          x
+        }
+
+      fa.via(reduceByKeyFlow)
+    }
+  }
+
+  implicit def canCombineStreamByKey[Mat]: CanCombineByKey[Source[?, Mat]] = new CanCombineByKey[Source[?, Mat]] {
+    def combineByKey[K: ClassTag, V: ClassTag, C: ClassTag](
+        fa: Source[(K, V), Mat]
+    )(init: V => C, addValue: (C, V) => C, mergeCombiners: (C, C) => C): Source[(K, C), Mat] = {
+      val groupFlow: Flow[(K, V), (K, C), NotUsed] =
+        Flow[(K, V)]
+          .fold(Map.empty[K, C]) {
+            case (m, (k, v)) => m.modify(k, init(v))(addValue(_, v))
+          }
+          .mapConcat(x => x)
+
+      fa.via(groupFlow)
+    }
   }
 }

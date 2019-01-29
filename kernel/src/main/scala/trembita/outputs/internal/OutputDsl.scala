@@ -3,7 +3,7 @@ package trembita.outputs.internal
 import cats.kernel.Monoid
 import cats.{~>, Applicative, Id, Monad}
 import trembita._
-import trembita.operations.{CanFold, CanReduce, HasSize}
+import trembita.operations.{CanFold, CanReduce, HasBigSize, HasSize}
 import trembita.outputs.Keep
 
 import scala.collection.generic.CanBuildFrom
@@ -393,6 +393,9 @@ object foldLeftDsl extends LowPriorityFoldLeftConversions {
 class sizeDsl(val `dummy`: Boolean = true) extends AnyVal with Serializable {
   def apply[F[_], A, E <: Environment](ev: HasSize[E#Repr])(arrow: ev.Result ~> F) =
     new SizeOutput[F, A, E, ev.Result](ev)(arrow)
+
+  def apply[F[_], A, E <: Environment](ev: HasBigSize[E#Repr])(arrow: ev.Result ~> F) =
+    new SizeOutput2[F, A, E, ev.Result](ev)(arrow)
 }
 
 trait LowPrioritySizeConversions extends Serializable {
@@ -406,11 +409,27 @@ trait LowPrioritySizeConversions extends Serializable {
       implicit hasSize: HasSize.Aux[E#Repr, Id]
   ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[Int]]] =
     dsl[F, A, E](hasSize)(idTo[F])
+
+  implicit def dslBigSizeToOutputT[F[_], A, E <: Environment, R0[_]](dsl: sizeDsl)(
+      implicit hasSize: HasBigSize.Aux[E#Repr, R0],
+      arrow: R0 ~> F
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[Long]]] =
+    dsl[F, A, E](hasSize)(arrow)
+
+  implicit def dslToOutputBigSizeApplicative[F[_]: Applicative, A, E <: Environment, R0[_]](dsl: sizeDsl)(
+      implicit hasSize: HasBigSize.Aux[E#Repr, Id]
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[Long]]] =
+    dsl[F, A, E](hasSize)(idTo[F])
 }
 
 object sizeDsl extends LowPrioritySizeConversions {
   implicit def dslToOutputId[A, E <: Environment, R0[_]](dsl: sizeDsl)(
       implicit hasSize: HasSize.Aux[E#Repr, Id]
   ): OutputT.Aux[Id, A, E, λ[(G[_], β) => G[Int]]] =
+    dsl[Id, A, E](hasSize)(identityK[Id])
+
+  implicit def dslToOutputIdBigSize[A, E <: Environment, R0[_]](dsl: sizeDsl)(
+      implicit hasSize: HasBigSize.Aux[E#Repr, Id]
+  ): OutputT.Aux[Id, A, E, λ[(G[_], β) => G[Long]]] =
     dsl[Id, A, E](hasSize)(identityK[Id])
 }

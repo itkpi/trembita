@@ -3,7 +3,7 @@ import Dependencies._
 
 lazy val snapshot: Boolean = true
 lazy val v: String = {
-  val vv = "0.8.1"
+  val vv = "0.8.2"
   if (!snapshot) vv
   else vv + "-SNAPSHOT"
 }
@@ -205,6 +205,45 @@ lazy val trembita_java_streams =
       libraryDependencies += ScalaCompat.java8compat
     )
 
+lazy val bench = Project(id = "trembita-bench", base = file("./bench"))
+  .enablePlugins(JmhPlugin)
+  .dependsOn(
+    collection_extentions,
+    kernel,
+    slf4j,
+    cassandra_connector,
+    cassandra_connector_phantom,
+    trembita_spark,
+    trembita_akka_streamns,
+    seamless_akka_spark,
+    trembita_spark_streaming,
+    trembita_caching,
+    trembita_caching_infinispan,
+    trembita_java_streams
+  )
+  .settings(
+    name := "trembita-bench",
+    version := v,
+    scalacOptions += "-Ypartial-unification",
+    scalaVersion := `scala-2-12`,
+    crossScalaVersions := ScalaVersions,
+    isSnapshot := snapshot,
+    skip in publish := true,
+    publish := {},
+    publishLocal := {},
+    addCompilerPlugin(
+      "org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full
+    ),
+    addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.8"),
+    libraryDependencies ++= {
+      Seq(
+        Spark.core,
+        Spark.sql,
+        Spark.streaming
+      ).map(_ exclude ("org.slf4j", "log4j-over-slf4j"))
+    }
+  )
+
 lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
   .dependsOn(
     collection_extentions,
@@ -268,6 +307,7 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
   )
 
 lazy val root = Project(id = "trembita", base = file("."))
+  .dependsOn(bench, examples)
   .aggregate(
     collection_extentions,
     kernel,

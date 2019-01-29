@@ -8,7 +8,9 @@ import scala.reflect.ClassTag
 
 package object trembita extends standardMagnets with arrows with lowPriorityTricks {
 
-  type DataPipeline[A, E <: Environment] = DataPipelineT[Id, A, E]
+  type DataPipeline[A, E <: Environment]    = DataPipelineT[Id, A, E]
+  type Supports[E <: Environment, Op[_[_]]] = Op[E#Repr]
+  type Run[F[_], E <: Environment]          = E#Run[F]
 
   implicit class CommonOps[F[_], A, E <: Environment](
       val `this`: DataPipelineT[F, A, E]
@@ -28,27 +30,68 @@ package object trembita extends standardMagnets with arrows with lowPriorityTric
     * Operations for [[DataPipelineT]] of tuples
     * (NOT [[MapPipelineT]])
     **/
-  implicit class PairPipelineOps[F[_], K, V, Ex <: Environment](
-      val self: PairPipelineT[F, K, V, Ex]
+  implicit class PairPipelineOps[F[_], K, V, E <: Environment](
+      val self: PairPipelineT[F, K, V, E]
   ) extends AnyVal {
     def mapValues[W](
         f: V => W
-    )(implicit F: Monad[F]): PairPipelineT[F, K, W, Ex] = self.mapImpl {
+    )(implicit F: Monad[F]): PairPipelineT[F, K, W, E] = self.mapImpl {
       case (k, v) => (k, f(v))
     }
 
-    def keys(implicit F: Monad[F], K: ClassTag[K]): DataPipelineT[F, K, Ex] =
+    def keys(implicit F: Monad[F], K: ClassTag[K]): DataPipelineT[F, K, E] =
       self.mapImpl(_._1)
 
-    def values(implicit F: Monad[F], V: ClassTag[V]): DataPipelineT[F, V, Ex] =
+    def values(implicit F: Monad[F], V: ClassTag[V]): DataPipelineT[F, V, E] =
       self.mapImpl(_._2)
 
     /** @return - [[MapPipelineT]] */
-    def toMapPipeline(implicit K: ClassTag[K], V: ClassTag[V], F: Monad[F]): MapPipelineT[F, K, V, Ex] =
-      new BaseMapPipelineT[F, K, V, Ex](
-        self.asInstanceOf[DataPipelineT[F, (K, V), Ex]],
+    def toMapPipeline(implicit K: ClassTag[K], V: ClassTag[V], F: Monad[F]): MapPipelineT[F, K, V, E] =
+      new BaseMapPipelineT[F, K, V, E](
+        self.asInstanceOf[DataPipelineT[F, (K, V), E]],
         F
       )
+
+    def reduceByKey(f: (V, V) => V)(
+        implicit canReduceByKey: CanReduceByKey[E#Repr],
+        F: Monad[F],
+        E: E,
+        run: E#Run[F],
+        K: ClassTag[K],
+        V: ClassTag[V]
+    ): DataPipelineT[F, (K, V), E] = self.mapRepr { repr =>
+      canReduceByKey.reduceByKey(repr)(f)
+    }
+
+    def combineByKey[C: ClassTag](
+        init: V => C,
+        addValue: (C, V) => C,
+        mergeCombiners: (C, C) => C
+    )(
+        implicit canCombineByKey: CanCombineByKey[E#Repr],
+        F: Monad[F],
+        E: E,
+        run: E#Run[F],
+        K: ClassTag[K],
+        V: ClassTag[V]
+    ): DataPipelineT[F, (K, C), E] = self.mapRepr { repr =>
+      canCombineByKey.combineByKey(repr)(init, addValue, mergeCombiners)
+    }
+
+    def combineByKey[C: ClassTag](parallelism: Int)(
+        init: V => C,
+        addValue: (C, V) => C,
+        mergeCombiners: (C, C) => C
+    )(
+        implicit canCombineByKey: CanCombineByKeyWithParallelism[E#Repr],
+        F: Monad[F],
+        E: E,
+        run: E#Run[F],
+        K: ClassTag[K],
+        V: ClassTag[V]
+    ): DataPipelineT[F, (K, C), E] = self.mapRepr { repr =>
+      canCombineByKey.combineByKey(repr, parallelism)(init, addValue, mergeCombiners)
+    }
   }
 
   type PipeT[F[_], A, B, E <: Environment] = Kleisli[DataPipelineT[F, ?, E], DataPipelineT[F, A, E], B]

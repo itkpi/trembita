@@ -2,24 +2,24 @@ package trembita.spark
 
 import cats.effect.{IO, Sync}
 import cats.{Id, Monad}
+import org.apache.spark.{HashPartitioner, Partitioner}
 import trembita._
 import trembita.fsm.{FSM, InitialState}
 import trembita.inputs.InputT
 import trembita.internal.EvaluatedSource
-import trembita.operations.{CanGroupByOrdered, LiftPipeline, MagnetF}
+import trembita.operations._
 import trembita.ql.QueryBuilder.Query
 import trembita.ql.{AggDecl, AggRes, GroupingCriteria, QueryBuilder, QueryResult}
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.dstream.DStream
+
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.reflect.ClassTag
 import scala.language.{higherKinds, implicitConversions}
 
 package object streaming extends injections {
-  implicit class SparkStreamingOps[F[_], A](val `this`: DataPipelineT[F, A, SparkStreaming])
-      extends AnyVal
-      with MagnetlessSparkStreamingBasicOps[F, A] {
+  implicit class SparkStreamingOps[F[_], A](val `this`: DataPipelineT[F, A, SparkStreaming]) extends AnyVal {
     def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
         queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb]
     )(implicit trembitaqlForSparkStreaming: trembitaqlForSparkStreaming[A, G, T, R, Comb],
@@ -44,8 +44,6 @@ package object streaming extends injections {
       `this`.mapMImpl[A, B](magnet.prepared)
 
   }
-
-  implicit class SparkIOOps[A](val `this`: DataPipelineT[IO, A, SparkStreaming]) extends AnyVal with MagnetlessSparkStreamingIOOps[A]
 
   implicit def magnetFFromSpark[F[_], A, B](
       f: A => F[B]
@@ -132,5 +130,20 @@ package object streaming extends injections {
 
   implicit class OutputCompanionSparkStreamingExtensions(val `this`: Output.type) extends AnyVal {
     @inline def start = new StartDsl
+  }
+
+  implicit val canReduceDStreamByKey: CanReduceByKey[DStream] = new CanReduceByKey[DStream] {
+    def reduceByKey[K: ClassTag, V: ClassTag](fa: DStream[(K, V)])(
+        reduce: (V, V) => V
+    ): DStream[(K, V)] = fa.reduceByKey(reduce)
+  }
+
+  case class DStreamCombineByKeyProps(partitioner: Partitioner, mapSideCombine: Boolean = true)
+
+  implicit def canCombineDStreamByKey(implicit props: DStreamCombineByKeyProps): CanCombineByKey[DStream] = new CanCombineByKey[DStream] {
+    def combineByKey[K: ClassTag, V: ClassTag, C: ClassTag](
+        fa: DStream[(K, V)]
+    )(init: V => C, addValue: (C, V) => C, mergeCombiners: (C, C) => C): DStream[(K, C)] =
+      fa.combineByKey(init, addValue, mergeCombiners, props.partitioner, props.mapSideCombine)
   }
 }

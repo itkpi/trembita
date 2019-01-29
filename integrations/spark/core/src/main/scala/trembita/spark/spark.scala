@@ -11,6 +11,8 @@ import trembita.ql.{AggDecl, AggRes, GroupingCriteria, QueryBuilder, QueryResult
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Column, Dataset, Encoder, SparkSession}
+import shapeless.=:!=
+
 import scala.collection.parallel.immutable.ParVector
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.{higherKinds, implicitConversions}
@@ -99,7 +101,15 @@ package object spark extends LowPriorityInstancesForSpark {
   implicit def runIOOnSpark(implicit timeout: AsyncTimeout): RunOnSpark[IO] =
     new RunIOOnSpark(timeout)
 
-  implicit class SparkOps[F[_], A](val `this`: DataPipelineT[F, A, Spark]) extends AnyVal with MagnetlessSparkBasicOps[F, A] {
+  implicit class MagnetlessSparkOpsImpl[F[_], A, E <: BaseSpark](val `this`: DataPipelineT[F, A, E])
+      extends AnyVal
+      with MagnetlessOps[F, A, E]
+
+  implicit class MagnetlessSparkIOOpsImpl[A, E <: BaseSpark](val `this`: DataPipelineT[IO, A, E])
+      extends AnyVal
+      with MagnetlessSparkIOOps[A, E]
+
+  implicit class SparkOps[F[_], A](val `this`: DataPipelineT[F, A, Spark]) extends AnyVal {
     def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
         queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb]
     )(implicit trembitaqlForSpark: trembitaqlForSpark[A, G, T, R, Comb],
@@ -112,7 +122,9 @@ package object spark extends LowPriorityInstancesForSpark {
       `this`.mapMImpl[A, B](magnet.prepared)
   }
 
-  implicit class SparkIOOps[A](val `this`: DataPipelineT[IO, A, Spark]) extends AnyVal with MagnetlessSparkIOOps[A]
+  implicit def sparkIOMagnetF[E <: BaseSpark, A, B](f: A => IO[B]): MagnetF[IO, A, B, E] = new MagnetF[IO, A, B, E] {
+    def prepared: A => IO[B] = f
+  }
 
   implicit def materializeFuture[A, B](
       f: A => SerializableFuture[B]
@@ -259,5 +271,22 @@ package object spark extends LowPriorityInstancesForSpark {
 
   implicit class OutputCompanionSparkExtensions(private val self: Output.type) extends AnyVal {
     @inline def array = new ArrayOutputDSL
+  }
+
+  implicit val canReduceRDDByKey: CanReduceByKey[RDD] = new CanReduceByKey[RDD] {
+    def reduceByKey[K: ClassTag, V: ClassTag](fa: RDD[(K, V)])(
+        reduce: (V, V) => V
+    ): RDD[(K, V)] = fa.reduceByKey(reduce)
+  }
+
+  implicit val canCombineRDDByKey: CanCombineByKey[RDD] = new CanCombineByKey[RDD] {
+    def combineByKey[K: ClassTag, V: ClassTag, C: ClassTag](
+        fa: RDD[(K, V)]
+    )(init: V => C, addValue: (C, V) => C, mergeCombiners: (C, C) => C): RDD[(K, C)] = fa.combineByKey(init, addValue, mergeCombiners)
+  }
+
+  implicit val rddHasSize: HasBigSize[RDD] = new HasBigSize[RDD] {
+    type Result[X] = X
+    def size[A](fa: RDD[A]): Long = fa.count()
   }
 }
