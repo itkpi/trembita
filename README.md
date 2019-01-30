@@ -33,10 +33,10 @@ libraryDependencies ++= {
 
 ## Core features
 
-- [Typesafe querying dsl](./examples/src/main/scala/com/examples/kernel/QLSample.scala) for data pipelines provides a unified model and typechecking for various data sources (including collections and Spark RDD)
+- [Typesafe and IDE friendly querying dsl](./examples/src/main/scala/com/examples/kernel/QLSample.scala) for data pipelines provides a unified model and typechecking for various data sources (including collections and Spark RDD)
 - [Purely functional stateful transformations using Finite State Machines](./examples/src/main/scala/com/examples/kernel/FSMSample.scala) provides dsl for defining FSM that can be run on various data source (collections, Spark Datasets, Akka Streams...) 
-- [Caching](./caching)
-- [Logging](./utils/logging)
+- [One line caching](./caching)
+- [Simple logging](./utils/logging)
 
 ## Available Integrations
 - Apache Spark ([core](http://spark.apache.org/docs/latest/rdd-programming-guide.html), [SQL](http://spark.apache.org/docs/latest/sql-programming-guide.html))
@@ -56,6 +56,7 @@ libraryDependencies ++= {
  - [cassandra phantom](./cassandra_connector_phantom) - provides [Phantom](https://github.com/outworkers/phantom) library support
  - [akka stream](./integrations/akka/streams) - allows to make pipeline from akka stream (e.g. from any data source compatible with akka)
  - [spark RDD / DataSet](./integrations/spark/core) - allows to make pipeline from RDD / DataSet (e.g. from any non-streaming data source compatible with Spark)
+ - [spark DStreams](./integrations/spark/streaming) - allows to make pipeline from Discrete streams (e.g. from any streaming data source compatible with Spark)
  
 ## Miscelone
  - [trembita slf4j](./utils/logging/slf4j) - provides [slf4j](https://www.slf4j.org/) logging support. Use it with any compatible logging backend (for instance [logback](https://logback.qos.ch/))
@@ -230,6 +231,7 @@ See [sources](integrations/java/streams) and [tests](integrations/java/streams/s
 - [x] integration with distributed streaming frameworks
 - [ ] tensorflow
 - [ ] slick (in progress)
+- [ ] akka http output
 
 ## Additional information
 My speec about trembita at Scalaua conference:
