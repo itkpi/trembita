@@ -5,8 +5,8 @@ import org.openjdk.jmh.annotations._
 import scala.io.Source
 
 object WordsCountFiles {
-  val middleFile: Path       = FileSystems.getDefault.getPath("src/main/resources/middle.txt").toAbsolutePath
-  val largeFile: Path        = FileSystems.getDefault.getPath("src/main/resources/big.txt").toAbsolutePath
+  val middleFile: Path       = FileSystems.getDefault.getPath("bench/src/main/resources/middle.txt").toAbsolutePath
+  val largeFile: Path        = FileSystems.getDefault.getPath("bench/src/main/resources/big.txt").toAbsolutePath
   val extraLargeFile: String = "https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/jquery-speedtest/100MB.txt"
 }
 
@@ -44,13 +44,13 @@ object WordsCount {
 
     @Setup
     def init(): Unit =
-      ohNooo = {
-        Source.fromFile(WordsCountFiles.middleFile.toFile).getLines().toVector ++
-          Source.fromFile(WordsCountFiles.largeFile.toFile).getLines().toVector ++
-          Source.fromURL(WordsCountFiles.extraLargeFile).getLines()
-      } flatMap { line =>
-        (1 to 100).map(_ => line)
-      }
+      ohNooo = Source
+        .fromURL(WordsCountFiles.extraLargeFile)
+        .getLines()
+        .toVector
+        .flatMap { line =>
+          (1 to 10).map(_ => line)
+        }
   }
 
   def pipelineNaive(lines: Vector[String]): Vector[(String, Int)] =

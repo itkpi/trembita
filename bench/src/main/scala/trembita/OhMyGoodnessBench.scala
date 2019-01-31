@@ -4,11 +4,11 @@ object OhMyGoodnessBench {
   def main(args: Array[String]): Unit = {
     val file = new WordsCount.OhMyGoodnessFile()
     file.init()
-    val result0 = measure("pipelineAdvancedOhMyGoodness", times = 2) {
-      WordsCount.pipelinesAdvanced(file.ohNooo, parallelism = 16)
+    val result0 = measure("pipelineNaive", times = 10) {
+      WordsCount.pipelineNaive(file.ohNooo)
     }
-    val result1 = measure("vectorOhMyGoodness", times = 2) {
-      WordsCount.vector(file.ohNooo)
+    val result1 = measure("iterator", times = 10) {
+      WordsCount.imperative(file.ohNooo)
     }
     println(result0)
     println(result1)
