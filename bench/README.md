@@ -22,8 +22,9 @@
 | |
 | 1 Gb |
 | | DataPipeline (parallel with combineByKey) | avgt | 20 | 3711 | | ms/op |
+| | Iterator | avgt | 20 | 11823 | | ms/op
 | | Vector | avgt | 20 | 11889 | | ms/op
-
+| | DataPipeline (naive) | avgt | 20 | 12332 | | ms/op |
 ## Visualisation
 ![img](bench-result.png)
 
