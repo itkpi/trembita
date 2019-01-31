@@ -8,7 +8,6 @@ import trembita._
 import cats.arrow.FunctionK
 import cats.effect.IO
 import cats._
-import cats.instances.future._
 import cats.instances.either._
 import cats.instances.try_._
 import scala.annotation.implicitNotFound

@@ -3,19 +3,20 @@ package trembita.akka_streams
 import akka.NotUsed
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
-import cats.Monad
+import cats.{Monad, MonadError}
 import cats.effect._
 import trembita._
 import trembita.collections._
 import trembita.fsm.{CanFSM, FSM, InitialState}
 import trembita.operations._
-import trembita.outputs.internal.{CollectionOutput, OutputWithPropsT, collectionDsl}
+import trembita.outputs.internal.{collectionDsl, CollectionOutput, OutputWithPropsT}
+import cats.instances.future._
 
 import scala.collection.generic.CanBuildFrom
 import scala.collection.immutable.SortedMap
 import scala.collection.immutable
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.{higherKinds, implicitConversions}
 import scala.reflect.ClassTag
 
@@ -183,6 +184,39 @@ trait operations {
       implicit mat: ActorMaterializer
   ): OutputWithPropsT.Aux[F, Akka[Mat], λ[A => CanBuildFrom[Col[A], A, Col[A]]], λ[(G[_], A) => G[Col[A]]]] =
     new AkkaCollectionOutput[Col, F, Mat]
+
+  implicit def futureAsync(implicit ec: ExecutionContext): Async[Future] = new Async[Future] {
+    private val monadError = catsStdInstancesForFuture(ec)
+    def async[A](k: (Either[Throwable, A] => Unit) => Unit): Future[A] =
+      IO.async[A](k).unsafeToFuture()
+
+    def asyncF[A](
+        k: (Either[Throwable, A] => Unit) => Future[Unit]
+    ): Future[A] =
+      IO.asyncF[A](cb => IO.fromFuture(IO(k(cb)))).unsafeToFuture()
+
+    def suspend[A](thunk: => Future[A]): Future[A] = Future(thunk).flatMap(identity)
+
+    def bracketCase[A, B](acquire: Future[A])(use: A => Future[B])(
+        release: (A, ExitCase[Throwable]) => Future[Unit]
+    ): Future[B] =
+      IO.fromFuture(IO(acquire))
+        .bracketCase(a => IO.fromFuture(IO(use(a))))((a, exitCase) => IO.fromFuture(IO(release(a, exitCase))))
+        .unsafeToFuture()
+
+    def raiseError[A](e: Throwable): Future[A] = monadError.raiseError(e)
+
+    def handleErrorWith[A](fa: Future[A])(
+        f: Throwable => Future[A]
+    ): Future[A] = monadError.handleErrorWith(fa)(f)
+
+    override def handleError[A](fa: Future[A])(f: Throwable => A): Future[A] = monadError.handleError(fa)(f)
+
+    def pure[A](x: A): Future[A]                                      = monadError.pure(x)
+    def flatMap[A, B](fa: Future[A])(f: A => Future[B]): Future[B]    = monadError.flatMap(fa)(f)
+    override def map[A, B](fa: Future[A])(f: A => B): Future[B]       = monadError.map(fa)(f)
+    def tailRecM[A, B](a: A)(f: A => Future[Either[A, B]]): Future[B] = monadError.tailRecM(a)(f)
+  }
 }
 
 class AkkaCollectionOutput[Col[x] <: Iterable[x], F[_], Mat](implicit async: Async[F], mat: ActorMaterializer)

@@ -1,16 +1,13 @@
 package trembita.akka_streams
 
-import akka.NotUsed
-import akka.stream.scaladsl._
 import akka.stream.Materializer
-import scala.language.{existentials, higherKinds}
+import akka.stream.scaladsl._
+import cats.{Functor, Monad}
 import trembita._
-import trembita.collections._
-import cats.{~>, Functor, Monad}
 import scala.annotation.implicitNotFound
 import scala.concurrent.{ExecutionContext, Future}
+import scala.language.{existentials, higherKinds}
 import scala.reflect.ClassTag
-import cats.instances.future._
 
 @implicitNotFound("""
     Operation you're performing requires implicit AkkaMat[${Mat}] in the scope.
