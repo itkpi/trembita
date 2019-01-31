@@ -1,16 +1,18 @@
 import scala.language.{higherKinds, implicitConversions}
 import cats._
 import cats.data.Kleisli
-import trembita.internal._
+import trembita.internal.{MapPipelineT => _, _}
 import trembita.operations._
 import trembita.outputs.internal.{lowPriorityTricks, OutputDsl}
 import scala.reflect.ClassTag
 
 package object trembita extends standardMagnets with arrows with lowPriorityTricks {
 
-  type DataPipeline[A, E <: Environment]    = DataPipelineT[Id, A, E]
-  type Supports[E <: Environment, Op[_[_]]] = Op[E#Repr]
-  type Run[F[_], E <: Environment]          = E#Run[F]
+  type DataPipeline[A, E <: Environment]            = DataPipelineT[Id, A, E]
+  type MapPipelineT[F[_], K, V, E <: Environment]   = internal.MapPipelineT[F, K, V, E]
+  type PairPipelineT[F[_], K, V, Ex <: Environment] = DataPipelineT[F, (K, V), Ex]
+  type Supports[E <: Environment, Op[_[_]]]         = Op[E#Repr]
+  type Run[F[_], E <: Environment]                  = E#Run[F]
 
   implicit class CommonOps[F[_], A, E <: Environment](
       val `this`: DataPipelineT[F, A, E]
@@ -22,9 +24,6 @@ package object trembita extends standardMagnets with arrows with lowPriorityTric
   implicit class SeqOps[F[_], A](val `this`: DataPipelineT[F, A, Sequential]) extends AnyVal with MagnetlessOps[F, A, Sequential]
 
   implicit class ParOps[F[_], A](val `this`: DataPipelineT[F, A, Parallel]) extends AnyVal with MagnetlessOps[F, A, Parallel]
-
-  type PairPipelineT[F[_], K, V, Ex <: Environment] =
-    DataPipelineT[F, (K, V), Ex]
 
   /**
     * Operations for [[DataPipelineT]] of tuples

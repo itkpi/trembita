@@ -18,10 +18,10 @@ object Main extends IOApp {
     implicit val parallelism: Parallelism = Parallelism(8, ordered = false)
 
     val fileLines =
-      Input.fromSourceF[IO, ByteString, Future[IOResult]](IO {
+      Input.fromSourceF[IO](
         FileIO
           .fromPath(Paths.get("examples/src/main/resources/words.txt"))
-      })
+      )
 
     val wordsCount: DataPipelineT[IO, String, Akka[Future[IOResult]]] = fileLines
       .map(_.utf8String)
@@ -34,10 +34,8 @@ object Main extends IOApp {
       )
 
     wordsCount
-      .into(Output.fromSinkF[IO, String, Future[IOResult], Future[Vector[String]]](Sink.collection[String, Vector[String]]))
+      .into(Output.collection[Vector])
       .run
-      .map(IO(_))
-      .flatMap(IO.fromFuture)
       .flatMap(res => putStrLn(res.mkString("")))
   }
 

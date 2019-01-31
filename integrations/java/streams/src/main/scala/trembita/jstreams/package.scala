@@ -1,15 +1,19 @@
 package trembita
 
 import java.util.function.{BiConsumer, Supplier}
-import trembita.operations.MagnetlessOps
+
+import trembita.operations.{InjectTaggedK, MagnetlessOps}
 import java.util.stream._
-import cats.{Id, Monad}
+
+import cats.{~>, Id, Monad}
 import trembita.outputs.internal._
+
 import scala.collection.generic.CanBuildFrom
 import scala.collection.mutable
 import scala.language.{higherKinds, implicitConversions}
 import scala.reflect.ClassTag
 import scala.collection.JavaConverters._
+import scala.collection.parallel.immutable.ParVector
 import scala.compat.java8.FunctionConverters._
 
 package object jstreams extends operations {
@@ -79,4 +83,10 @@ package object jstreams extends operations {
     @inline def jstream[ST <: StreamType]          = new jstreamInputDsl[ST]()
     @inline def jstreamF[F[+ _], ST <: StreamType] = new jstreamInputDslF[F, ST]()
   }
+
+  implicit def seqToJStream[ST <: StreamType: StreamCreator]: InjectTaggedK[Vector, Stream] =
+    InjectTaggedK.fromArrow[Vector, Stream](λ[Vector[?] ~> Stream[?]](vec => StreamCreator.create(vec.asJava)))
+
+  implicit def parToJStream[ST <: StreamType: StreamCreator]: InjectTaggedK[ParVector, Stream] =
+    InjectTaggedK.fromArrow[ParVector, Stream](λ[ParVector[?] ~> Stream[?]](vec => StreamCreator.create(vec.seq.asJava)))
 }

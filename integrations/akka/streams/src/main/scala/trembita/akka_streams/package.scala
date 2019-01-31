@@ -3,22 +3,17 @@ package trembita
 import _root_.akka.NotUsed
 import _root_.akka.stream._
 import _root_.akka.stream.scaladsl._
-import cats.effect.{Effect, IO, Timer}
-import cats.{Id, Monad}
-import trembita.fsm.{CanFSM, FSM, InitialState}
+import cats.effect.IO
+import cats.{~>, Id, Monad}
 import trembita.internal.EvaluatedSource
 import trembita.operations._
-import trembita.outputs.internal.{outputWithoutPropsDsl, OutputDsl, OutputT}
-
-import scala.collection.immutable.SortedMap
-import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
+import trembita.outputs.internal.OutputT
+import scala.collection.parallel.immutable.ParVector
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.{higherKinds, implicitConversions}
 import scala.reflect.ClassTag
-import trembita.collections._
 
-package object akka_streams {
+package object akka_streams extends operations {
   implicit class AkkaOps[F[_], A, Mat](
       val `this`: DataPipelineT[F, A, Akka[Mat]]
   ) extends AnyVal
@@ -52,113 +47,21 @@ package object akka_streams {
   )(implicit RunDsl: RunDsl[F]): RunAkka[F] =
     RunDsl.toRunAkka(p)
 
-  implicit def akkaCanFSM[F[_], Mat](
-      implicit akkaFSM: AkkaFSM[F, Mat],
-      F: Monad[F],
-      E: Akka[Mat],
-      run: Akka[Mat]#Run[F]
-  ): CanFSM[F, Akka[Mat]] =
-    new CanFSM[F, Akka[Mat]] {
-      def fsm[A: ClassTag, N, D, B: ClassTag](
-          pipeline: DataPipelineT[F, A, Akka[Mat]]
-      )(initial: InitialState[N, D, F])(
-          fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
-      ): DataPipelineT[F, B, Akka[Mat]] =
-        pipeline.mapRepr[B](akkaFSM[A, N, D, B](_)(initial)(fsmF))
-    }
-
-  implicit def canFlatMapAkka[Mat]: CanFlatMap[Akka[Mat]] = new CanFlatMap[Akka[Mat]] {
-    override def flatMap[A, B](fa: Source[A, Mat])(
-        f: A => Source[B, Mat]
-    ): Source[B, Mat] = fa.flatMapConcat(f)
-  }
-
-  implicit def canGroupByAkka[Mat]: CanGroupBy[Source[?, Mat]] = new CanGroupBy[Source[?, Mat]] {
-    import trembita.collections._
-
-    def groupBy[K: ClassTag, V: ClassTag](vs: Source[V, Mat])(f: V => K): Source[(K, Iterable[V]), Mat] = {
-      val groupFlow: Flow[(K, V), (K, Iterable[V]), NotUsed] = Flow[(K, V)]
-        .fold(Map.empty[K, Vector[V]]) {
-          case (m, (k, v)) => m.modify(k, Vector(v))(_ :+ v)
-        }
-        .mapConcat { x =>
-          x
-        }
-
-      vs.map(v => f(v) -> v).via(groupFlow)
-    }
-
-    def distinctBy[A: ClassTag, B: ClassTag](fa: Source[A, Mat])(
-        f: A => B
-    ): Source[A, Mat] = {
-      val distinctByFlow: Flow[A, A, NotUsed] = Flow[A]
-        .fold((Set.empty[B], Vector.empty[A])) {
-          case (acc0 @ (seen, values), a) =>
-            val b = f(a)
-            if (seen(b)) acc0
-            else (seen + b, values :+ a)
-        }
-        .mapConcat(_._2)
-
-      fa.via(distinctByFlow)
-    }
-  }
-
-  implicit def canSpanByAkka[Mat]: CanSpanBy[Source[?, Mat]] = new CanSpanBy[Source[?, Mat]] {
-    override def spanBy[K: ClassTag, V: ClassTag](fa: Source[V, Mat])(
-        f: V => K
-    ): Source[(K, Iterable[V]), Mat] =
-      fa.map(v => f(v) -> v)
-        .via(new SpanByFlow[K, V, ListBuffer[V]](v => ListBuffer(v), _ :+ _))
-        .map { case (k, vs) => (k, vs.toVector) }
-  }
-
-  implicit def canGroupByOrderedAkka[Mat]: CanGroupByOrdered[Source[?, Mat]] = new CanGroupByOrdered[Source[?, Mat]] {
-    import trembita.collections._
-
-    def groupBy[K: ClassTag: Ordering, V: ClassTag](vs: Source[V, Mat])(f: V => K): Source[(K, Iterable[V]), Mat] = {
-      val groupFlow: Flow[(K, V), (K, Iterable[V]), NotUsed] = Flow[(K, V)]
-        .fold(SortedMap.empty[K, Vector[V]]) {
-          case (m, (k, v)) => m.modify(k, Vector(v))(_ :+ v)
-        }
-        .mapConcat { x =>
-          x
-        }
-
-      vs.map(v => f(v) -> v).via(groupFlow)
-    }
-  }
-
-  implicit def canZipAkka[Mat]: CanZip[Source[?, Mat]] = new CanZip[Source[?, Mat]] {
-    def zip[A: ClassTag, B: ClassTag](fa: Source[A, Mat], fb: Source[B, Mat]): Source[(A, B), Mat] = fa zip fb
-  }
-
-  implicit def canPauseAkka[F[_]: Effect: Timer, Mat](
-      implicit mat: ActorMaterializer,
-      ec: ExecutionContext,
-      runAkka: RunAkka[F]
-  ): CanPause[F, Akka[Mat]] = new CanPauseAkkaF[F, Mat]
-
-  implicit def canPause2Akka[F[_]: Effect: Timer, Mat](
-      implicit mat: ActorMaterializer,
-      ec: ExecutionContext,
-      runAkka: RunAkka[F]
-  ): CanPause2[F, Akka[Mat]] = new CanPause2AkkaF[F, Mat]
-
-  implicit def akkaCanToVector[Mat](implicit mat: ActorMaterializer): CanToVector.Aux[Source[?, Mat], Future] =
-    new CanToVector[Source[?, Mat]] {
-      override type Result[X] = Future[X]
-      override def apply[A](fa: Source[A, Mat]): Future[Vector[A]] = fa.runWith(Sink.collection[A, Vector[A]])
-    }
-
   implicit class InputCompanionExtensions(private val self: Input.type) extends AnyVal {
-    def fromSource[A: ClassTag, Mat](source: Source[A, Mat]): DataPipeline[A, Akka[Mat]] = Input.repr[Akka[Mat]].create(source)
-    def fromSourceF[F[+ _], A: ClassTag, Mat](sourceF: F[Source[A, Mat]])(implicit F: Monad[F]): DataPipelineT[F, A, Akka[Mat]] =
-      Input.reprF[F, Akka[Mat]].create(sourceF)
+    @inline def fromSource[A: ClassTag, Mat](source: Source[A, Mat]): DataPipeline[A, Akka[Mat]] = Input.repr[Akka[Mat]].create(source)
+    @inline def fromSourceF[F[+ _]]                                                              = new fromSourceFDsl[F]()
+  }
+
+  class fromSourceFDsl[F[+ _]](val `dummy`: Boolean = true) extends AnyVal {
+    def apply[A: ClassTag, Mat](sourceF: Source[A, Mat])(implicit F: Monad[F]): DataPipelineT[F, A, Akka[Mat]] =
+      Input.reprF[F, Akka[Mat]].create(F.pure(sourceF))
+
+    def empty[A: ClassTag](implicit F: Monad[F]): DataPipelineT[F, A, Akka[NotUsed]] =
+      Input.reprF[F, Akka[NotUsed]].create(F.pure(Source.empty[A]))
   }
 
   implicit class OutputCompanionExtensions(private val self: Output.type) extends AnyVal {
-    def fromSink[A: ClassTag, Mat](
+    @inline def fromSink[A: ClassTag, Mat](
         sink: Sink[A, Mat]
     )(implicit materializer: Materializer): OutputT.Aux[Id, A, Akka[Mat], λ[(G[_], a) => Mat]] =
       new OutputT[Id, A, Akka[Mat]] {
@@ -171,7 +74,11 @@ package object akka_streams {
         ): Mat = pipeline.evalRepr.runWith(sink)
       }
 
-    def fromSinkF[F[_], A: ClassTag, Mat0, Mat1](
+    @inline def fromSinkF[F[_]] = new fromSinkFDsl[F]()
+  }
+
+  class fromSinkFDsl[F[_]](val `dummy`: Boolean = true) extends AnyVal {
+    def apply[A: ClassTag, Mat0, Mat1](
         sink: Sink[A, Mat1]
     )(implicit materializer: Materializer): OutputT.Aux[F, A, Akka[Mat0], λ[(G[_], a) => F[Mat1]]] =
       new OutputT[F, A, Akka[Mat0]] {
@@ -185,35 +92,9 @@ package object akka_streams {
       }
   }
 
-  implicit def canReduceStreamByKey[Mat]: CanReduceByKey[Source[?, Mat]] = new CanReduceByKey[Source[?, Mat]] {
-    def reduceByKey[K: ClassTag, V: ClassTag](fa: Source[(K, V), Mat])(
-        reduce: (V, V) => V
-    ): Source[(K, V), Mat] = {
-      val reduceByKeyFlow: Flow[(K, V), (K, V), NotUsed] = Flow[(K, V)]
-        .fold(Map.empty[K, V]) {
-          case (m, (k, v)) if m contains k => m.updated(k, reduce(m(k), v))
-          case (m, (k, v))                 => m + (k -> v)
-        }
-        .mapConcat { x =>
-          x
-        }
+  implicit val seqToSource: InjectTaggedK[Vector, Source[?, NotUsed]] =
+    InjectTaggedK.fromArrow[Vector, Source[?, NotUsed]](λ[Vector[?] ~> Source[?, NotUsed]](vec => Source(vec)))
 
-      fa.via(reduceByKeyFlow)
-    }
-  }
-
-  implicit def canCombineStreamByKey[Mat]: CanCombineByKey[Source[?, Mat]] = new CanCombineByKey[Source[?, Mat]] {
-    def combineByKey[K: ClassTag, V: ClassTag, C: ClassTag](
-        fa: Source[(K, V), Mat]
-    )(init: V => C, addValue: (C, V) => C, mergeCombiners: (C, C) => C): Source[(K, C), Mat] = {
-      val groupFlow: Flow[(K, V), (K, C), NotUsed] =
-        Flow[(K, V)]
-          .fold(Map.empty[K, C]) {
-            case (m, (k, v)) => m.modify(k, init(v))(addValue(_, v))
-          }
-          .mapConcat(x => x)
-
-      fa.via(groupFlow)
-    }
-  }
+  implicit val parToJStream: InjectTaggedK[ParVector, Source[?, NotUsed]] =
+    InjectTaggedK.fromArrow[ParVector, Source[?, NotUsed]](λ[ParVector[?] ~> Source[?, NotUsed]](vec => Source(vec.seq)))
 }
