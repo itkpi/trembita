@@ -42,11 +42,11 @@ class CanPause2AkkaF[F[_]: Effect: Timer: RunAkka, Mat](implicit mat: ActorMater
     val out                             = Outlet[A]("CanPause2.out")
     override val shape: FlowShape[A, A] = FlowShape(in, out)
 
-    var prevOpt: Option[A]         = None
-    val inBuffer: mutable.Queue[A] = mutable.Queue.empty[A]
-    var paused: Boolean            = false
-
     override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) with StageLogging {
+      var prevOpt: Option[A]         = None
+      val inBuffer: mutable.Queue[A] = mutable.Queue.empty[A]
+      var paused: Boolean            = false
+
       setHandlers(
         in,
         out,

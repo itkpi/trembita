@@ -243,6 +243,34 @@ trait operations {
           fa.runWith(Sink.foldAsync(zero)((b, a) => Effect[F].toIO(f(b, a)).unsafeToFuture()))
         }))
     }
+
+  implicit def canJoinSource(implicit mat: ActorMaterializer, ec: ExecutionContext): CanJoin[Source[?, NotUsed]] =
+    new CanJoin[Source[?, NotUsed]] {
+      def join[A, B](fa: Source[A, NotUsed], fb: Source[B, NotUsed])(
+          on: (A, B) => Boolean
+      ): Source[(A, B), NotUsed] =
+        Source
+          .fromFutureSource(
+            fb.runWith(Sink.collection[B, Stream[B]]).map { allFb =>
+              val joinFlow = new JoinFlow[A, B](allFb, on)
+              fa.via(joinFlow)
+            }
+          )
+          .mapMaterializedValue(_ => NotUsed)
+
+      @inline def joinLeft[A, B](fa: Source[A, NotUsed], fb: Source[B, NotUsed])(on: (A, B) => Boolean): Source[(A, Option[B]), NotUsed] =
+        Source
+          .fromFutureSource(
+            fb.runWith(Sink.collection[B, Stream[B]]).map { allFb =>
+              val joinFlow = new JoinLeftFlow[A, B](allFb, on)
+              fa.via(joinFlow)
+            }
+          )
+          .mapMaterializedValue(_ => NotUsed)
+
+      @inline def joinRight[A, B](fa: Source[A, NotUsed], fb: Source[B, NotUsed])(on: (A, B) => Boolean): Source[(Option[A], B), NotUsed] =
+        joinLeft(fb, fa)((b, a) => on(a, b)).map(_.swap)
+    }
 }
 
 class AkkaCollectionOutput[Col[x] <: Iterable[x], F[_], Mat](implicit async: Async[F], mat: ActorMaterializer)
