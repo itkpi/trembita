@@ -11,8 +11,6 @@ import trembita.ql.{AggDecl, AggRes, GroupingCriteria, QueryBuilder, QueryResult
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Column, Dataset, Encoder, SparkSession}
-import shapeless.=:!=
-
 import scala.collection.parallel.immutable.ParVector
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.{higherKinds, implicitConversions}

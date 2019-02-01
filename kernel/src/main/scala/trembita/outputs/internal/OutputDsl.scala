@@ -3,7 +3,7 @@ package trembita.outputs.internal
 import cats.kernel.Monoid
 import cats.{~>, Applicative, Id, Monad}
 import trembita._
-import trembita.operations.{CanFold, CanReduce, HasBigSize, HasSize}
+import trembita.operations._
 import trembita.outputs.Keep
 
 import scala.collection.generic.CanBuildFrom
@@ -388,6 +388,17 @@ object foldLeftDsl extends LowPriorityFoldLeftConversions {
   implicit def dslToOutputId[A, B: ClassTag, E <: Environment](dsl: foldLeftDsl[A, B])(
       implicit canFold: CanFold.Aux[E#Repr, Id]
   ): OutputT.Aux[Id, A, E, λ[(G[_], β) => G[B]]] = dsl[Id, E](canFold)(identityK[Id])
+}
+
+class foldFDsl[F[_], A, B](val `this`: (B, (B, A) => F[B])) extends AnyVal {
+  def apply[E <: Environment](implicit canFold: CanFoldF[E#Repr, F], B: ClassTag[B]) =
+    new FoldFOutput[F, A, B, E](`this`._1)(`this`._2)(canFold)
+}
+
+object foldFDsl {
+  implicit def dslToOutputId[F[_], A, B: ClassTag, E <: Environment](dsl: foldFDsl[F, A, B])(
+      implicit canFold: CanFoldF[E#Repr, F]
+  ): OutputT.Aux[F, A, E, λ[(G[_], β) => G[B]]] = dsl[E]
 }
 
 class sizeDsl(val `dummy`: Boolean = true) extends AnyVal with Serializable {

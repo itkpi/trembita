@@ -217,6 +217,32 @@ trait operations {
     override def map[A, B](fa: Future[A])(f: A => B): Future[B]       = monadError.map(fa)(f)
     def tailRecM[A, B](a: A)(f: A => Future[Either[A, B]]): Future[B] = monadError.tailRecM(a)(f)
   }
+
+  implicit def sourceCanBeGrouped[Mat]: CanGrouped[Source[?, Mat]] = new CanGrouped[Source[?, Mat]] {
+    def grouped[A](fa: Source[A, Mat], n: Int): Source[Iterable[A], Mat] = fa.grouped(n)
+  }
+
+  implicit def sourceCanBeBatcher[Mat]: CanBatched[Source[?, Mat]] = new CanBatched[Source[?, Mat]] {
+    def batched[A](fa: Source[A, Mat], parts: Int): Source[Iterable[A], Mat] =
+      fa.sliding(parts)
+  }
+
+  implicit def akkaCanFoldFuture[Mat](implicit mat: ActorMaterializer): CanFoldF[Source[?, Mat], Future] =
+    new CanFoldF[Source[?, Mat], Future] {
+      def foldF[A, B](fa: Source[A, Mat])(zero: B)(
+          f: (B, A) => Future[B]
+      ): Future[B] = fa.runWith(Sink.foldAsync(zero)(f))
+    }
+
+  implicit def akkaCanFoldEffect[F[_]: Effect, Mat](implicit mat: ActorMaterializer): CanFoldF[Source[?, Mat], F] =
+    new CanFoldF[Source[?, Mat], F] {
+      def foldF[A, B](fa: Source[A, Mat])(zero: B)(
+          f: (B, A) => F[B]
+      ): F[B] =
+        Effect[F].liftIO(IO.fromFuture(IO {
+          fa.runWith(Sink.foldAsync(zero)((b, a) => Effect[F].toIO(f(b, a)).unsafeToFuture()))
+        }))
+    }
 }
 
 class AkkaCollectionOutput[Col[x] <: Iterable[x], F[_], Mat](implicit async: Async[F], mat: ActorMaterializer)

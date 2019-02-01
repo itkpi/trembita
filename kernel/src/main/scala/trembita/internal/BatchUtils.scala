@@ -5,7 +5,7 @@ import scala.collection.generic.CanBuildFrom
 /**
   * Used in [[trembita]]
   **/
-object ListUtils {
+object BatchUtils {
 
   /**
     * Having some {{{ Iterable[A] = 1 to 10 }}}

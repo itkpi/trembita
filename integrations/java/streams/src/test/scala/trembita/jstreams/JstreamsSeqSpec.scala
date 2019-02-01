@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import cats._
 import cats.implicits._
 import cats.effect._
-import trembita.internal.ListUtils
+import trembita.internal.BatchUtils
 import org.scalatest.FlatSpec
 import trembita._
 

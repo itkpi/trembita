@@ -3,7 +3,7 @@ package trembita
 import cats._
 import cats.implicits._
 import cats.effect._
-import trembita.internal.ListUtils
+import trembita.internal.BatchUtils
 import org.scalatest.FlatSpec
 import scala.util.Try
 import scala.concurrent.duration._
@@ -151,13 +151,13 @@ class SequentialSpec extends FlatSpec {
 
   "split(n)" should "produce collection with n subcollections" in {
     val list    = List(1, 2, 3, 4, 5, 6, 7, 8)
-    val grouped = ListUtils.batch(4)(list).map(_.toList).toList
+    val grouped = BatchUtils.batch(4)(list).map(_.toList).toList
     assert(grouped == List(List(1, 2), List(3, 4), List(5, 6), List(7, 8)))
     val list2    = List(1, 2)
-    val grouped2 = ListUtils.batch(4)(list2).map(_.toList).toList
+    val grouped2 = BatchUtils.batch(4)(list2).map(_.toList).toList
     assert(grouped2 == List(List(1, 2)))
     val list3    = Nil
-    val grouped3 = ListUtils.batch(2)(list3).map(_.toList).toList
+    val grouped3 = BatchUtils.batch(2)(list3).map(_.toList).toList
     assert(grouped3 == Nil)
   }
 

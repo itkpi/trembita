@@ -15,5 +15,10 @@ object Output {
   @inline def fold[A](zero: A)(f: (A, A) => A): foldDsl[A]               = new foldDsl[A](zero -> f)
   @inline def foldLeft[A, B](zero: B)(f: (B, A) => B): foldLeftDsl[A, B] = new foldLeftDsl[A, B](zero -> f)
   val size: sizeDsl                                                      = new sizeDsl()
-  @inline def ignore[A]                                                  = foreach[A](_ => {})
+
+  private val ignoreInstance: foreachDsl[Any] = foreach[Any](_ => {})
+
+  @inline def ignore[A]: foreachDsl[A] = ignoreInstance.asInstanceOf[foreachDsl[A]]
+
+  @inline def foldF[F[_], A, B](zero: B)(f: (B, A) => F[B]): foldFDsl[F, A, B] = new foldFDsl[F, A, B](zero -> f)
 }

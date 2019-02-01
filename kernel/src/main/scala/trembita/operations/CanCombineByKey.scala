@@ -4,7 +4,7 @@ import scala.collection.parallel.immutable.ParVector
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 import trembita.collections._
-import trembita.internal.ListUtils
+import trembita.internal.BatchUtils
 
 import scala.collection.{immutable, mutable}
 
@@ -35,7 +35,7 @@ object CanCombineByKeyWithParallelism {
         fa: ParVector[(K, V)],
         parallelism: Int
     )(init: V => C, addValue: (C, V) => C, mergeCombiners: (C, C) => C): ParVector[(K, C)] = {
-      val batched = ListUtils.batch(parts = parallelism)(fa.seq)
+      val batched = BatchUtils.batch(parts = parallelism)(fa.seq)
       val processed = batched.par
         .map { batch =>
           val iterator             = batch.iterator

@@ -234,6 +234,16 @@ trait EnvironmentDependentOps[F[_], A, E <: Environment] extends Any {
   )(implicit canDistinctBy: CanDistinctBy[E#Repr], F: Monad[F], A: ClassTag[A], E: E, run: E#Run[F]): DataPipelineT[F, A, E] =
     `this`.mapRepr(canDistinctBy.distinctBy(_)(f))
 
+  def grouped(
+      size: Int
+  )(implicit canGrouped: CanGrouped[E#Repr], F: Monad[F], A: ClassTag[A], E: E, run: E#Run[F]): DataPipelineT[F, Iterable[A], E] =
+    `this`.mapRepr(canGrouped.grouped(_, size))
+
+  def batched(
+      parts: Int
+  )(implicit canBatched: CanBatched[E#Repr], F: Monad[F], A: ClassTag[A], E: E, run: E#Run[F]): DataPipelineT[F, Iterable[A], E] =
+    `this`.mapRepr(canBatched.batched(_, parts))
+
   private def widen(run: E#Run[F])(implicit E: E): E.Run[F] =
     run.asInstanceOf[E.Run[F]]
 

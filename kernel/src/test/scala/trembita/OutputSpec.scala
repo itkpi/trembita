@@ -1,6 +1,7 @@
 package trembita
 
 import java.nio.file.Paths
+import java.util.concurrent.atomic.AtomicInteger
 
 import cats._
 import cats.effect._
@@ -17,52 +18,52 @@ class OutputSpec extends FlatSpec {
   private val output2 = Output.combineAll[Int]
 
   "Output.keepLeft" should "work correctly" in {
-    var i = 0
+    val i = new AtomicInteger()
     val sum = ppln
       .into(output2)
-      .alsoInto(Output.foreach[Int](_ => i += 1))
+      .alsoInto(Output.foreach[Int](_ => i.incrementAndGet()))
       .keepLeft
       .run
 
-    assert(i == 6)
+    assert(i.get() == 6)
     assert(sum == sumCheck)
   }
 
   it should "also work for IO backed pipeline" in {
-    var i = 0
+    val i = new AtomicInteger()
     val sum = pplnT
       .into(output2)
-      .alsoInto(Output.foreach[Int](_ => i += 1))
+      .alsoInto(Output.foreach[Int](_ => i.incrementAndGet()))
       .keepLeft
       .run
       .unsafeRunSync()
 
-    assert(i == 6)
+    assert(i.get() == 6)
     assert(sum == sumCheck)
   }
 
   "Output.keepRight" should "work correctly" in {
-    var i = 0
+    val i = new AtomicInteger()
     val sum = ppln
-      .into(Output.foreach[Int](_ => i += 1))
+      .into(Output.foreach[Int](_ => i.incrementAndGet()))
       .alsoInto(output2)
       .keepRight
       .run
 
-    assert(i == 6)
+    assert(i.get() == 6)
     assert(sum == sumCheck)
   }
 
   it should "also work for IO backed pipeline" in {
-    var i = 0
+    val i = new AtomicInteger()
     val sum = pplnT
-      .into(Output.foreach[Int](_ => i += 1))
+      .into(Output.foreach[Int](_ => i.incrementAndGet()))
       .alsoInto(output2)
       .keepRight
       .run
       .unsafeRunSync()
 
-    assert(i == 6)
+    assert(i.get() == 6)
     assert(sum == sumCheck)
   }
 
@@ -94,35 +95,67 @@ class OutputSpec extends FlatSpec {
   }
 
   "Output.ignoreBoth" should "work correctly" in {
-    var i = 0
-    var j = 0
+    val i = new AtomicInteger()
+    val j = new AtomicInteger()
     val resIO = pplnT
-      .into(Output.foreach[Int](_ => i += 1))
-      .alsoInto(Output.foreach[Int](_ => j += 1))
+      .into(Output.foreach[Int](_ => i.incrementAndGet()))
+      .alsoInto(Output.foreach[Int](_ => j.incrementAndGet()))
       .ignoreBoth
       .run
 
-    assert(i == 0)
-    assert(j == 0)
+    assert(i.get() == 0)
+    assert(j.get() == 0)
     resIO.unsafeRunSync()
-    assert(i == 6)
-    assert(j == 6)
+    assert(i.get() == 6)
+    assert(j.get() == 6)
   }
 
   "Complex chaining" should "not evaluated pipeline several times" in {
-    var i = 0
+    val i = new AtomicInteger()
     val (vec, sum) = ppln
       .map { x =>
-        i += 1
-        x + i
+        x + i.incrementAndGet()
       }
       .into(output1)
       .alsoInto(output2)
       .keepBoth
       .run
 
-    assert(i == 6)
+    assert(i.get() == 6)
     assert(vec == Vector(2, 4, 6, 8, 10, 12))
     assert(sum == vec.sum)
+  }
+
+  "Output.ignore" should "work correctly" in {
+    val i = new AtomicInteger()
+    ppln
+      .map { x =>
+        i.incrementAndGet()
+        x
+      }
+      .into(Output.ignore[Int])
+      .run
+
+    assert(i.get() == 6)
+  }
+
+  "Output.foldF" should "work correctly" in {
+    val i = new AtomicInteger()
+    val output = Output.foldF[IO, Int, String](zero = "") {
+      case ("", x)  => IO.pure(x.toString)
+      case (acc, x) => IO { s"$acc with $x" }
+    }
+    val result = ppln
+      .mapK(idTo[IO])
+      .map { x =>
+        i.incrementAndGet()
+        x
+      }
+      .into(output)
+      .run
+      .unsafeRunSync()
+
+    assert(i.get() == 6)
+    assert(result == "1 with 2 with 3 with 4 with 5 with 6")
   }
 }
