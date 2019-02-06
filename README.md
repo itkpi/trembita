@@ -226,12 +226,19 @@ libraryDependencies += "ua.pp.itkpi" %%  "trembita-java-streams" % trembitaV
 
 See [sources](integrations/java/streams) and [tests](integrations/java/streams/src/test/scala/trembita/jstreams) for examples
 
+## Seamless akka infinispan integration
+```scala
+libraryDependencies += "ua.pp.itkpi" %% "trembita-seamless-akka-infinispan" % trembitaV
+```
+Allows to cache akka stream.
+See [example](integrations/seamless/akka-infinispan/src/test/scala/trembita.seamless.akka_infinispan/CachingSpec.scala)
+
+
 ## To be done
 - [x] caching
 - [x] integration with distributed streaming frameworks
 - [ ] tensorflow
-- [ ] slick (in progress)
-- [ ] akka http output
+- [ ] slick
 
 ## Additional information
 My speec about trembita at Scalaua conference:

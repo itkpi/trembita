@@ -116,7 +116,7 @@ lazy val trembita_spark =
       }
     )
 
-lazy val trembita_akka_streamns =
+lazy val trembita_akka_streams =
   sonatypeProject(
     id = "trembita-akka-streams",
     base = file("./integrations/akka/streams")
@@ -138,7 +138,7 @@ lazy val seamless_akka_spark =
   sonatypeProject(
     id = "trembita-seamless-akka-spark",
     base = file("./integrations/seamless/akka-spark")
-  ).dependsOn(kernel, trembita_akka_streamns, trembita_spark)
+  ).dependsOn(kernel, trembita_akka_streams, trembita_spark)
     .settings(
       name := "trembita-seamless-akka-spark",
       version := v,
@@ -205,6 +205,24 @@ lazy val trembita_java_streams =
       libraryDependencies += ScalaCompat.java8compat
     )
 
+lazy val seamless_akka_infinispan =
+  sonatypeProject(id = "trembita-seamless-akka-infinispan", base = file("./integrations/seamless/akka-infinispan"))
+    .dependsOn(kernel, trembita_akka_streams, trembita_caching_infinispan)
+    .settings(
+      name := "trembita-seamless-akka-infinispan",
+      version := v,
+      scalacOptions ++= Seq(
+        "-Ypartial-unification",
+        "-language:experimental.macros",
+        "-target:jvm-1.8"
+      ),
+      libraryDependencies ++= Seq(
+        ScalaCompat.java8compat,
+        Akka.testkit,
+        Testing.mockito % "test"
+      )
+    )
+
 lazy val bench = Project(id = "trembita-bench", base = file("./bench"))
   .enablePlugins(JmhPlugin)
   .dependsOn(
@@ -214,12 +232,13 @@ lazy val bench = Project(id = "trembita-bench", base = file("./bench"))
     cassandra_connector,
     cassandra_connector_phantom,
     trembita_spark,
-    trembita_akka_streamns,
+    trembita_akka_streams,
     seamless_akka_spark,
     trembita_spark_streaming,
     trembita_caching,
     trembita_caching_infinispan,
-    trembita_java_streams
+    trembita_java_streams,
+    seamless_akka_infinispan
   )
   .settings(
     name := "trembita-bench",
@@ -252,12 +271,13 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     cassandra_connector,
     cassandra_connector_phantom,
     trembita_spark,
-    trembita_akka_streamns,
+    trembita_akka_streams,
     seamless_akka_spark,
     trembita_spark_streaming,
     trembita_caching,
     trembita_caching_infinispan,
-    trembita_java_streams
+    trembita_java_streams,
+    seamless_akka_infinispan
   )
   .settings(
     name := "trembita-examples",
@@ -315,14 +335,15 @@ lazy val root = Project(id = "trembita", base = file("."))
     cassandra_connector,
     cassandra_connector_phantom,
     trembita_spark,
-    trembita_akka_streamns,
+    trembita_akka_streams,
     seamless_akka_spark,
     trembita_spark_streaming,
     trembita_caching,
     trembita_caching_infinispan,
     log4j,
     logging_commons,
-    trembita_java_streams
+    trembita_java_streams,
+    seamless_akka_infinispan
   )
   .settings(
     name := "trembita",
