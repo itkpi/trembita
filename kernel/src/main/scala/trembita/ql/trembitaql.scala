@@ -16,15 +16,15 @@ import scala.reflect.ClassTag
       - with grouping ${G}
       - aggregations ${T}
       - and expected result ${R}
-    cannot be performed in ${Ex}.
-    In most cases it means that ${Ex} does not support an efficient data querying
+    cannot be performed in ${E}.
+    In most cases it means that ${E} does not support an efficient data querying
   """)
-trait trembitaql[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb, Ex <: Environment] extends Serializable {
-  def apply[F[_]](pipeline: DataPipelineT[F, A, Ex], queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb])(
+trait trembitaql[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb, E <: Environment] extends Serializable {
+  def apply[F[_]](query: Query[F, A, E, G, T, R, Comb])(
       implicit F: Monad[F],
-      ex: Ex,
-      run: Ex#Run[F]
-  ): DataPipelineT[F, QueryResult[A, G, R], Ex]
+      ex: E,
+      run: E#Run[F]
+  ): DataPipelineT[F, QueryResult[A, G, R], E]
 }
 
 object trembitaql {
@@ -33,20 +33,18 @@ object trembitaql {
              T <: AggDecl: ClassTag,
              R <: AggRes: ClassTag,
              Comb: ClassTag,
-             Ex <: Environment: ClassTag](
-      implicit canSort: CanSort[Ex#Repr],
-      canGroupBy: CanGroupBy[Ex#Repr]
-  ): trembitaql[A, G, T, R, Comb, Ex] =
-    new trembitaql[A, G, T, R, Comb, Ex] {
+             E <: Environment: ClassTag](
+      implicit canSort: CanSort[E#Repr],
+      canGroupBy: CanGroupBy[E#Repr]
+  ): trembitaql[A, G, T, R, Comb, E] =
+    new trembitaql[A, G, T, R, Comb, E] {
       type QueryRes = QueryResult[A, G, R]
       override def apply[F[_]](
-          pipeline: DataPipelineT[F, A, Ex],
-          queryF: Empty[A] => Query[A, G, T, R, Comb]
-      )(implicit F: Monad[F], ex: Ex, run: Ex#Run[F]): DataPipelineT[F, QueryResult[A, G, R], Ex] = {
-        val query = queryF(new Empty[A])
-        val grouped: DataPipelineT[F, QueryRes, Ex] = pipeline
+          query: Query[F, A, E, G, T, R, Comb]
+      )(implicit F: Monad[F], ex: E, run: E#Run[F]): DataPipelineT[F, QueryResult[A, G, R], E] = {
+        val grouped: DataPipelineT[F, QueryRes, E] = query.pipeline
           .filterImpl[A](query.filterF)
-          .groupBy(query.getG)
+          .groupByKey(query.getG)
           .mapValues { as =>
             val (asVector, totals) =
               as.foldLeft(Vector.empty[A], query.aggF.empty) {
@@ -62,14 +60,14 @@ object trembitaql {
           }
           .filterImpl(qr => query.havingF(qr.totals))
 
-        val orderedByR: DataPipelineT[F, QueryRes, Ex] =
+        val orderedByR: DataPipelineT[F, QueryRes, E] =
           query.orderResults.fold(grouped) { implicit orderingR =>
             grouped.mapRepr { repr =>
               val sorted = canSort.sortedBy[QueryRes, R](repr)(_.totals)
               sorted
             }
           }
-        val orderedByG: DataPipelineT[F, QueryRes, Ex] =
+        val orderedByG: DataPipelineT[F, QueryRes, E] =
           query.orderCriterias.fold(orderedByR) { implicit orderingG =>
             orderedByR.mapRepr { repr =>
               val sorted = canSort.sortedBy[QueryRes, G](repr)(_.keys)
@@ -80,16 +78,26 @@ object trembitaql {
       }
     }
 
-  implicit def sequentialQL[A: ClassTag, G <: GroupingCriteria: ClassTag, T <: AggDecl: ClassTag, R <: AggRes: ClassTag, Comb: ClassTag](
+  implicit def sequentialQL[
+      A: ClassTag,
+      G <: GroupingCriteria: ClassTag,
+      T <: AggDecl: ClassTag,
+      R <: AggRes: ClassTag,
+      Comb: ClassTag
+  ](
       implicit canSort: CanSort[Sequential#Repr],
-      canGroupBy: CanGroupBy[Vector]
+      canGroupBy: CanGroupBy[Sequential#Repr]
   ): trembitaql[A, G, T, R, Comb, Sequential] = derive
 
-  implicit def parallelQL[A: ClassTag,
-                          G <: GroupingCriteria: ClassTag,
-                          T <: AggDecl: ClassTag,
-                          R <: AggRes: ClassTag,
-                          Comb: ClassTag,
-                          Implicits[_, _]](implicit canSort: CanSort[Parallel#Repr],
-                                           canGroupBy: CanGroupBy[ParVector]): trembitaql[A, G, T, R, Comb, Parallel] = derive
+  implicit def parallelQL[
+      A: ClassTag,
+      G <: GroupingCriteria: ClassTag,
+      T <: AggDecl: ClassTag,
+      R <: AggRes: ClassTag,
+      Comb: ClassTag,
+      Implicits[_, _]
+  ](
+      implicit canSort: CanSort[Parallel#Repr],
+      canGroupBy: CanGroupBy[Parallel#Repr]
+  ): trembitaql[A, G, T, R, Comb, Parallel] = derive
 }

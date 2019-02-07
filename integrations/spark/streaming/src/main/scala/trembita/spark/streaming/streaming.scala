@@ -18,16 +18,8 @@ import scala.concurrent.Future
 import scala.reflect.ClassTag
 import scala.language.{higherKinds, implicitConversions}
 
-package object streaming extends injections {
+package object streaming extends injections with trembitaqlForSparkStreaming {
   implicit class SparkStreamingOps[F[_], A](val `this`: DataPipelineT[F, A, SparkStreaming]) extends AnyVal {
-    def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
-        queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb]
-    )(implicit trembitaqlForSparkStreaming: trembitaqlForSparkStreaming[A, G, T, R, Comb],
-      run: Spark#Run[F],
-      F: Monad[F],
-      A: ClassTag[A]): DataPipelineT[F, QueryResult[A, G, R], SparkStreaming] =
-      `this`.mapRepr(trembitaqlForSparkStreaming.apply(_, queryF))
-
     def fsmByKey[K: ClassTag, N, D, B: ClassTag](getKey: A => K)(
         initial: InitialState[N, D, F]
     )(fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B])(
@@ -42,7 +34,6 @@ package object streaming extends injections {
         magnet: MagnetF[F, A, B, SparkStreaming]
     )(implicit F: SerializableMonad[F]): DataPipelineT[F, B, SparkStreaming] =
       `this`.mapMImpl[A, B](magnet.prepared)
-
   }
 
   implicit def magnetFFromSpark[F[_], A, B](

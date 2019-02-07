@@ -1,9 +1,11 @@
 package trembita.ql
 
+import trembita.Environment
 import trembita.ql.AggDecl.{%::, DNil}
 import trembita.ql.QueryBuilder.{Aggregate, GroupBy}
+import scala.language.higherKinds
 
-trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
+trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F, A, E, G] =>
 
   /**
     * Like Group By clause in SQL
@@ -11,8 +13,8 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     **/
   def aggregate[T, H <: TaggedAgg[_, _, _], R <: AggRes, Comb](
       f: A => H
-  )(implicit aggF: AggFunc[H %:: DNil, R, Comb]): Aggregate[A, G, H %:: DNil, R, Comb] =
-    new Aggregate[A, G, H %:: DNil, R, Comb](self.getG, a => f(a) %:: DNil, self.filterOpt)
+  )(implicit aggF: AggFunc[H %:: DNil, R, Comb]): Aggregate[F, A, E, G, H %:: DNil, R, Comb] =
+    new Aggregate[F, A, E, G, H %:: DNil, R, Comb](pipeline, self.getG, a => f(a) %:: DNil, self.filterOpt)
 
   def aggregate[T, H1 <: TaggedAgg[_, _, _], H2 <: TaggedAgg[_, _, _], R <: AggRes, Comb](
       f1: A => H1,
@@ -23,8 +25,8 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
         DNil,
       R,
       Comb
-    ]): Aggregate[A, G, H1 %:: H2 %:: DNil, R, Comb] =
-    new Aggregate[A, G, H1 %:: H2 %:: DNil, R, Comb](self.getG, a => f1(a) %:: f2(a) %:: DNil, self.filterOpt)
+    ]): Aggregate[F, A, E, G, H1 %:: H2 %:: DNil, R, Comb] =
+    new Aggregate[F, A, E, G, H1 %:: H2 %:: DNil, R, Comb](pipeline, self.getG, a => f1(a) %:: f2(a) %:: DNil, self.filterOpt)
 
   def aggregate[
       T,
@@ -45,7 +47,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -55,7 +59,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -63,7 +69,8 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
         DNil,
       R,
       Comb
-    ](self.getG,
+    ](pipeline,
+      self.getG,
       a =>
         f1(a) %::
           f2(a) %::
@@ -93,7 +100,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -104,7 +113,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -113,7 +124,8 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
         DNil,
       R,
       Comb
-    ](self.getG,
+    ](pipeline,
+      self.getG,
       a =>
         f1(a) %::
           f2(a) %::
@@ -147,7 +159,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -159,7 +173,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -169,7 +185,8 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
         DNil,
       R,
       Comb
-    ](self.getG,
+    ](pipeline,
+      self.getG,
       a =>
         f1(a) %::
           f2(a) %::
@@ -207,7 +224,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -220,7 +239,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -231,7 +252,8 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
         DNil,
       R,
       Comb
-    ](self.getG,
+    ](pipeline,
+      self.getG,
       a =>
         f1(a) %::
           f2(a) %::
@@ -273,7 +295,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -287,7 +311,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -299,7 +325,8 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
         DNil,
       R,
       Comb
-    ](self.getG,
+    ](pipeline,
+      self.getG,
       a =>
         f1(a) %::
           f2(a) %::
@@ -345,7 +372,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -360,7 +389,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -374,6 +405,7 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ](
+      pipeline,
       self.getG,
       a =>
         f1(a) %::
@@ -425,7 +457,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -441,7 +475,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -456,6 +492,7 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ](
+      pipeline,
       self.getG,
       a =>
         f1(a) %::
@@ -511,7 +548,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -528,7 +567,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -544,6 +585,7 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ](
+      pipeline,
       self.getG,
       a =>
         f1(a) %::
@@ -603,7 +645,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -621,7 +665,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -638,6 +684,7 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ](
+      pipeline,
       self.getG,
       a =>
         f1(a) %::
@@ -701,7 +748,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -720,7 +769,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -738,6 +789,7 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ](
+      pipeline,
       self.getG,
       a =>
         f1(a) %::
@@ -805,7 +857,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -825,7 +879,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -844,6 +900,7 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ](
+      pipeline,
       self.getG,
       a =>
         f1(a) %::
@@ -915,7 +972,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -936,7 +995,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -956,6 +1017,7 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ](
+      pipeline,
       self.getG,
       a =>
         f1(a) %::
@@ -1031,7 +1093,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -1053,7 +1117,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -1074,6 +1140,7 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ](
+      pipeline,
       self.getG,
       a =>
         f1(a) %::
@@ -1153,7 +1220,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -1176,7 +1245,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -1198,6 +1269,7 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ](
+      pipeline,
       self.getG,
       a =>
         f1(a) %::
@@ -1281,7 +1353,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -1305,7 +1379,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -1328,6 +1404,7 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ](
+      pipeline,
       self.getG,
       a =>
         f1(a) %::
@@ -1415,7 +1492,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -1440,7 +1519,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -1464,6 +1545,7 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ](
+      pipeline,
       self.getG,
       a =>
         f1(a) %::
@@ -1555,7 +1637,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -1581,7 +1665,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -1606,6 +1692,7 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ](
+      pipeline,
       self.getG,
       a =>
         f1(a) %::
@@ -1701,7 +1788,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -1728,7 +1817,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -1754,6 +1845,7 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ](
+      pipeline,
       self.getG,
       a =>
         f1(a) %::
@@ -1853,7 +1945,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -1881,7 +1975,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -1908,6 +2004,7 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ](
+      pipeline,
       self.getG,
       a =>
         f1(a) %::
@@ -2011,7 +2108,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ]): Aggregate[
+    F,
     A,
+    E,
     G,
     H1 %::
       H2 %::
@@ -2040,7 +2139,9 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
     Comb
   ] =
     new Aggregate[
+      F,
       A,
+      E,
       G,
       H1 %::
         H2 %::
@@ -2068,6 +2169,7 @@ trait agg22[A, G <: GroupingCriteria] { self: GroupBy[A, G] =>
       R,
       Comb
     ](
+      pipeline,
       self.getG,
       a =>
         f1(a) %::

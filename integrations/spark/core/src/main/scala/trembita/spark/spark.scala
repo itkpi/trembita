@@ -19,7 +19,7 @@ import scala.reflect.runtime.universe.TypeTag
 import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
-package object spark extends LowPriorityInstancesForSpark {
+package object spark extends LowPriorityInstancesForSpark with trembitaqlForSpark {
   type SerializableFuture[+A] = SerializableFutureImpl.NewType[A]
   val SerializableFuture = SerializableFutureImpl
 
@@ -108,14 +108,6 @@ package object spark extends LowPriorityInstancesForSpark {
       with MagnetlessSparkIOOps[A, E]
 
   implicit class SparkOps[F[_], A](val `this`: DataPipelineT[F, A, Spark]) extends AnyVal {
-    def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
-        queryF: QueryBuilder.Empty[A] => Query[A, G, T, R, Comb]
-    )(implicit trembitaqlForSpark: trembitaqlForSpark[A, G, T, R, Comb],
-      run: Spark#Run[F],
-      F: Monad[F],
-      A: ClassTag[A]): DataPipelineT[F, QueryResult[A, G, R], Spark] =
-      `this`.mapRepr(trembitaqlForSpark.apply(_, queryF))
-
     def mapM[B: ClassTag](magnet: MagnetF[F, A, B, Spark])(implicit F: Monad[F]): DataPipelineT[F, B, Spark] =
       `this`.mapMImpl[A, B](magnet.prepared)
   }

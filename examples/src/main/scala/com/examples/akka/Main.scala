@@ -26,7 +26,7 @@ object Main extends IOApp {
     val wordsCount: DataPipelineT[IO, String, Akka[Future[IOResult]]] = fileLines
       .map(_.utf8String)
       .mapConcat(_.split("\\s"))
-      .groupBy(identity _)
+      .groupByKey(identity _)
       .mapValues(_.size)
       .map { case (word, count) => s"`$word` occurs $count times" }
       .mapRepr(

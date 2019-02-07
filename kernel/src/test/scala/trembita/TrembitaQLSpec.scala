@@ -22,11 +22,11 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
     val pipeline = Input.sequential[Seq].create(Seq(3, 1, 2))
     val result =
       pipeline
-        .query(
-          _.groupBy(
-            expr[Int](_ % 2 == 0) as "divisible by 2"
-          ).aggregate(col[Int] agg sum as "sum")
+        .groupBy(
+          expr[Int](_ % 2 == 0) as "divisible by 2"
         )
+        .aggregate(col[Int] agg sum as "sum")
+        .compile
         .into(Output.vector)
         .run
 
@@ -50,11 +50,10 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
     val pipeline = Input.sequential[Seq].create(Seq(3, 1, 2))
     val result =
       pipeline
-        .query(
-          _.groupBy(expr[Int](_ % 2 == 0) as "divisible by 2")
-            .aggregate(col[Int] agg sum as "sum")
-            .orderRecords
-        )
+        .groupBy(expr[Int](_ % 2 == 0) as "divisible by 2")
+        .aggregate(col[Int] agg sum as "sum")
+        .orderRecords
+        .compile
         .into(Output.vector)
         .run
 
@@ -78,18 +77,18 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
     val pipeline = Input.sequential[Seq].create(Seq(3, 1, 8, 2))
     val result =
       pipeline
-        .query(
-          _.groupBy(
-            expr[Int](_ % 2 == 0) as "divisible by 2",
-            expr[Int](_ % 3) as "reminder of 3",
-            expr[Int](_ > 0) as "positive"
-          ).aggregate(
-              col[Int] agg stringAgg as "all digits",
-              expr[Int](_.toDouble) agg avg as "avg number",
-              col[Int] agg max as "max integer"
-            )
-            .ordered
+        .groupBy(
+          expr[Int](_ % 2 == 0) as "divisible by 2",
+          expr[Int](_ % 3) as "reminder of 3",
+          expr[Int](_ > 0) as "positive"
         )
+        .aggregate(
+          col[Int] agg stringAgg as "all digits",
+          expr[Int](_.toDouble) agg avg as "avg number",
+          col[Int] agg max as "max integer"
+        )
+        .ordered
+        .compile
         .into(Output.vector)
         .run
 
@@ -128,19 +127,19 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
     val pipeline = Input.sequential[Seq].create(Seq(3, 1, 8, 2))
     val result: Vector[Numbers] =
       pipeline
-        .query(
-          _.groupBy(
-            expr[Int](_ % 2 == 0) as "divisible by 2",
-            expr[Int](_ % 3) as "reminder of 3",
-            expr[Int](_ > 0) as "positive"
-          ).aggregate(
-              col[Int] agg stringAgg as "all digits",
-              expr[Int](_.toDouble) agg avg as "avg number",
-              col[Int] agg max as "max integer"
-            )
-            .having(agg[Int]("max integer")(_ > 0))
-            .ordered
+        .groupBy(
+          expr[Int](_ % 2 == 0) as "divisible by 2",
+          expr[Int](_ % 3) as "reminder of 3",
+          expr[Int](_ > 0) as "positive"
         )
+        .aggregate(
+          col[Int] agg stringAgg as "all digits",
+          expr[Int](_.toDouble) agg avg as "avg number",
+          col[Int] agg max as "max integer"
+        )
+        .having(agg[Int]("max integer")(_ > 0))
+        .ordered
+        .compile
         .as[Numbers]
         .into(Output.vector)
         .run

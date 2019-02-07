@@ -1,22 +1,24 @@
 package trembita.ql
 
+import trembita.Environment
 import trembita.ql.GroupingCriteria.{&::, GNil}
 import trembita.ql.QueryBuilder.GroupBy
+import scala.language.higherKinds
 
-trait groupBy22[A] {
+trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
 
   /**
     * Like Group By clause in SQL
     *
     **/
-  def groupBy[T, H <: :@[_, _]](f: A => H): GroupBy[A, H &:: GNil] =
-    new GroupBy[A, H &:: GNil](a => f(a) &:: GNil, None)
+  def groupBy[T, H <: :@[_, _]](f: A => H): GroupBy[F, A, E, H &:: GNil] =
+    new GroupBy[F, A, E, H &:: GNil](pipeline, a => f(a) &:: GNil, None)
 
   def groupBy[T, H1 <: :@[_, _], H2 <: :@[_, _]](
       f1: A => H1,
       f2: A => H2
-  ): GroupBy[A, H1 &:: H2 &:: GNil] =
-    new GroupBy[A, H1 &:: H2 &:: GNil](a => f1(a) &:: f2(a) &:: GNil, None)
+  ): GroupBy[F, A, E, H1 &:: H2 &:: GNil] =
+    new GroupBy[F, A, E, H1 &:: H2 &:: GNil](pipeline, a => f1(a) &:: f2(a) &:: GNil, None)
 
   def groupBy[
       T,
@@ -28,19 +30,24 @@ trait groupBy22[A] {
       f2: A => H2,
       f3: A => H3
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
         GNil
-    ](a =>
+    ](pipeline,
+      a =>
         f1(a) &::
           f2(a) &::
           f3(a) &::
@@ -59,7 +66,9 @@ trait groupBy22[A] {
       f3: A => H3,
       f4: A => H4
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -67,13 +76,16 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
         H4 &::
         GNil
-    ](a =>
+    ](pipeline,
+      a =>
         f1(a) &::
           f2(a) &::
           f3(a) &::
@@ -95,7 +107,9 @@ trait groupBy22[A] {
       f4: A => H4,
       f5: A => H5
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -104,14 +118,17 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
         H4 &::
         H5 &::
         GNil
-    ](a =>
+    ](pipeline,
+      a =>
         f1(a) &::
           f2(a) &::
           f3(a) &::
@@ -136,7 +153,9 @@ trait groupBy22[A] {
       f5: A => H5,
       f6: A => H6
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -146,7 +165,9 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
@@ -154,7 +175,8 @@ trait groupBy22[A] {
         H5 &::
         H6 &::
         GNil
-    ](a =>
+    ](pipeline,
+      a =>
         f1(a) &::
           f2(a) &::
           f3(a) &::
@@ -182,7 +204,9 @@ trait groupBy22[A] {
       f6: A => H6,
       f7: A => H7
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -193,7 +217,9 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
@@ -202,7 +228,8 @@ trait groupBy22[A] {
         H6 &::
         H7 &::
         GNil
-    ](a =>
+    ](pipeline,
+      a =>
         f1(a) &::
           f2(a) &::
           f3(a) &::
@@ -233,7 +260,9 @@ trait groupBy22[A] {
       f7: A => H7,
       f8: A => H8
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -245,7 +274,9 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
@@ -255,7 +286,8 @@ trait groupBy22[A] {
         H7 &::
         H8 &::
         GNil
-    ](a =>
+    ](pipeline,
+      a =>
         f1(a) &::
           f2(a) &::
           f3(a) &::
@@ -289,7 +321,9 @@ trait groupBy22[A] {
       f8: A => H8,
       f9: A => H9
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -302,7 +336,9 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
@@ -313,7 +349,8 @@ trait groupBy22[A] {
         H8 &::
         H9 &::
         GNil
-    ](a =>
+    ](pipeline,
+      a =>
         f1(a) &::
           f2(a) &::
           f3(a) &::
@@ -350,7 +387,9 @@ trait groupBy22[A] {
       f9: A => H9,
       f10: A => H10
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -364,7 +403,9 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
@@ -377,6 +418,7 @@ trait groupBy22[A] {
         H10 &::
         GNil
     ](
+      pipeline,
       a =>
         f1(a) &::
           f2(a) &::
@@ -418,7 +460,9 @@ trait groupBy22[A] {
       f10: A => H10,
       f11: A => H11
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -433,7 +477,9 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
@@ -447,6 +493,7 @@ trait groupBy22[A] {
         H11 &::
         GNil
     ](
+      pipeline,
       a =>
         f1(a) &::
           f2(a) &::
@@ -491,7 +538,9 @@ trait groupBy22[A] {
       f11: A => H11,
       f12: A => H12
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -507,7 +556,9 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
@@ -522,6 +573,7 @@ trait groupBy22[A] {
         H12 &::
         GNil
     ](
+      pipeline,
       a =>
         f1(a) &::
           f2(a) &::
@@ -569,7 +621,9 @@ trait groupBy22[A] {
       f12: A => H12,
       f13: A => H13
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -586,7 +640,9 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
@@ -602,6 +658,7 @@ trait groupBy22[A] {
         H13 &::
         GNil
     ](
+      pipeline,
       a =>
         f1(a) &::
           f2(a) &::
@@ -652,7 +709,9 @@ trait groupBy22[A] {
       f13: A => H13,
       f14: A => H14
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -670,7 +729,9 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
@@ -687,6 +748,7 @@ trait groupBy22[A] {
         H14 &::
         GNil
     ](
+      pipeline,
       a =>
         f1(a) &::
           f2(a) &::
@@ -740,7 +802,9 @@ trait groupBy22[A] {
       f14: A => H14,
       f15: A => H15
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -759,7 +823,9 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
@@ -777,6 +843,7 @@ trait groupBy22[A] {
         H15 &::
         GNil
     ](
+      pipeline,
       a =>
         f1(a) &::
           f2(a) &::
@@ -833,7 +900,9 @@ trait groupBy22[A] {
       f15: A => H15,
       f16: A => H16
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -853,7 +922,9 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
@@ -872,6 +943,7 @@ trait groupBy22[A] {
         H16 &::
         GNil
     ](
+      pipeline,
       a =>
         f1(a) &::
           f2(a) &::
@@ -931,7 +1003,9 @@ trait groupBy22[A] {
       f16: A => H16,
       f17: A => H17
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -952,7 +1026,9 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
@@ -972,6 +1048,7 @@ trait groupBy22[A] {
         H17 &::
         GNil
     ](
+      pipeline,
       a =>
         f1(a) &::
           f2(a) &::
@@ -1034,7 +1111,9 @@ trait groupBy22[A] {
       f17: A => H17,
       f18: A => H18
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -1056,7 +1135,9 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
@@ -1077,6 +1158,7 @@ trait groupBy22[A] {
         H18 &::
         GNil
     ](
+      pipeline,
       a =>
         f1(a) &::
           f2(a) &::
@@ -1142,7 +1224,9 @@ trait groupBy22[A] {
       f18: A => H18,
       f19: A => H19
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -1165,7 +1249,9 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
@@ -1187,6 +1273,7 @@ trait groupBy22[A] {
         H19 &::
         GNil
     ](
+      pipeline,
       a =>
         f1(a) &::
           f2(a) &::
@@ -1255,7 +1342,9 @@ trait groupBy22[A] {
       f19: A => H19,
       f20: A => H20
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -1279,7 +1368,9 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
@@ -1302,6 +1393,7 @@ trait groupBy22[A] {
         H20 &::
         GNil
     ](
+      pipeline,
       a =>
         f1(a) &::
           f2(a) &::
@@ -1373,7 +1465,9 @@ trait groupBy22[A] {
       f20: A => H20,
       f21: A => H21
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -1398,7 +1492,9 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
@@ -1422,6 +1518,7 @@ trait groupBy22[A] {
         H21 &::
         GNil
     ](
+      pipeline,
       a =>
         f1(a) &::
           f2(a) &::
@@ -1496,7 +1593,9 @@ trait groupBy22[A] {
       f21: A => H21,
       f22: A => H22
   ): GroupBy[
+    F,
     A,
+    E,
     H1 &::
       H2 &::
       H3 &::
@@ -1522,7 +1621,9 @@ trait groupBy22[A] {
       GNil
   ] =
     new GroupBy[
+      F,
       A,
+      E,
       H1 &::
         H2 &::
         H3 &::
@@ -1547,6 +1648,7 @@ trait groupBy22[A] {
         H22 &::
         GNil
     ](
+      pipeline,
       a =>
         f1(a) &::
           f2(a) &::

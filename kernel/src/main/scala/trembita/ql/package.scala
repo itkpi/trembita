@@ -42,8 +42,7 @@ package object ql extends orderingInstances with aggregationInstances with monoi
       @implicitNotFound("""
       Cannot perform having operation on aggregation result ${AggR0} using predicate for ${A} :@ ${T}
       Probably you using wrong aggregation tag for type ${A}.
-      Please inspect what aggregation result you'd tagged with ${T}"""
-      )
+      Please inspect what aggregation result you'd tagged with ${T}""")
       type Aux[A, T, AggR0 <: AggRes] = Converter[A, T] { type AggR = AggR0 }
 
       implicit def fromGet[A, T, AggR0 <: AggRes](implicit gget: AggRes.Get.Aux[AggR0, T, A]): Converter.Aux[A, T, AggR0] =
@@ -88,19 +87,6 @@ package object ql extends orderingInstances with aggregationInstances with monoi
     def get[U](u: U)(implicit gget: AggRes.Get[A, U]): gget.Out = gget(self)
   }
 
-  /** Trembita QL for [[DataPipelineT]] */
-  implicit class TrembitaQLForPipeline[A, F[_], Ex <: Environment](
-      private val self: DataPipelineT[F, A, Ex]
-  ) extends AnyVal {
-    def query[G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
-        queryF: Empty[A] => Query[A, G, T, R, Comb]
-    )(implicit trembitaql: trembitaql[A, G, T, R, Comb, Ex],
-      ex: Ex,
-      run: Ex#Run[F],
-      F: Monad[F]): DataPipelineT[F, QueryResult[A, G, R], Ex] =
-      trembitaql.apply(self, queryF)
-  }
-
   implicit class AsOps[F[_], Ex <: Environment, A, G <: GroupingCriteria, T](
       private val self: DataPipelineT[F, QueryResult[A, G, T], Ex]
   ) extends AnyVal {
@@ -108,37 +94,8 @@ package object ql extends orderingInstances with aggregationInstances with monoi
       self.mapImpl(_.as[R])
   }
 
-  /**
-    *
-    * Implicit conversions bellow
-    * guarantees correctness
-    * of the query
-    **/
-  implicit def agg2Query[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
-      h: Aggregate[A, G, T, R, Comb]
-  ): Query[A, G, T, R, Comb] =
-    Query[A, G, T, R, Comb](
-      h.getG,
-      h.getT,
-      (a: A) => h.filterOpt.forall(_.p(a)),
-      (_: R) => true,
-      None,
-      None,
-      None
-    )(h.aggF)
-
-  implicit def ordered2Query[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
-      h: MaybeOrderedHaving[A, G, T, R, Comb]
-  ): Query[A, G, T, R, Comb] =
-    Query[A, G, T, R, Comb](
-      h.getG,
-      h.getT,
-      (a: A) => h.filterOpt.forall(_.p(a)),
-      h.havingF,
-      h.orderRecords,
-      h.orderGroups,
-      h.orderResults
-    )(h.aggF)
+  implicit def startTrembitaQl[F[_], A, E <: Environment](self: DataPipelineT[F, A, E]): Empty[F, A, E] =
+    new Empty[F, A, E](self)
 
   implicit class QueryResultToCaseClass[A, K <: GroupingCriteria, T](
       private val self: QueryResult[A, K, T]

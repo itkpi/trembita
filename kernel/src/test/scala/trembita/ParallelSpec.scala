@@ -123,7 +123,7 @@ class ParallelSpec extends FlatSpec {
   "DataPipeline.groupBy" should "group elements" in {
     val pipeline = Input.parallel[Seq].create(Seq(1, 2, 3, 4))
     val grouped: Vector[(Boolean, List[Int])] = pipeline
-      .groupBy(_ % 2 == 0)
+      .groupByKey(_ % 2 == 0)
       .mapValues(_.toList)
       .sortBy(_._1)
       .into(Output.vector)
@@ -204,7 +204,7 @@ class ParallelSpec extends FlatSpec {
       .create[(String, Int)](
         IO(List("a" -> 1, "b" -> 2, "c" -> 3, "a" -> 3, "c" -> 10))
       )
-      .groupBy(_._1)
+      .groupByKey(_._1)
       .mapValues(_.foldLeft(0) { case (acc, (_, x)) => acc + x } * 10)
       .map { case (k, v) => s"{key=$k, value=$v}" }
       .sorted

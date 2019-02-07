@@ -58,7 +58,7 @@ object WordsCount {
       .sequential[Vector]
       .create(lines)
       .mapConcat(_.split("\\W+"))
-      .groupBy(identity)
+      .groupByKey(identity)
       .mapValues(_.size)
       .into(Output.vector)
       .run

@@ -29,23 +29,22 @@ object QLExample extends IOApp {
             .to[Spark]
 
         val result = numbers
-          .query(
-            _.where(_ > 5)
-              .groupBy(
-                expr[Long](_ % 2 == 0) as "divisible by 2",
-                expr[Long](_ % 3 == 0) as "divisible by 3",
-                expr[Long](_ % 4) as "reminder of 4",
-                expr[Long](_.toString.length) as "length"
-              )
-              .aggregate(
-                expr[Long](num => (num * num).toDouble) agg avg as "square",
-                col[Long] agg count as "count",
-                expr[Long](num => num * num * num * num) agg sum as "^4",
-                expr[Long](_.toString) agg sum as "some name",
-                expr[Long](_.toDouble) agg stdev as "STDEV"
-              )
-              .having(agg[Long]("count")(_ > 7))
+          .where(_ > 5)
+          .groupBy(
+            expr[Long](_ % 2 == 0) as "divisible by 2",
+            expr[Long](_ % 3 == 0) as "divisible by 3",
+            expr[Long](_ % 4) as "reminder of 4",
+            expr[Long](_.toString.length) as "length"
           )
+          .aggregate(
+            expr[Long](num => (num * num).toDouble) agg avg as "square",
+            col[Long] agg count as "count",
+            expr[Long](num => num * num * num * num) agg sum as "^4",
+            expr[Long](_.toString) agg sum as "some name",
+            expr[Long](_.toDouble) agg stdev as "STDEV"
+          )
+          .having(agg[Long]("count")(_ > 7))
+          .compile
           .as[NumbersReport]
 
         result.into(Output.array).run.flatMap(vs => putStrLn(vs.mkString("\n")))

@@ -21,7 +21,7 @@ trait EnvironmentIndependentOps[F[_], A, E <: Environment] extends Any {
     *
     * @return - a data pipeline consisting of pair {{{ (K, Iterable[A]) }}}
     **/
-  def groupBy[K: ClassTag](f: A => K)(
+  def groupByKey[K: ClassTag](f: A => K)(
       implicit canGroupBy: CanGroupBy[E#Repr],
       F: Monad[F],
       A: ClassTag[A]
@@ -34,7 +34,7 @@ trait EnvironmentIndependentOps[F[_], A, E <: Environment] extends Any {
     *
     * @return - a data pipeline consisting of pair {{{ (K, Iterable[A]) }}}
     **/
-  def groupByOrdered[K: ClassTag: Ordering](f: A => K)(
+  def groupByKeyOrdered[K: ClassTag: Ordering](f: A => K)(
       implicit canGroupByOrdered: CanGroupByOrdered[E#Repr],
       F: Monad[F],
       A: ClassTag[A]
@@ -121,7 +121,7 @@ trait EnvironmentIndependentOps[F[_], A, E <: Environment] extends Any {
     pipe.run(`this`)
 
   /**
-    * Like [[groupBy]] with the following difference:
+    * Like [[groupByKey]] with the following difference:
     *
     * {{{
     *   // groupBy...
