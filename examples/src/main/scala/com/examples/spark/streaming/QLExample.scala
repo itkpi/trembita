@@ -22,7 +22,7 @@ object QLExample extends IOApp {
     ).bracket(use = { trembitaSpark: SparkContext =>
         implicit val ssc: StreamingContext = new StreamingContext(trembitaSpark, batchDuration = StreamingDuration(1000))
         implicit val timeout: AsyncTimeout = AsyncTimeout(5.minutes)
-        val numbers: DataPipelineT[IO, Long, SparkStreaming] =
+        val numbers: BiDataPipelineT[IO, Long, SparkStreaming] =
           Input.liftF[IO, SparkStreaming].createF(IO { 1L to 2000L })
 
         val result = numbers

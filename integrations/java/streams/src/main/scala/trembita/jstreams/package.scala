@@ -17,7 +17,7 @@ import scala.collection.parallel.immutable.ParVector
 import scala.compat.java8.FunctionConverters._
 
 package object jstreams extends operations {
-  implicit class JStreamsOps[F[_], A, T <: StreamType](val `this`: DataPipelineT[F, A, JavaStreams[T]])
+  implicit class JStreamsOps[F[_], A, T <: StreamType](val `this`: BiDataPipelineT[F, A, JavaStreams[T]])
       extends AnyVal
       with MagnetlessOps[F, A, JavaStreams[T]]
 
@@ -28,7 +28,7 @@ package object jstreams extends operations {
       new OutputT[F, R, JavaStreams[ST]] {
         type Out[G[_], a] = G[R]
 
-        def apply(pipeline: DataPipelineT[F, R, JavaStreams[ST]])(
+        def apply(pipeline: BiDataPipelineT[F, R, JavaStreams[ST]])(
             implicit F: Monad[F],
             E: JavaStreams[ST],
             run: Monad[F],
@@ -64,10 +64,10 @@ package object jstreams extends operations {
 
   class jstreamInputDslF[F[+ _], ST <: StreamType](val `dummy`: Boolean = true) {
     @inline def create[A: ClassTag](values: F[Seq[A]])(implicit F: Monad[F],
-                                                       creator: StreamCreator[ST]): DataPipelineT[F, A, JavaStreams[ST]] =
+                                                       creator: StreamCreator[ST]): BiDataPipelineT[F, A, JavaStreams[ST]] =
       Input.sequentialF[F, Seq].create(values).to[JavaStreams[ST]]
 
-    @inline def empty[A: ClassTag](implicit F: Monad[F], creator: StreamCreator[ST]): DataPipelineT[F, A, JavaStreams[ST]] =
+    @inline def empty[A: ClassTag](implicit F: Monad[F], creator: StreamCreator[ST]): BiDataPipelineT[F, A, JavaStreams[ST]] =
       create(F.pure(Seq.empty[A]))
   }
 

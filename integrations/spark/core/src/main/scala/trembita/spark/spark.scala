@@ -99,16 +99,16 @@ package object spark extends LowPriorityInstancesForSpark with trembitaqlForSpar
   implicit def runIOOnSpark(implicit timeout: AsyncTimeout): RunOnSpark[IO] =
     new RunIOOnSpark(timeout)
 
-  implicit class MagnetlessSparkOpsImpl[F[_], A, E <: BaseSpark](val `this`: DataPipelineT[F, A, E])
+  implicit class MagnetlessSparkOpsImpl[F[_], A, E <: BaseSpark](val `this`: BiDataPipelineT[F, A, E])
       extends AnyVal
       with MagnetlessOps[F, A, E]
 
-  implicit class MagnetlessSparkIOOpsImpl[A, E <: BaseSpark](val `this`: DataPipelineT[IO, A, E])
+  implicit class MagnetlessSparkIOOpsImpl[A, E <: BaseSpark](val `this`: BiDataPipelineT[IO, A, E])
       extends AnyVal
       with MagnetlessSparkIOOps[A, E]
 
-  implicit class SparkOps[F[_], A](val `this`: DataPipelineT[F, A, Spark]) extends AnyVal {
-    def mapM[B: ClassTag](magnet: MagnetF[F, A, B, Spark])(implicit F: Monad[F]): DataPipelineT[F, B, Spark] =
+  implicit class SparkOps[F[_], A](val `this`: BiDataPipelineT[F, A, Spark]) extends AnyVal {
+    def mapM[B: ClassTag](magnet: MagnetF[F, A, B, Spark])(implicit F: Monad[F]): BiDataPipelineT[F, B, Spark] =
       `this`.mapMImpl[A, B](magnet.prepared)
   }
 
@@ -155,7 +155,7 @@ package object spark extends LowPriorityInstancesForSpark with trembitaqlForSpar
   }
 
   implicit class SparkFsmByKey[F[_], A](
-      private val self: DataPipelineT[F, A, Spark]
+      private val self: BiDataPipelineT[F, A, Spark]
   ) extends AnyVal {
     def fsmByKey[K: Encoder: ClassTag, N: Encoder, D: Encoder, B: ClassTag: TypeTag: Encoder](getKey: A => K)(
         initial: InitialState[N, D, F]
@@ -165,7 +165,7 @@ package object spark extends LowPriorityInstancesForSpark with trembitaqlForSpar
         AEnc: Encoder[A],
         F: SerializableMonad[F],
         run: Spark#Run[F]
-    ): DataPipelineT[F, B, Spark] =
+    ): BiDataPipelineT[F, B, Spark] =
       self.mapRepr[B](sparkFSM.byKey[A, K, N, D, B](_)(getKey, initial)(fsmF))
   }
 
@@ -206,30 +206,30 @@ package object spark extends LowPriorityInstancesForSpark with trembitaqlForSpar
   implicit def liftIdToRdd(implicit sc: SparkContext): LiftPipeline[Id, Spark] = new LiftPipeline[Id, Spark] {
     def liftIterable[A: ClassTag](
         xs: Iterable[A]
-    ): DataPipelineT[Id, A, Spark] = Input.repr[Spark].create(sc.parallelize(xs.toSeq))
+    ): BiDataPipelineT[Id, A, Spark] = Input.repr[Spark].create(sc.parallelize(xs.toSeq))
 
     def liftIterableF[A: ClassTag](
         fa: Id[Iterable[A]]
-    ): DataPipelineT[Id, A, Spark] = Input.repr[Spark].create(sc.parallelize(fa.toSeq))
+    ): BiDataPipelineT[Id, A, Spark] = Input.repr[Spark].create(sc.parallelize(fa.toSeq))
   }
 
   implicit def liftIOToRdd(implicit sc: SparkContext): LiftPipeline[IO, Spark] = new LiftPipeline[IO, Spark] {
     def liftIterable[A: ClassTag](
         xs: Iterable[A]
-    ): DataPipelineT[IO, A, Spark] = Input.reprF[IO, Spark].create(IO(sc.parallelize(xs.toSeq)))
+    ): BiDataPipelineT[IO, A, Spark] = Input.reprF[IO, Spark].create(IO(sc.parallelize(xs.toSeq)))
     def liftIterableF[A: ClassTag](
         fa: IO[Iterable[A]]
-    ): DataPipelineT[IO, A, Spark] = Input.reprF[IO, Spark].create(fa.map(xs => sc.parallelize(xs.toSeq)))
+    ): BiDataPipelineT[IO, A, Spark] = Input.reprF[IO, Spark].create(fa.map(xs => sc.parallelize(xs.toSeq)))
   }
 
   implicit def liftSerializableFutureToRdd(implicit sc: SparkContext): LiftPipeline[SerializableFuture, Spark] =
     new LiftPipeline[SerializableFuture, Spark] {
       def liftIterable[A: ClassTag](
           xs: Iterable[A]
-      ): DataPipelineT[SerializableFuture, A, Spark] = Input.rddF[SerializableFuture].create(sc.parallelize(xs.toSeq))
+      ): BiDataPipelineT[SerializableFuture, A, Spark] = Input.rddF[SerializableFuture].create(sc.parallelize(xs.toSeq))
       def liftIterableF[A: ClassTag](
           fa: SerializableFuture[Iterable[A]]
-      ): DataPipelineT[SerializableFuture, A, Spark] =
+      ): BiDataPipelineT[SerializableFuture, A, Spark] =
         Input.reprF[SerializableFuture, Spark].create(fa.fmap[RDD[A]](xs => sc.parallelize(xs.toSeq)))
     }
 
@@ -237,13 +237,13 @@ package object spark extends LowPriorityInstancesForSpark with trembitaqlForSpar
     @inline def rdd: InputT[Id, Spark, RDD] = new InputT[Id, Spark, RDD] {
       def create[A: ClassTag](props: RDD[A])(
           implicit F: Monad[Id]
-      ): DataPipelineT[Id, A, Spark] = EvaluatedSource.make[Id, A, Spark](safeIdInstances.pure(props), safeIdInstances)
+      ): BiDataPipelineT[Id, A, Spark] = EvaluatedSource.make[Id, A, Spark](safeIdInstances.pure(props), safeIdInstances)
     }
 
     @inline def rddF[F[_]](implicit sr: SerializableMonad[F]): InputT[F, Spark, RDD] = new InputT[F, Spark, RDD] {
       def create[A: ClassTag](props: RDD[A])(
           implicit F: Monad[F]
-      ): DataPipelineT[F, A, Spark] = EvaluatedSource.make[F, A, Spark](sr.pure(props), sr)
+      ): BiDataPipelineT[F, A, Spark] = EvaluatedSource.make[F, A, Spark](sr.pure(props), sr)
     }
   }
 

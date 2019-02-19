@@ -23,7 +23,7 @@ object Main extends IOApp {
           .fromPath(Paths.get("examples/src/main/resources/words.txt"))
       )
 
-    val wordsCount: DataPipelineT[IO, String, Akka[Future[IOResult]]] = fileLines
+    val wordsCount: BiDataPipelineT[IO, String, Akka[Future[IOResult]]] = fileLines
       .map(_.utf8String)
       .mapConcat(_.split("\\s"))
       .groupByKey(identity _)

@@ -9,7 +9,7 @@ import shapeless.syntax.singleton._
 
 object QLSample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
-    val numbers: DataPipelineT[IO, Long, Parallel] =
+    val numbers: BiDataPipelineT[IO, Long, Parallel] =
       Input.parallelF[IO, Seq].create(IO { 1L to 20L })
 
     val result = numbers

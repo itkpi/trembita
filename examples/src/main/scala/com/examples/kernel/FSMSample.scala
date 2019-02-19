@@ -13,7 +13,7 @@ object FSMSample extends IOApp {
   case object Closed extends DoorState
 
   def run(args: List[String]): IO[ExitCode] = {
-    val pipeline: DataPipelineT[IO, Int, Sequential] =
+    val pipeline: BiDataPipelineT[IO, Int, Sequential] =
       Input.randomF[IO].create(RandomInput.propsT[IO, Int](n = 20, count = 100)(x => IO { x + 2 }))
 
     val withDoorState =

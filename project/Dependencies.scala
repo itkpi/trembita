@@ -21,6 +21,7 @@ object Dependencies {
   val sttpV             = "1.5.2"
   val log4jV            = "2.11.0"
   val log4jScalaV       = "11.0"
+  val zioV              = "0.6.3"
 
   object Testing {
     val scalastic = "org.scalactic" %% "scalactic"   % testV withSources ()
@@ -32,6 +33,11 @@ object Dependencies {
     val catsEffect = "org.typelevel" %% "cats-effect" % catsEffectsV withSources ()
     val shapeless  = "com.chuusai"   %% "shapeless"   % shapelessV withSources ()
     val spire      = "org.typelevel" %% "spire"       % spireV withSources ()
+  }
+
+  object Scalaz {
+    val zio         = "org.scalaz" %% "scalaz-zio"              % zioV
+    val interopCats = "org.scalaz" %% "scalaz-zio-interop-cats" % zioV
   }
 
   object Cassandra {

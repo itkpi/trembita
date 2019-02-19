@@ -165,7 +165,7 @@ class JstreamsSeqSpec extends FlatSpec {
 
   "DataPipeline transformations wrapped in Kleisli" should "be evaluated correctly" in {
     val pipeline = Input.jstreamF[IO, StreamType.Sequential].create(IO(Seq(1, 2, 3, 4, 5)))
-    val pipe = pipeT[IO, Int, String, JavaStreams[StreamType.Sequential]](
+    val pipe = biPipeT[IO, Int, String, JavaStreams[StreamType.Sequential]](
       _.mapM(i => IO { i + 1 })
         .filter(_ % 2 == 0)
         .map(_.toString)

@@ -7,32 +7,32 @@ import scala.language.higherKinds
 import scala.reflect.ClassTag
 
 package object logging {
-  implicit class LoggingOps[F[_], A, E <: Environment](private val self: DataPipelineT[F, A, E]) extends AnyVal {
-    def info(msg: A => String = (a: A) => a.toString)(implicit F: Monad[F], loggingF: LoggingF[F], A: ClassTag[A]): DataPipelineT[F, A, E] =
+  implicit class LoggingOps[F[_], A, E <: Environment](private val self: BiDataPipelineT[F, A, E]) extends AnyVal {
+    def info(msg: A => String = (a: A) => a.toString)(implicit F: Monad[F], loggingF: LoggingF[F], A: ClassTag[A]): BiDataPipelineT[F, A, E] =
       self.mapMImpl[A, A] { a =>
         loggingF.info(msg(a)).as(a)
       }
 
-    def warn(msg: A => String = (a: A) => a.toString)(implicit F: Monad[F], loggingF: LoggingF[F], A: ClassTag[A]): DataPipelineT[F, A, E] =
+    def warn(msg: A => String = (a: A) => a.toString)(implicit F: Monad[F], loggingF: LoggingF[F], A: ClassTag[A]): BiDataPipelineT[F, A, E] =
       self.mapMImpl[A, A] { a =>
         loggingF.warn(msg(a)).as(a)
       }
 
     def debug(
         msg: A => String = (a: A) => a.toString
-    )(implicit F: Monad[F], loggingF: LoggingF[F], A: ClassTag[A]): DataPipelineT[F, A, E] =
+    )(implicit F: Monad[F], loggingF: LoggingF[F], A: ClassTag[A]): BiDataPipelineT[F, A, E] =
       self.mapMImpl[A, A] { a =>
         loggingF.debug(msg(a)).as(a)
       }
 
     def trace(
         msg: A => String = (a: A) => a.toString
-    )(implicit F: Monad[F], loggingF: LoggingF[F], A: ClassTag[A]): DataPipelineT[F, A, E] =
+    )(implicit F: Monad[F], loggingF: LoggingF[F], A: ClassTag[A]): BiDataPipelineT[F, A, E] =
       self.mapMImpl[A, A] { a =>
         loggingF.trace(msg(a)).as(a)
       }
 
-    def logErrors(msg: => String)(implicit F: MonadError[F, Throwable], loggingF: LoggingF[F], A: ClassTag[A]): DataPipelineT[F, A, E] =
+    def logErrors(msg: => String)(implicit F: MonadError[F, Throwable], loggingF: LoggingF[F], A: ClassTag[A]): BiDataPipelineT[F, A, E] =
       self.handleErrorWithImpl[A] { e =>
         loggingF.error(msg, e) *> F.raiseError(e)
       }

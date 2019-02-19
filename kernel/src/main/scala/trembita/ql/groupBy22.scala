@@ -5,20 +5,20 @@ import trembita.ql.GroupingCriteria.{&::, GNil}
 import trembita.ql.QueryBuilder.GroupBy
 import scala.language.higherKinds
 
-trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
+trait groupBy22[F[_], Er, A, E <: Environment] { self: QueryBuilder[F, Er, A, E] =>
 
   /**
     * Like Group By clause in SQL
     *
     **/
-  def groupBy[T, H <: :@[_, _]](f: A => H): GroupBy[F, A, E, H &:: GNil] =
-    new GroupBy[F, A, E, H &:: GNil](pipeline, a => f(a) &:: GNil, None)
+  def groupBy[T, H <: :@[_, _]](f: A => H): GroupBy[F, Er, A, E, H &:: GNil] =
+    new GroupBy[F, Er, A, E, H &:: GNil](pipeline, a => f(a) &:: GNil, None)
 
   def groupBy[T, H1 <: :@[_, _], H2 <: :@[_, _]](
       f1: A => H1,
       f2: A => H2
-  ): GroupBy[F, A, E, H1 &:: H2 &:: GNil] =
-    new GroupBy[F, A, E, H1 &:: H2 &:: GNil](pipeline, a => f1(a) &:: f2(a) &:: GNil, None)
+  ): GroupBy[F, Er, A, E, H1 &:: H2 &:: GNil] =
+    new GroupBy[F, Er, A, E, H1 &:: H2 &:: GNil](pipeline, a => f1(a) &:: f2(a) &:: GNil, None)
 
   def groupBy[
       T,
@@ -31,6 +31,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f3: A => H3
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -40,6 +41,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -67,6 +69,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f4: A => H4
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -77,6 +80,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -108,6 +112,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f5: A => H5
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -119,6 +124,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -154,6 +160,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f6: A => H6
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -166,6 +173,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -205,6 +213,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f7: A => H7
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -218,6 +227,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -261,6 +271,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f8: A => H8
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -275,6 +286,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -322,6 +334,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f9: A => H9
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -337,6 +350,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -388,6 +402,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f10: A => H10
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -404,6 +419,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -461,6 +477,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f11: A => H11
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -478,6 +495,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -539,6 +557,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f12: A => H12
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -557,6 +576,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -622,6 +642,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f13: A => H13
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -641,6 +662,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -710,6 +732,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f14: A => H14
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -730,6 +753,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -803,6 +827,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f15: A => H15
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -824,6 +849,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -901,6 +927,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f16: A => H16
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -923,6 +950,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -1004,6 +1032,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f17: A => H17
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -1027,6 +1056,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -1112,6 +1142,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f18: A => H18
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -1136,6 +1167,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -1225,6 +1257,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f19: A => H19
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -1250,6 +1283,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -1343,6 +1377,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f20: A => H20
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -1369,6 +1404,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -1466,6 +1502,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f21: A => H21
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -1493,6 +1530,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::
@@ -1594,6 +1632,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
       f22: A => H22
   ): GroupBy[
     F,
+    Er,
     A,
     E,
     H1 &::
@@ -1622,6 +1661,7 @@ trait groupBy22[F[_], A, E <: Environment] { self: QueryBuilder[F, A, E] =>
   ] =
     new GroupBy[
       F,
+      Er,
       A,
       E,
       H1 &::

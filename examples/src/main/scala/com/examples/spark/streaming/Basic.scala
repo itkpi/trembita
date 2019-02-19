@@ -21,7 +21,7 @@ object Basic extends IOApp {
         implicit val ssc: StreamingContext = new StreamingContext(trembitaSpark, batchDuration = StreamingDuration(1000))
         implicit val timeout: AsyncTimeout = AsyncTimeout(5.minutes)
 
-        val numbers: DataPipelineT[IO, Int, SparkStreaming] = Input
+        val numbers: BiDataPipelineT[IO, Int, SparkStreaming] = Input
           .sequentialF[SerializableFuture, Seq]
           .create(SerializableFuture.pure(Seq(1, 2, 3, 20, 40, 60)))
           .to[SparkStreaming]

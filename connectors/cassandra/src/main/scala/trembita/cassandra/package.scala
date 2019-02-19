@@ -10,10 +10,10 @@ import scala.reflect.ClassTag
 
 package object cassandra {
   class cassandraInputDslF[F[_]](val `this`: (Id ~> F, Monad[F])) extends AnyVal {
-    def rows(session: Session, statement: Statement): DataPipelineT[F, Row, Sequential] =
+    def rows(session: Session, statement: Statement): BiDataPipelineT[F, Row, Sequential] =
       new StrictSource[F, Row](`this`._1(session.execute(statement).iterator().asScala), `this`._2)
 
-    def fromRows[A: ClassTag](session: Session, statement: Statement)(extractor: Row => A): DataPipelineT[F, A, Sequential] =
+    def fromRows[A: ClassTag](session: Session, statement: Statement)(extractor: Row => A): BiDataPipelineT[F, A, Sequential] =
       rows(session, statement).mapImpl(extractor)(implicitly, `this`._2)
   }
 

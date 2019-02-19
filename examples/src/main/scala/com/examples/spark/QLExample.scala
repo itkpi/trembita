@@ -22,7 +22,7 @@ object QLExample extends IOApp {
     ).bracket(use = { implicit spark: SparkSession =>
         import spark.implicits._
         implicit val timeout: AsyncTimeout = AsyncTimeout(5.minutes)
-        val numbers: DataPipelineT[IO, Long, Spark] =
+        val numbers: BiDataPipelineT[IO, Long, Spark] =
           Input
             .sequentialF[IO, Seq]
             .create(IO { 1L to 2000L })

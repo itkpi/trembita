@@ -10,71 +10,71 @@ import scala.reflect.ClassTag
 import scala.util.Random
 
 class IterableInput[Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[Col[_], _, Col[_]])
-    extends InputT[Id, Sequential, Col]
-    with InputWithEmptyT[Id, Sequential] {
+    extends InputT[Id, Nothing, Sequential, Col]
+    with InputWithEmptyT[Id, Nothing, Sequential] {
 
   def create[A: ClassTag](props: Col[A])(implicit F: Monad[Id]): DataPipeline[A, Sequential] =
-    LiftPipeline[Id, Sequential].liftIterable[A](props)
+    LiftPipeline[Id, Nothing, Sequential].liftIterable[A](props)
 
   def empty[A: ClassTag](
       implicit F: Monad[Id]
-  ): DataPipelineT[Id, A, Sequential] = create[A](cbf().result().asInstanceOf[Col[A]])
+  ): DataPipeline[A, Sequential] = create[A](cbf().result().asInstanceOf[Col[A]])
 }
 
 class ParIterableInput[Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[Col[_], _, Col[_]])
-    extends InputT[Id, Parallel, Col]
-    with InputWithEmptyT[Id, Parallel] {
+    extends InputT[Id, Nothing, Parallel, Col]
+    with InputWithEmptyT[Id, Nothing, Parallel] {
   def create[A: ClassTag](props: Col[A])(implicit F: Monad[Id]): DataPipeline[A, Parallel] =
-    LiftPipeline[Id, Parallel].liftIterable[A](props)
+    LiftPipeline[Id, Nothing, Parallel].liftIterable[A](props)
 
   def empty[A: ClassTag](
       implicit F: Monad[Id]
-  ): DataPipelineT[Id, A, Parallel] = create[A](cbf().result().asInstanceOf[Col[A]])
+  ): BiDataPipelineT[Id, Nothing, A, Parallel] = create[A](cbf().result().asInstanceOf[Col[A]])
 }
 
-class IterableInputF[F[+ _], Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[Col[_], _, Col[_]])
-    extends InputT[F, Sequential, λ[β => F[Col[β]]]]
-    with InputWithEmptyT[F, Sequential] {
+class IterableInputF[F[+ _], Er, Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[Col[_], _, Col[_]])
+    extends InputT[F, Er, Sequential, λ[β => F[Col[β]]]]
+    with InputWithEmptyT[F, Er, Sequential] {
 
   final type Props[A] = F[Col[A]]
-  def create[A: ClassTag](props: Props[A])(implicit F: Monad[F]): DataPipelineT[F, A, Sequential] =
-    LiftPipeline[F, Sequential].liftIterableF[A](props)
+  def create[A: ClassTag](props: Props[A])(implicit F: Monad[F]): BiDataPipelineT[F, Er, A, Sequential] =
+    LiftPipeline[F, Er, Sequential].liftIterableF[A](props)
 
   def empty[A: ClassTag](
       implicit F: Monad[F]
-  ): DataPipelineT[F, A, Sequential] = create[A](F.pure[Col[A]](cbf().result().asInstanceOf[Col[A]]))
+  ): BiDataPipelineT[F, Er, A, Sequential] = create[A](F.pure[Col[A]](cbf().result().asInstanceOf[Col[A]]))
 }
 
-class ParIterableInputF[F[+ _], Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[Col[_], _, Col[_]])
-    extends InputT[F, Parallel, λ[β => F[Col[β]]]]
-    with InputWithEmptyT[F, Parallel] {
+class ParIterableInputF[F[+ _], Er, Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[Col[_], _, Col[_]])
+    extends InputT[F, Er, Parallel, λ[β => F[Col[β]]]]
+    with InputWithEmptyT[F, Er, Parallel] {
 
-  def create[A: ClassTag](props: F[Col[A]])(implicit F: Monad[F]): DataPipelineT[F, A, Parallel] =
-    LiftPipeline[F, Parallel].liftIterableF[A](props)
+  def create[A: ClassTag](props: F[Col[A]])(implicit F: Monad[F]): BiDataPipelineT[F, Er, A, Parallel] =
+    LiftPipeline[F, Er, Parallel].liftIterableF[A](props)
 
   def empty[A: ClassTag](
       implicit F: Monad[F]
-  ): DataPipelineT[F, A, Parallel] = create[A](F.pure[Col[A]](cbf().result().asInstanceOf[Col[A]]))
+  ): BiDataPipelineT[F, Er, A, Parallel] = create[A](F.pure[Col[A]](cbf().result().asInstanceOf[Col[A]]))
 }
 
-class RandomInput private[trembita] () extends InputT[Id, Sequential, RandomInput.Props] {
+class RandomInput private[trembita] () extends InputT[Id, Nothing, Sequential, RandomInput.Props] {
   def create[A: ClassTag](props: RandomInput.Props[A])(
       implicit F: Monad[Id]
-  ): DataPipelineT[Id, A, Sequential] =
-    EvaluatedSource.make[Id, A, Sequential](
+  ): BiDataPipelineT[Id, Nothing, A, Sequential] =
+    EvaluatedSource.make[Id, Nothing, A, Sequential](
       Vector.tabulate(props.count)(_ => props.nOpt.fold(ifEmpty = Random.nextInt())(Random.nextInt)).map(props.gen),
       F
     )
 }
 
-class RandomInputF[F[_]] private[trembita] (implicit ctgF: ClassTag[F[_]]) extends InputT[F, Sequential, RandomInput.PropsT[F, ?]] {
+class RandomInputF[F[_], Er] private[trembita] (implicit ctgF: ClassTag[F[_]]) extends InputT[F, Er, Sequential, RandomInput.PropsT[F, ?]] {
   private implicit def ctgFA[A: ClassTag]: ClassTag[F[A]] = ClassTag[F[A]](ctgF.runtimeClass)
 
   def create[A: ClassTag](props: RandomInput.PropsT[F, A])(
       implicit F: Monad[F]
-  ): DataPipelineT[F, A, Sequential] =
+  ): BiDataPipelineT[F, Er, A, Sequential] =
     EvaluatedSource
-      .make[F, F[A], Sequential](
+      .make[F, Er, F[A], Sequential](
         F.pure(Vector.tabulate(props.count)(_ => props.nOpt.fold(ifEmpty = Random.nextInt())(Random.nextInt)).map(props.gen)),
         F
       )

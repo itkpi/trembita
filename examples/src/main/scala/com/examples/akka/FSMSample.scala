@@ -22,7 +22,7 @@ object FSMSample extends IOApp {
   case object Closed extends DoorState
 
   def akkaTrembitaFsmSample(implicit mat: ActorMaterializer, ec: ExecutionContext): IO[Unit] = {
-    val pipeline: DataPipelineT[IO, Int, Akka[NotUsed]] =
+    val pipeline: BiDataPipelineT[IO, Int, Akka[NotUsed]] =
       Input.fromSourceF[IO](
         Source.fromIterator(() => Iterator.continually(Random.nextInt()))
       )

@@ -82,7 +82,7 @@ class PauseSpec extends TestKit(ActorSystem("trembita-akka-pause")) with FlatSpe
 
   "DataPipeline of IO" should "be paused correctly with CanPause2 on infinite graph" in {
     val acc = new AtomicInteger()
-    val pipeline: DataPipelineT[IO, String, Akka[NotUsed]] = Input
+    val pipeline: BiDataPipelineT[IO, String, Akka[NotUsed]] = Input
       .fromSourceF[IO](Source.fromIterator(() => Iterator.from(1)))
       .pausedWith2((a, b) => (b - a).seconds)
       .map { i =>

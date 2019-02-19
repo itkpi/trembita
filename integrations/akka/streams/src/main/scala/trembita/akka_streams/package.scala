@@ -15,13 +15,13 @@ import scala.reflect.ClassTag
 
 package object akka_streams extends operations {
   implicit class AkkaOps[F[_], A, Mat](
-      val `this`: DataPipelineT[F, A, Akka[Mat]]
+      val `this`: BiDataPipelineT[F, A, Akka[Mat]]
   ) extends AnyVal
       with MagnetlessOps[F, A, Akka[Mat]]
       with OutputDslAkka[F, A, Mat] {
     def through[B: ClassTag, Mat2](
         flow: Graph[FlowShape[A, B], Mat2]
-    )(implicit E: Akka[Mat], run: Akka[Mat]#Run[F], F: Monad[F]): DataPipelineT[F, B, Akka[Mat2]] =
+    )(implicit E: Akka[Mat], run: Akka[Mat]#Run[F], F: Monad[F]): BiDataPipelineT[F, B, Akka[Mat2]] =
       EvaluatedSource.make[F, B, Akka[Mat2]](F.map(`this`.evalRepr)(_.viaMat(flow)(Keep.right)), F)
   }
 
@@ -53,10 +53,10 @@ package object akka_streams extends operations {
   }
 
   class fromSourceFDsl[F[+ _]](val `dummy`: Boolean = true) extends AnyVal {
-    def apply[A: ClassTag, Mat](sourceF: Source[A, Mat])(implicit F: Monad[F]): DataPipelineT[F, A, Akka[Mat]] =
+    def apply[A: ClassTag, Mat](sourceF: Source[A, Mat])(implicit F: Monad[F]): BiDataPipelineT[F, A, Akka[Mat]] =
       Input.reprF[F, Akka[Mat]].create(F.pure(sourceF))
 
-    def empty[A: ClassTag](implicit F: Monad[F]): DataPipelineT[F, A, Akka[NotUsed]] =
+    def empty[A: ClassTag](implicit F: Monad[F]): BiDataPipelineT[F, A, Akka[NotUsed]] =
       Input.reprF[F, Akka[NotUsed]].create(F.pure(Source.empty[A]))
   }
 
@@ -66,7 +66,7 @@ package object akka_streams extends operations {
     )(implicit materializer: Materializer): OutputT.Aux[Id, A, Akka[Mat], λ[(G[_], a) => Mat]] =
       new OutputT[Id, A, Akka[Mat]] {
         type Out[G[_], a] = Mat
-        def apply(pipeline: DataPipelineT[Id, A, Akka[Mat]])(
+        def apply(pipeline: BiDataPipelineT[Id, A, Akka[Mat]])(
             implicit F: Monad[Id],
             E: Akka[Mat],
             run: RunAkka[Id],
@@ -83,7 +83,7 @@ package object akka_streams extends operations {
     )(implicit materializer: Materializer): OutputT.Aux[F, A, Akka[Mat0], λ[(G[_], a) => F[Mat1]]] =
       new OutputT[F, A, Akka[Mat0]] {
         type Out[G[_], a] = F[Mat1]
-        def apply(pipeline: DataPipelineT[F, A, Akka[Mat0]])(
+        def apply(pipeline: BiDataPipelineT[F, A, Akka[Mat0]])(
             implicit F: Monad[F],
             E: Akka[Mat0],
             run: RunAkka[F],

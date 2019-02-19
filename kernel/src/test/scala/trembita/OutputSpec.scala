@@ -9,10 +9,10 @@ import org.scalatest.FlatSpec
 import cats.instances.int._
 
 class OutputSpec extends FlatSpec {
-  private val vecCheck                                  = Vector(1, 2, 3, 4, 5, 6)
-  private val ppln: DataPipeline[Int, Sequential]       = Input.sequential[Vector].create(vecCheck)
-  private val pplnT: DataPipelineT[IO, Int, Sequential] = Input.sequentialF[IO, Vector].create(IO(vecCheck))
-  private val sumCheck                                  = vecCheck.sum
+  private val vecCheck                                               = Vector(1, 2, 3, 4, 5, 6)
+  private val ppln: DataPipeline[Int, Sequential]                    = Input.sequential[Vector].create(vecCheck)
+  private val pplnT: BiDataPipelineT[IO, Throwable, Int, Sequential] = Input.sequentialF[IO, Throwable, Vector].create(IO(vecCheck))
+  private val sumCheck                                               = vecCheck.sum
 
   private val output1 = Output.vector
   private val output2 = Output.combineAll[Int]

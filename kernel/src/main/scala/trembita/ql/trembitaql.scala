@@ -20,11 +20,11 @@ import scala.reflect.ClassTag
     In most cases it means that ${E} does not support an efficient data querying
   """)
 trait trembitaql[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb, E <: Environment] extends Serializable {
-  def apply[F[_]](query: Query[F, A, E, G, T, R, Comb])(
+  def apply[F[_], Er](query: Query[F, Er, A, E, G, T, R, Comb])(
       implicit F: Monad[F],
       ex: E,
       run: E#Run[F]
-  ): DataPipelineT[F, QueryResult[A, G, R], E]
+  ): BiDataPipelineT[F, Er, QueryResult[A, G, R], E]
 }
 
 object trembitaql {
@@ -39,10 +39,10 @@ object trembitaql {
   ): trembitaql[A, G, T, R, Comb, E] =
     new trembitaql[A, G, T, R, Comb, E] {
       type QueryRes = QueryResult[A, G, R]
-      override def apply[F[_]](
-          query: Query[F, A, E, G, T, R, Comb]
-      )(implicit F: Monad[F], ex: E, run: E#Run[F]): DataPipelineT[F, QueryResult[A, G, R], E] = {
-        val grouped: DataPipelineT[F, QueryRes, E] = query.pipeline
+      override def apply[F[_], Er](
+          query: Query[F, Er, A, E, G, T, R, Comb]
+      )(implicit F: Monad[F], ex: E, run: E#Run[F]): BiDataPipelineT[F, Er, QueryResult[A, G, R], E] = {
+        val grouped: BiDataPipelineT[F, Er, QueryRes, E] = query.pipeline
           .filterImpl[A](query.filterF)
           .groupByKey(query.getG)
           .mapValues { as =>
@@ -60,14 +60,14 @@ object trembitaql {
           }
           .filterImpl(qr => query.havingF(qr.totals))
 
-        val orderedByR: DataPipelineT[F, QueryRes, E] =
+        val orderedByR: BiDataPipelineT[F, Er, QueryRes, E] =
           query.orderResults.fold(grouped) { implicit orderingR =>
             grouped.mapRepr { repr =>
               val sorted = canSort.sortedBy[QueryRes, R](repr)(_.totals)
               sorted
             }
           }
-        val orderedByG: DataPipelineT[F, QueryRes, E] =
+        val orderedByG: BiDataPipelineT[F, Er, QueryRes, E] =
           query.orderCriterias.fold(orderedByR) { implicit orderingG =>
             orderedByR.mapRepr { repr =>
               val sorted = canSort.sortedBy[QueryRes, G](repr)(_.keys)

@@ -43,7 +43,7 @@ class SequentialSpec extends FlatSpec {
   }
 
   "DataPipeline[String, Try, ...].mapM(...toInt)" should "be DataPipeline[Int]" in {
-    val pipeline = Input.sequentialF[Try, Seq].create(Try(Vector("1", "2", "3", "abc")))
+    val pipeline = Input.sequentialF[Try, Throwable, Seq].create(Try(Vector("1", "2", "3", "abc")))
     val res = pipeline
       .mapM { str =>
         Try(str.toInt)
@@ -208,7 +208,7 @@ class SequentialSpec extends FlatSpec {
 
   "DataPipeline[IO]" should "produce the result wrapped in IO monad" in {
     val resultIO = Input
-      .sequentialF[IO, Seq]
+      .sequentialF[IO, Throwable, Seq]
       .create[(String, Int)](
         IO(List("a" -> 1, "b" -> 2, "c" -> 3, "a" -> 3, "c" -> 10))
       )
@@ -226,7 +226,7 @@ class SequentialSpec extends FlatSpec {
   }
 
   "DataPipeline of IO" should "be paused correctly" in {
-    val pipeline  = Input.sequentialF[IO, Seq].create(IO(Seq(1, 2, 3, 4, 5)))
+    val pipeline  = Input.sequentialF[IO, Throwable, Seq].create(IO(Seq(1, 2, 3, 4, 5)))
     val paused    = pipeline.pausedWith(_.seconds)
     val startTime = System.currentTimeMillis()
 
@@ -238,7 +238,7 @@ class SequentialSpec extends FlatSpec {
   }
 
   "DataPipeline of IO" should "be paused correctly with CanPause2" in {
-    val pipeline  = Input.sequentialF[IO, Seq].create(IO(Seq(1, 2, 3, 4, 5)))
+    val pipeline  = Input.sequentialF[IO, Throwable, Seq].create(IO(Seq(1, 2, 3, 4, 5)))
     val paused    = pipeline.pausedWith2((a, b) => (b - a).seconds)
     val startTime = System.currentTimeMillis()
 
@@ -250,8 +250,8 @@ class SequentialSpec extends FlatSpec {
   }
 
   "DataPipeline transformations wrapped in Kleisli" should "be evaluated correctly" in {
-    val pipeline = Input.sequentialF[IO, Seq].create(IO(Seq(1, 2, 3, 4, 5)))
-    val pipe = pipeT[IO, Int, String, Sequential](
+    val pipeline = Input.sequentialF[IO, Throwable, Seq].create(IO(Seq(1, 2, 3, 4, 5)))
+    val pipe = biPipeT[IO, Throwable, Int, String, Sequential](
       _.mapM(i => IO { i + 1 })
         .filter(_ % 2 == 0)
         .map(_.toString)

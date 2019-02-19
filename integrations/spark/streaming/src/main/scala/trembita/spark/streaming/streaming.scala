@@ -19,7 +19,7 @@ import scala.reflect.ClassTag
 import scala.language.{higherKinds, implicitConversions}
 
 package object streaming extends injections with trembitaqlForSparkStreaming {
-  implicit class SparkStreamingOps[F[_], A](val `this`: DataPipelineT[F, A, SparkStreaming]) extends AnyVal {
+  implicit class SparkStreamingOps[F[_], A](val `this`: BiDataPipelineT[F, A, SparkStreaming]) extends AnyVal {
     def fsmByKey[K: ClassTag, N, D, B: ClassTag](getKey: A => K)(
         initial: InitialState[N, D, F]
     )(fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B])(
@@ -27,12 +27,12 @@ package object streaming extends injections with trembitaqlForSparkStreaming {
         A: ClassTag[A],
         F: SerializableMonad[F],
         run: Spark#Run[F]
-    ): DataPipelineT[F, B, SparkStreaming] =
+    ): BiDataPipelineT[F, B, SparkStreaming] =
       `this`.mapRepr[B](sparkFSM.byKey[A, K, N, D, B](_)(getKey, initial)(fsmF))
 
     def mapM[B: ClassTag](
         magnet: MagnetF[F, A, B, SparkStreaming]
-    )(implicit F: SerializableMonad[F]): DataPipelineT[F, B, SparkStreaming] =
+    )(implicit F: SerializableMonad[F]): BiDataPipelineT[F, B, SparkStreaming] =
       `this`.mapMImpl[A, B](magnet.prepared)
   }
 
@@ -57,20 +57,20 @@ package object streaming extends injections with trembitaqlForSparkStreaming {
   implicit def liftIdToRdd(implicit ssc: StreamingContext): LiftPipeline[Id, SparkStreaming] = new LiftPipeline[Id, SparkStreaming] {
     override def liftIterable[A: ClassTag](
         xs: Iterable[A]
-    ): DataPipelineT[Id, A, SparkStreaming] = Input.repr[SparkStreaming].create[A] {
+    ): BiDataPipelineT[Id, A, SparkStreaming] = Input.repr[SparkStreaming].create[A] {
       val rdd   = ssc.sparkContext.parallelize(xs.toSeq)
       val queue = mutable.Queue(rdd)
       ssc.queueStream(queue)
     }
     override def liftIterableF[A: ClassTag](
         fa: Id[Iterable[A]]
-    ): DataPipelineT[Id, A, SparkStreaming] = liftIterable(fa)
+    ): BiDataPipelineT[Id, A, SparkStreaming] = liftIterable(fa)
   }
 
   implicit def liftIOToRdd(implicit ssc: StreamingContext): LiftPipeline[IO, SparkStreaming] = new LiftPipeline[IO, SparkStreaming] {
     override def liftIterable[A: ClassTag](
         xs: Iterable[A]
-    ): DataPipelineT[IO, A, SparkStreaming] =
+    ): BiDataPipelineT[IO, A, SparkStreaming] =
       Input
         .reprF[IO, SparkStreaming]
         .create[A](IO {
@@ -81,7 +81,7 @@ package object streaming extends injections with trembitaqlForSparkStreaming {
 
     override def liftIterableF[A: ClassTag](
         fa: IO[Iterable[A]]
-    ): DataPipelineT[IO, A, SparkStreaming] =
+    ): BiDataPipelineT[IO, A, SparkStreaming] =
       Input
         .reprF[IO, SparkStreaming]
         .create(fa.map { xs =>
@@ -95,13 +95,13 @@ package object streaming extends injections with trembitaqlForSparkStreaming {
     @inline def dstream: InputT[Id, SparkStreaming, DStream] = new InputT[Id, SparkStreaming, DStream] {
       def create[A: ClassTag](props: DStream[A])(
           implicit F: Monad[Id]
-      ): DataPipelineT[Id, A, SparkStreaming] = EvaluatedSource.make[Id, A, SparkStreaming](safeIdInstances.pure(props), safeIdInstances)
+      ): BiDataPipelineT[Id, A, SparkStreaming] = EvaluatedSource.make[Id, A, SparkStreaming](safeIdInstances.pure(props), safeIdInstances)
     }
 
     @inline def rddF[F[_]](implicit sr: SerializableMonad[F]): InputT[F, SparkStreaming, DStream] = new InputT[F, SparkStreaming, DStream] {
       def create[A: ClassTag](props: DStream[A])(
           implicit F: Monad[F]
-      ): DataPipelineT[F, A, SparkStreaming] = EvaluatedSource.make[F, A, SparkStreaming](sr.pure(props), sr)
+      ): BiDataPipelineT[F, A, SparkStreaming] = EvaluatedSource.make[F, A, SparkStreaming](sr.pure(props), sr)
     }
   }
 

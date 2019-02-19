@@ -1,5 +1,6 @@
 package trembita.inputs
 
+import java.io.IOException
 import java.net.{URI, URL}
 import java.nio.file.Path
 import cats.{Id, Monad}
@@ -9,10 +10,10 @@ import scala.io.Source
 import scala.reflect.ClassTag
 import scala.language.higherKinds
 
-class FileInput private[trembita] () extends InputT[Id, Sequential, FileInput.Props] {
+class FileInput private[trembita] () extends InputT[Id, Nothing, Sequential, FileInput.Props] {
   def create[A: ClassTag](props: FileInput.Props[A])(
       implicit F: Monad[Id]
-  ): DataPipelineT[Id, A, Sequential] = new StrictSource[Id, A](Source.fromURL(props.url).getLines().map(props.gen), F)
+  ): BiDataPipelineT[Id, Nothing, A, Sequential] = new StrictSource[Id, Nothing, A](Source.fromURL(props.url).getLines().map(props.gen), F)
 }
 
 object FileInput {
@@ -31,13 +32,13 @@ object FileInput {
   @inline def propsT[F[_], A](url: URL)(gen: String => F[A]): PropsT[F, A]   = new PropsT[F, A](url, gen)
 }
 
-private[trembita] class FileInputF[F[_]](implicit ctgF: ClassTag[F[_]]) extends InputT[F, Sequential, FileInput.PropsT[F, ?]] {
+private[trembita] class FileInputF[F[_]](implicit ctgF: ClassTag[F[_]]) extends InputT[F, IOException, Sequential, FileInput.PropsT[F, ?]] {
   private implicit def factg[A: ClassTag]: ClassTag[F[A]] =
     ClassTag[F[A]](ctgF.runtimeClass)
 
   def create[A: ClassTag](props: FileInput.PropsT[F, A])(
       implicit F: Monad[F]
-  ): DataPipelineT[F, A, Sequential] =
-    new StrictSource[F, F[A]](F.pure(Source.fromURL(props.url).getLines().map(props.gen)), F)
+  ): BiDataPipelineT[F, IOException, A, Sequential] =
+    new StrictSource[F, IOException, F[A]](F.pure(Source.fromURL(props.url).getLines().map(props.gen)), F)
       .mapMImpl[F[A], A](fa => fa)
 }

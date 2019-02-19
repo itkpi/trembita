@@ -26,7 +26,7 @@ package object cassandra_phantom {
         connection: CassandraConnection
     )(
         query: SelectQuery[T, R, _, _, _, _, _]
-    )(implicit F: Sync[F]): DataPipelineT[F, R, Sequential] = {
+    )(implicit F: Sync[F]): BiDataPipelineT[F, R, Sequential] = {
       implicit val session: Session = connection.session
       Input
         .cassandraTableSync[F]

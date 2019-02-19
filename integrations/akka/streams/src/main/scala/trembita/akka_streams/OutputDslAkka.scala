@@ -12,7 +12,7 @@ import scala.language.{existentials, higherKinds, implicitConversions}
 import scala.reflect.ClassTag
 
 trait OutputDslAkka[F[_], A, Mat] extends Any with Serializable {
-  def `this`: DataPipelineT[F, A, Akka[Mat]]
+  def `this`: BiDataPipelineT[F, A, Akka[Mat]]
 
   @inline def into(output: OutputWithPropsT[F, Akka[Mat]]): outputWithPropsDsl[F, A, Mat, output.Props, output.Out] =
     new outputWithPropsDsl[F, A, Mat, output.Props, output.Out](
@@ -41,7 +41,7 @@ trait OutputDslAkka[F[_], A, Mat] extends Any with Serializable {
  * ===================================================================
  * */
 class outputWithPropsDsl[F[_], A, Mat, P0[_], Out0[_[_], _]](
-    val `this`: (DataPipelineT[F, A, Akka[Mat]], OutputWithPropsT.Aux[F, Akka[Mat], P0, Out0])
+    val `this`: (BiDataPipelineT[F, A, Akka[Mat]], OutputWithPropsT.Aux[F, Akka[Mat], P0, Out0])
 ) extends AnyVal
     with Serializable {
   @inline def run(implicit props: P0[A], E: Akka[Mat], run: Akka[Mat]#Run[F], F: Monad[F], A: ClassTag[A]): Out0[F, A] =
@@ -64,7 +64,7 @@ class outputWithPropsDsl[F[_], A, Mat, P0[_], Out0[_[_], _]](
 }
 
 class keepDslWithProps[F[_], A, Mat, P0[_], Out0[_[_], _], P1[_], Out1[_[_], _]](
-    val `this`: (DataPipelineT[F, A, Akka[Mat]], OutputWithPropsT.Aux[F, Akka[Mat], P0, Out0], OutputWithPropsT.Aux[F, Akka[Mat], P1, Out1])
+    val `this`: (BiDataPipelineT[F, A, Akka[Mat]], OutputWithPropsT.Aux[F, Akka[Mat], P0, Out0], OutputWithPropsT.Aux[F, Akka[Mat], P1, Out1])
 ) extends AnyVal
     with Serializable {
   @inline def keepLeft(implicit keepLeft: KeepLeft[Out0, Out1]): outputWithPropsDsl[F, A, Mat, λ[β => (P0[β], P1[A])], Out0] =
@@ -106,7 +106,7 @@ class keepDslWithProps[F[_], A, Mat, P0[_], Out0[_[_], _], P1[_], Out1[_[_], _]]
         final type Out[G[_], a] = G[Mat]
         final type Props[a]     = P0[a]
         def apply[Ax: ClassTag](props: Props[Ax])(
-            pipeline: DataPipelineT[F, Ax, Akka[Mat]]
+            pipeline: BiDataPipelineT[F, Ax, Akka[Mat]]
         )(implicit F: Monad[F], E: Akka[Mat], run: RunAkka[F]): F[Mat] =
           F.map(pipeline.evalRepr)(_.toMat(Sink.ignore)(akka.stream.scaladsl.Keep.left).run())
       }
@@ -114,7 +114,7 @@ class keepDslWithProps[F[_], A, Mat, P0[_], Out0[_[_], _], P1[_], Out1[_[_], _]]
 }
 
 class outputWithoutPropsDsl[F[_], A, Mat, Out0[_[_], _]](
-    val `this`: (DataPipelineT[F, A, Akka[Mat]], OutputT.Aux[F, A, Akka[Mat], Out0])
+    val `this`: (BiDataPipelineT[F, A, Akka[Mat]], OutputT.Aux[F, A, Akka[Mat], Out0])
 ) extends AnyVal
     with Serializable {
   @inline def run(implicit E: Akka[Mat], run: Akka[Mat]#Run[F], F: Monad[F], A: ClassTag[A]): Out0[F, A] =
@@ -135,7 +135,7 @@ class outputWithoutPropsDsl[F[_], A, Mat, Out0[_[_], _]](
     new outputWithoutPropsDsl[F, A, Mat, λ[(G[_], a) => G[Mat]]]((`this`._1, {
       new OutputT[F, A, Akka[Mat]] {
         type Out[G[_], a] = G[Mat]
-        def apply(pipeline: DataPipelineT[F, A, Akka[Mat]])(
+        def apply(pipeline: BiDataPipelineT[F, A, Akka[Mat]])(
             implicit F: Monad[F],
             E: Akka[Mat],
             run: RunAkka[F],
@@ -146,7 +146,7 @@ class outputWithoutPropsDsl[F[_], A, Mat, Out0[_[_], _]](
 }
 
 class keepDslCombinedLeft[F[_], A, Mat, P0[_], Out0[_[_], _], Out1[_[_], _]](
-    val `this`: (DataPipelineT[F, A, Akka[Mat]], OutputWithPropsT.Aux[F, Akka[Mat], P0, Out0], OutputT.Aux[F, A, Akka[Mat], Out1])
+    val `this`: (BiDataPipelineT[F, A, Akka[Mat]], OutputWithPropsT.Aux[F, Akka[Mat], P0, Out0], OutputT.Aux[F, A, Akka[Mat], Out1])
 ) extends AnyVal
     with Serializable {
   @inline def keepLeft(implicit keepLeft: KeepLeft[Out0, Out1]): outputWithPropsDsl[F, A, Mat, P0, Out0] =
@@ -197,7 +197,7 @@ class keepDslCombinedLeft[F[_], A, Mat, P0[_], Out0[_[_], _], Out1[_[_], _]](
             type Props[β]     = P0[β]
             type Out[G[_], β] = G[Unit]
             def apply[Ax: ClassTag](props: Props[Ax])(
-                pipeline: DataPipelineT[F, Ax, Akka[Mat]]
+                pipeline: BiDataPipelineT[F, Ax, Akka[Mat]]
             )(implicit F: Monad[F], E: Akka[Mat], run: Akka[Mat]#Run[F]): F[Unit] = {
               val (left, right) = keepBothOutput[Ax](props)(pipeline)
               F.productR(
@@ -217,7 +217,7 @@ class keepDslCombinedLeft[F[_], A, Mat, P0[_], Out0[_[_], _], Out1[_[_], _]](
 }
 
 class keepDslCombinedRight[F[_], A, Mat, P0[_], Out0[_[_], _], Out1[_[_], _]](
-    val `this`: (DataPipelineT[F, A, Akka[Mat]], OutputWithPropsT.Aux[F, Akka[Mat], P0, Out0], OutputT.Aux[F, A, Akka[Mat], Out1])
+    val `this`: (BiDataPipelineT[F, A, Akka[Mat]], OutputWithPropsT.Aux[F, Akka[Mat], P0, Out0], OutputT.Aux[F, A, Akka[Mat], Out1])
 ) extends AnyVal
     with Serializable {
   @inline private def leftDsl =
@@ -238,7 +238,7 @@ class keepDslCombinedRight[F[_], A, Mat, P0[_], Out0[_[_], _], Out1[_[_], _]](
 }
 
 class keepDslWithoutProps[F[_], A, Mat, Out0[_[_], _], Out1[_[_], _]](
-    val `this`: (DataPipelineT[F, A, Akka[Mat]], OutputT.Aux[F, A, Akka[Mat], Out0], OutputT.Aux[F, A, Akka[Mat], Out1])
+    val `this`: (BiDataPipelineT[F, A, Akka[Mat]], OutputT.Aux[F, A, Akka[Mat], Out0], OutputT.Aux[F, A, Akka[Mat], Out1])
 ) extends AnyVal {
   @inline def keepLeft(implicit keepLeft: KeepLeft[Out0, Out1]): outputWithoutPropsDsl[F, A, Mat, Out0] =
     new outputWithoutPropsDsl[F, A, Mat, Out0](
@@ -283,7 +283,7 @@ class keepDslWithoutProps[F[_], A, Mat, Out0[_[_], _], Out1[_[_], _]](
           type Out[G[_], β] = G[Unit]
 
           def apply(
-              pipeline: DataPipelineT[F, A, Akka[Mat]]
+              pipeline: BiDataPipelineT[F, A, Akka[Mat]]
           )(implicit F: Monad[F], E: Akka[Mat], run: Akka[Mat]#Run[F], A: ClassTag[A]): F[Unit] = {
             val ppln  = pipeline.memoize()
             val left  = `this`._2(ppln)

@@ -4,7 +4,7 @@ import akka.stream._
 import akka.stream.stage._
 import scala.language.higherKinds
 import cats.effect._
-import trembita.DataPipelineT
+import trembita.BiDataPipelineT
 import trembita.operations.{CanPause, CanPause2}
 import cats.syntax.all._
 import scala.collection.mutable
@@ -15,10 +15,10 @@ import scala.reflect.ClassTag
 class CanPauseAkkaF[F[_]: Effect: Timer: RunAkka, Mat](implicit mat: ActorMaterializer, ec: ExecutionContext)
     extends CanPause[F, Akka[Mat]] {
   override def pausedWith[A: ClassTag](
-      pipeline: DataPipelineT[F, A, Akka[Mat]]
+      pipeline: BiDataPipelineT[F, A, Akka[Mat]]
   )(
       getPause: A => FiniteDuration
-  ): DataPipelineT[F, A, Akka[Mat]] =
+  ): BiDataPipelineT[F, A, Akka[Mat]] =
     pipeline.mapRepr(_.mapAsync(1) { a =>
       val pause = getPause(a)
       Effect[F]
@@ -32,10 +32,10 @@ class CanPauseAkkaF[F[_]: Effect: Timer: RunAkka, Mat](implicit mat: ActorMateri
 class CanPause2AkkaF[F[_]: Effect: Timer: RunAkka, Mat](implicit mat: ActorMaterializer, ec: ExecutionContext)
     extends CanPause2[F, Akka[Mat]] {
   override def pausedWith[A: ClassTag](
-      pipeline: DataPipelineT[F, A, Akka[Mat]]
+      pipeline: BiDataPipelineT[F, A, Akka[Mat]]
   )(
       getPause: (A, A) => FiniteDuration
-  ): DataPipelineT[F, A, Akka[Mat]] = pipeline.mapRepr(_.via(new CanPause2AkkaFlow[A](getPause)).async)
+  ): BiDataPipelineT[F, A, Akka[Mat]] = pipeline.mapRepr(_.via(new CanPause2AkkaFlow[A](getPause)).async)
 
   private class CanPause2AkkaFlow[A](getPause: (A, A) => FiniteDuration) extends GraphStage[FlowShape[A, A]] {
     val in                              = Inlet[A]("CanPause2.in")

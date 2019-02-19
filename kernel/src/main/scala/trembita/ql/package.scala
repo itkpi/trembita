@@ -87,15 +87,15 @@ package object ql extends orderingInstances with aggregationInstances with monoi
     def get[U](u: U)(implicit gget: AggRes.Get[A, U]): gget.Out = gget(self)
   }
 
-  implicit class AsOps[F[_], Ex <: Environment, A, G <: GroupingCriteria, T](
-      private val self: DataPipelineT[F, QueryResult[A, G, T], Ex]
+  implicit class AsOps[F[_], Er, E <: Environment, A, G <: GroupingCriteria, T](
+      private val self: BiDataPipelineT[F, Er, QueryResult[A, G, T], E]
   ) extends AnyVal {
-    def as[R: ClassTag](implicit ev: ToCaseClass.Aux[A, G, T, R], F: Monad[F]): DataPipelineT[F, R, Ex] =
+    def as[R: ClassTag](implicit ev: ToCaseClass.Aux[A, G, T, R], F: Monad[F]): BiDataPipelineT[F, Er, R, E] =
       self.mapImpl(_.as[R])
   }
 
-  implicit def startTrembitaQl[F[_], A, E <: Environment](self: DataPipelineT[F, A, E]): Empty[F, A, E] =
-    new Empty[F, A, E](self)
+  implicit def startTrembitaQl[F[_], Er, A, E <: Environment](self: BiDataPipelineT[F, Er, A, E]): Empty[F, Er, A, E] =
+    new Empty[F, Er, A, E](self)
 
   implicit class QueryResultToCaseClass[A, K <: GroupingCriteria, T](
       private val self: QueryResult[A, K, T]

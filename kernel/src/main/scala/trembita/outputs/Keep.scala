@@ -2,7 +2,7 @@ package trembita.outputs
 
 import cats.Monad
 import trembita.outputs.internal.{KeepLeft, KeepRight, OutputT, OutputWithPropsT}
-import trembita.{DataPipelineT, Environment}
+import trembita.{BiDataPipelineT, Environment}
 import scala.reflect.ClassTag
 import scala.language.higherKinds
 
@@ -33,14 +33,16 @@ trait Keep[Out0[_[_], _], Out1[_[_], _]] extends Serializable { self =>
 
   def apply[F[_], A](left: Out0[F, A], right: Out1[F, A])(implicit F: Monad[F]): Out[F, A]
 
-  def newOutputWithoutProps[F[_], A, E <: Environment](
-      left: OutputT.Aux[F, A, E, Out0],
-      right: OutputT.Aux[F, A, E, Out1]
-  ): OutputT.Aux[F, A, E, Out] =
-    new OutputT[F, A, E] {
+  def newOutputWithoutProps[F[_], Er, A, E <: Environment](
+      left: OutputT.Aux[F, Er, A, E, Out0],
+      right: OutputT.Aux[F, Er, A, E, Out1]
+  ): OutputT.Aux[F, Er, A, E, Out] =
+    new OutputT[F, Er, A, E] {
       type Out[G[_], β] = self.Out[G, β]
 
-      def apply(pipeline: DataPipelineT[F, A, E])(implicit F: Monad[F], E: E, run: E#Run[F], A: ClassTag[A]): Out[F, A] = {
+      def apply[Err >: Er](
+          pipeline: BiDataPipelineT[F, Err, A, E]
+      )(implicit F: Monad[F], E: E, run: E#Run[F], A: ClassTag[A]): Out[F, A] = {
         val ppln     = pipeline.memoize()
         val leftOut  = left(ppln)
         val rightOut = right(ppln)
@@ -48,18 +50,18 @@ trait Keep[Out0[_[_], _], Out1[_[_], _]] extends Serializable { self =>
       }
     }
 
-  def newOutputWithProps[F[_], E <: Environment, P0[_], P1[_]](
-      left: OutputWithPropsT.Aux[F, E, P0, Out0],
-      right: OutputWithPropsT.Aux[F, E, P1, Out1]
-  ): OutputWithPropsT.Aux[F, E, λ[a => (P0[a], P1[a])], Out] =
-    new OutputWithPropsT[F, E] {
+  def newOutputWithProps[F[_], Er, E <: Environment, P0[_], P1[_]](
+      left: OutputWithPropsT.Aux[F, Er, E, P0, Out0],
+      right: OutputWithPropsT.Aux[F, Er, E, P1, Out1]
+  ): OutputWithPropsT.Aux[F, Er, E, λ[a => (P0[a], P1[a])], Out] =
+    new OutputWithPropsT[F, Er, E] {
       type Props[β]     = (P0[β], P1[β])
       type Out[G[_], β] = self.Out[G, β]
 
-      def apply[A: ClassTag](props: (P0[A], P1[A]))(
-          pipeline: DataPipelineT[F, A, E]
+      def apply[Err >: Er, A: ClassTag](props: (P0[A], P1[A]))(
+          pipeline: BiDataPipelineT[F, Err, A, E]
       )(implicit F: Monad[F], E: E, run: E#Run[F]): Keep.this.Out[F, A] = {
-        val ppln     = pipeline.memoize()
+        val ppln     = pipeline.memoize().asInstanceOf[BiDataPipelineT[F, Er, A, E]]
         val leftOut  = left(props._1)(ppln)
         val rightOut = right(props._2)(ppln)
         self(leftOut, rightOut)

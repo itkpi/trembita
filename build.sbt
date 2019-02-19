@@ -223,6 +223,24 @@ lazy val seamless_akka_infinispan =
       )
     )
 
+lazy val trembita_zio =
+  sonatypeProject(id = "trembita-zio", base = file("./integrations/zio"))
+    .dependsOn(kernel)
+    .settings(
+      name := "trembita-zio",
+      version := v,
+      scalacOptions ++= Seq(
+        "-Ypartial-unification",
+        "-language:experimental.macros",
+        "-target:jvm-1.8"
+      ),
+      libraryDependencies ++= Seq(
+        Scalaz.zio,
+        Scalaz.interopCats,
+        Testing.mockito % "test"
+      )
+    )
+
 lazy val bench = Project(id = "trembita-bench", base = file("./bench"))
   .enablePlugins(JmhPlugin)
   .dependsOn(
@@ -238,7 +256,8 @@ lazy val bench = Project(id = "trembita-bench", base = file("./bench"))
     trembita_caching,
     trembita_caching_infinispan,
     trembita_java_streams,
-    seamless_akka_infinispan
+    seamless_akka_infinispan,
+    trembita_zio
   )
   .settings(
     name := "trembita-bench",
@@ -277,7 +296,8 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     trembita_caching,
     trembita_caching_infinispan,
     trembita_java_streams,
-    seamless_akka_infinispan
+    seamless_akka_infinispan,
+    trembita_zio
   )
   .settings(
     name := "trembita-examples",
@@ -343,7 +363,8 @@ lazy val root = Project(id = "trembita", base = file("."))
     log4j,
     logging_commons,
     trembita_java_streams,
-    seamless_akka_infinispan
+    seamless_akka_infinispan,
+    trembita_zio
   )
   .settings(
     name := "trembita",

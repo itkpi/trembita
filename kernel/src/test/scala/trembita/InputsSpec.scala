@@ -27,7 +27,7 @@ class InputsSpec extends FlatSpec {
 
   "Input.repeatF" should "work correctly" in {
     val rands: IO[Vector[String]] = Input
-      .repeatF[IO]
+      .repeatF[IO, Throwable]
       .create(RepeatInput.propsT(count = 100)(IO { "Foo" }))
       .into(Output.vector)
       .run

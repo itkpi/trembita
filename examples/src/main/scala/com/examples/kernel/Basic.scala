@@ -9,10 +9,10 @@ import scala.util.control.NonFatal
 
 object Basic extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
-    val pipeline: DataPipelineT[IO, String, Sequential] =
+    val pipeline: BiDataPipelineT[IO, String, Sequential] =
       Input.sequentialF[IO, Seq].create(IO(Seq("1 2 3", "4 5 6", "7 8 9", "xyz")))
 
-    val numbers: DataPipelineT[IO, Int, Parallel] = pipeline
+    val numbers: BiDataPipelineT[IO, Int, Parallel] = pipeline
       .to[Parallel]
       .mapConcat(_.split(" "))
       .map(_.toInt)
@@ -21,7 +21,7 @@ object Basic extends IOApp {
     val result1: IO[String] =
       numbers.into(Output.collection[Seq]).run.map(_.mkString(", ")).flatTap(putStrLn)
 
-    val strings: DataPipelineT[IO, String, Parallel] = Input
+    val strings: BiDataPipelineT[IO, String, Parallel] = Input
       .randomF[IO]
       .create(RandomInput.propsT[IO, Int](n = 20, count = 10)(x => IO { x + 1 }))
       .map(_ + 1)

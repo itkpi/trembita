@@ -13,12 +13,12 @@ import scala.language.higherKinds
 
 class LiftAkkaPipeline[F[+ _]](implicit mat: Materializer, ec: ExecutionContext, F: Monad[F]) extends LiftPipeline[F, Akka[NotUsed]] {
 
-  def liftIterable[A: ClassTag](xs: Iterable[A]): DataPipelineT[F, A, Akka[NotUsed]] =
+  def liftIterable[A: ClassTag](xs: Iterable[A]): BiDataPipelineT[F, A, Akka[NotUsed]] =
     Input.fromSourceF[F](Source.fromIterator(() => xs.iterator))
 
   def liftIterableF[A: ClassTag](
       fa: F[Iterable[A]]
-  ): DataPipelineT[F, A, Akka[NotUsed]] =
+  ): BiDataPipelineT[F, A, Akka[NotUsed]] =
     Input
       .reprF[F, Akka[NotUsed]]
       .create(

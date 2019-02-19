@@ -7,12 +7,12 @@ import trembita.operations.{CanJoin, CanZip}
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
-protected[trembita] class ZipPipelineT[F[_], A, B, Ex <: Environment](
-    left: DataPipelineT[F, A, Ex],
-    right: DataPipelineT[F, B, Ex],
+protected[trembita] class ZipPipelineT[F[_], Er, A, B, Ex <: Environment](
+    left: BiDataPipelineT[F, Er, A, Ex],
+    right: BiDataPipelineT[F, Er, B, Ex],
     canZip: CanZip[Ex#Repr]
 )(implicit A: ClassTag[A], F: Monad[F], B: ClassTag[B])
-    extends SeqSource[F, (A, B), Ex](F) {
+    extends SeqSource[F, Er, (A, B), Ex](F) {
   protected[trembita] def evalFunc[C >: (A, B)](
       Ex: Ex
   )(implicit run: Ex.Run[F]): F[Ex.Repr[C]] =
@@ -23,11 +23,11 @@ protected[trembita] class ZipPipelineT[F[_], A, B, Ex <: Environment](
     }
 }
 
-protected[trembita] class ConcatPipelineT[F[_], A, Ex <: Environment](
-    left: DataPipelineT[F, A, Ex],
-    right: DataPipelineT[F, A, Ex]
+protected[trembita] class ConcatPipelineT[F[_], Er, A, Ex <: Environment](
+    left: BiDataPipelineT[F, Er, A, Ex],
+    right: BiDataPipelineT[F, Er, A, Ex]
 )(implicit F: Monad[F], A: ClassTag[A])
-    extends SeqSource[F, A, Ex](F) {
+    extends SeqSource[F, Er, A, Ex](F) {
   protected[trembita] def evalFunc[B >: A](
       Ex: Ex
   )(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
@@ -38,12 +38,12 @@ protected[trembita] class ConcatPipelineT[F[_], A, Ex <: Environment](
     }
 }
 
-protected[trembita] class JoinPipelineT[F[_], A, B, Ex <: Environment](
-    left: DataPipelineT[F, A, Ex],
-    right: DataPipelineT[F, B, Ex],
+protected[trembita] class JoinPipelineT[F[_], Er, A, B, Ex <: Environment](
+    left: BiDataPipelineT[F, Er, A, Ex],
+    right: BiDataPipelineT[F, Er, B, Ex],
     on: (A, B) => Boolean
 )(implicit A: ClassTag[A], F: Monad[F], B: ClassTag[B], canJoin: CanJoin[Ex#Repr])
-    extends SeqSource[F, (A, B), Ex](F) {
+    extends SeqSource[F, Er, (A, B), Ex](F) {
   protected[trembita] def evalFunc[C >: (A, B)](
       Ex: Ex
   )(implicit run: Ex.Run[F]): F[Ex.Repr[C]] =
@@ -54,12 +54,12 @@ protected[trembita] class JoinPipelineT[F[_], A, B, Ex <: Environment](
     }
 }
 
-protected[trembita] class JoinLeftPipelineT[F[_], A, B, Ex <: Environment](
-    left: DataPipelineT[F, A, Ex],
-    right: DataPipelineT[F, B, Ex],
+protected[trembita] class JoinLeftPipelineT[F[_], Er, A, B, Ex <: Environment](
+    left: BiDataPipelineT[F, Er, A, Ex],
+    right: BiDataPipelineT[F, Er, B, Ex],
     on: (A, B) => Boolean
 )(implicit A: ClassTag[A], F: Monad[F], B: ClassTag[B], canJoin: CanJoin[Ex#Repr])
-    extends SeqSource[F, (A, Option[B]), Ex](F) {
+    extends SeqSource[F, Er, (A, Option[B]), Ex](F) {
   protected[trembita] def evalFunc[C >: (A, Option[B])](
       Ex: Ex
   )(implicit run: Ex.Run[F]): F[Ex.Repr[C]] =
@@ -70,12 +70,12 @@ protected[trembita] class JoinLeftPipelineT[F[_], A, B, Ex <: Environment](
     }
 }
 
-protected[trembita] class JoinRightPipelineT[F[_], A, B, Ex <: Environment](
-    left: DataPipelineT[F, A, Ex],
-    right: DataPipelineT[F, B, Ex],
+protected[trembita] class JoinRightPipelineT[F[_], Er, A, B, Ex <: Environment](
+    left: BiDataPipelineT[F, Er, A, Ex],
+    right: BiDataPipelineT[F, Er, B, Ex],
     on: (A, B) => Boolean
 )(implicit A: ClassTag[A], F: Monad[F], B: ClassTag[B], canJoin: CanJoin[Ex#Repr])
-    extends SeqSource[F, (Option[A], B), Ex](F) {
+    extends SeqSource[F, Er, (Option[A], B), Ex](F) {
   protected[trembita] def evalFunc[C >: (Option[A], B)](
       Ex: Ex
   )(implicit run: Ex.Run[F]): F[Ex.Repr[C]] =

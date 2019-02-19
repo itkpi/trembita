@@ -6,7 +6,7 @@ import trembita.ql.{trembitaql, AggDecl, AggRes, GroupingCriteria, QueryBuilder,
 import org.apache.spark.HashPartitioner
 import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.dstream.DStream
-import trembita.DataPipelineT
+import trembita.BiDataPipelineT
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
@@ -18,7 +18,7 @@ trait trembitaqlForSparkStreaming {
           implicit F: Monad[F],
           ex: SparkStreaming,
           run: RunOnSparkStreaming[F]
-      ): DataPipelineT[F, QueryResult[A, G, R], SparkStreaming] = {
+      ): BiDataPipelineT[F, QueryResult[A, G, R], SparkStreaming] = {
 
         val getG: A => G = query.getG
         val getT: A => T = query.getT

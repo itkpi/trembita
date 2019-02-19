@@ -3,7 +3,7 @@ package trembita.ql
 import cats._
 import cats.implicits._
 import shapeless._
-import trembita.{DataPipelineT, Environment, Run}
+import trembita.{BiDataPipelineT, Environment, Run}
 
 import scala.annotation.implicitNotFound
 import scala.language.higherKinds
@@ -298,8 +298,8 @@ object AggRes {
   *
   * @tparam A - record type
   **/
-sealed trait QueryBuilder[F[_], A, E <: Environment] extends Serializable {
-  def pipeline: DataPipelineT[F, A, E]
+sealed trait QueryBuilder[F[_], Er, A, E <: Environment] extends Serializable {
+  def pipeline: BiDataPipelineT[F, Er, A, E]
 }
 object QueryBuilder {
 
@@ -308,16 +308,16 @@ object QueryBuilder {
     *
     * @tparam A - record type
     **/
-  class Empty[F[_], A, E <: Environment](override val pipeline: DataPipelineT[F, A, E])
-      extends QueryBuilder[F, A, E]
-      with groupBy22[F, A, E] {
+  class Empty[F[_], Er, A, E <: Environment](override val pipeline: BiDataPipelineT[F, Er, A, E])
+      extends QueryBuilder[F, Er, A, E]
+      with groupBy22[F, Er, A, E] {
 
     /**
       * Like Where clause in SQL
       *
       * @param p - predicate
       **/
-    def where(p: A => Boolean): Where[F, A, E] = new Where(pipeline, p)
+    def where(p: A => Boolean): Where[F, Er, A, E] = new Where(pipeline, p)
 
     /**
       * Like Group By clause in SQL
@@ -325,25 +325,26 @@ object QueryBuilder {
       * @tparam G - a grouping criteria
       * @param getG - extract [[G]] from record [[A]]
       **/
-    def groupByGeneric[T, G <: GroupingCriteria](magnet: ExprMagnet.Aux[T, A => G]): GroupBy[F, A, E, G] =
-      new GroupBy[F, A, E, G](pipeline, magnet(), None)
+    def groupByGeneric[T, G <: GroupingCriteria](magnet: ExprMagnet.Aux[T, A => G]): GroupBy[F, Er, A, E, G] =
+      new GroupBy[F, Er, A, E, G](pipeline, magnet(), None)
   }
 
-  class Where[F[_], A, E <: Environment](override val pipeline: DataPipelineT[F, A, E], val p: A => Boolean)
-      extends QueryBuilder[F, A, E]
-      with groupBy22[F, A, E] {
-    def and(p2: A => Boolean): Where[F, A, E] =
+  class Where[F[_], Er, A, E <: Environment](override val pipeline: BiDataPipelineT[F, Er, A, E], val p: A => Boolean)
+      extends QueryBuilder[F, Er, A, E]
+      with groupBy22[F, Er, A, E] {
+    def and(p2: A => Boolean): Where[F, Er, A, E] =
       new Where(pipeline, (a: A) => p(a) && p2(a))
 
-    def groupByGeneric[T, G <: GroupingCriteria](magnet: ExprMagnet.Aux[T, A => G]): GroupBy[F, A, E, G] =
-      new GroupBy[F, A, E, G](pipeline, magnet(), Some(this))
+    def groupByGeneric[T, G <: GroupingCriteria](magnet: ExprMagnet.Aux[T, A => G]): GroupBy[F, Er, A, E, G] =
+      new GroupBy[F, Er, A, E, G](pipeline, magnet(), Some(this))
   }
 
-  class GroupBy[F[_], A, E <: Environment, G <: GroupingCriteria](override val pipeline: DataPipelineT[F, A, E],
-                                                                  val getG: A => G,
-                                                                  val filterOpt: Option[Where[F, A, E]])
-      extends QueryBuilder[F, A, E]
-      with agg22[F, A, E, G] {
+  class GroupBy[F[_], Er, A, E <: Environment, G <: GroupingCriteria](
+      override val pipeline: BiDataPipelineT[F, Er, A, E],
+      val getG: A => G,
+      val filterOpt: Option[Where[F, Er, A, E]]
+  ) extends QueryBuilder[F, Er, A, E]
+      with agg22[F, Er, A, E, G] {
 
     /**
       * An arbitrary aggregation
@@ -356,17 +357,17 @@ object QueryBuilder {
       **/
     def aggregateGeneric[T, D <: AggDecl, R <: AggRes, Comb](magnet: ExprMagnet.Aux[T, A => D])(
         implicit aggF: AggFunc[D, R, Comb]
-    ): Aggregate[F, A, E, G, D, R, Comb] =
+    ): Aggregate[F, Er, A, E, G, D, R, Comb] =
       new Aggregate(pipeline, getG, magnet(), filterOpt)
   }
 
-  class Aggregate[F[_], A, E <: Environment, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
-      override val pipeline: DataPipelineT[F, A, E],
+  class Aggregate[F[_], Er, A, E <: Environment, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
+      override val pipeline: BiDataPipelineT[F, Er, A, E],
       val getG: A => G,
       val getT: A => T,
-      val filterOpt: Option[Where[F, A, E]]
+      val filterOpt: Option[Where[F, Er, A, E]]
   )(implicit val aggF: AggFunc[T, R, Comb])
-      extends QueryBuilder[F, A, E] {
+      extends QueryBuilder[F, Er, A, E] {
 
     /**
       * Like Having clause in SQL
@@ -375,10 +376,10 @@ object QueryBuilder {
       **/
     def having[A0, Tag](
         p: havingDsl[A0, Tag]
-    )(implicit converter: havingDsl.Converter.Aux[A0, Tag, R]): MaybeOrderedHaving[F, A, E, G, T, R, Comb] =
+    )(implicit converter: havingDsl.Converter.Aux[A0, Tag, R]): MaybeOrderedHaving[F, Er, A, E, G, T, R, Comb] =
       new MaybeOrderedHaving(pipeline, getG, getT, converter(p), filterOpt, None, None, None)
 
-    def having(p: R => Boolean): MaybeOrderedHaving[F, A, E, G, T, R, Comb] =
+    def having(p: R => Boolean): MaybeOrderedHaving[F, Er, A, E, G, T, R, Comb] =
       new MaybeOrderedHaving(pipeline, getG, getT, p, filterOpt, None, None, None)
 
     /**
@@ -389,7 +390,7 @@ object QueryBuilder {
       **/
     def orderRecords(
         implicit Ord: Ordering[A]
-    ): MaybeOrderedHaving[F, A, E, G, T, R, Comb] =
+    ): MaybeOrderedHaving[F, Er, A, E, G, T, R, Comb] =
       new MaybeOrderedHaving(
         pipeline,
         getG,
@@ -411,7 +412,7 @@ object QueryBuilder {
       **/
     def orderRecordsBy[B: Ordering](
         f: A => B
-    ): MaybeOrderedHaving[F, A, E, G, T, R, Comb] = orderRecords(Ordering.by[A, B](f))
+    ): MaybeOrderedHaving[F, Er, A, E, G, T, R, Comb] = orderRecords(Ordering.by[A, B](f))
 
     /**
       * Like Order By clause in SQL
@@ -421,7 +422,7 @@ object QueryBuilder {
       **/
     def orderGroups(
         implicit Ord: Ordering[G]
-    ): MaybeOrderedHaving[F, A, E, G, T, R, Comb] =
+    ): MaybeOrderedHaving[F, Er, A, E, G, T, R, Comb] =
       new MaybeOrderedHaving(
         pipeline,
         getG,
@@ -443,7 +444,7 @@ object QueryBuilder {
       **/
     def orderGroupsBy[B: Ordering](
         f: G => B
-    ): MaybeOrderedHaving[F, A, E, G, T, R, Comb] = orderGroups(Ordering.by[G, B](f))
+    ): MaybeOrderedHaving[F, Er, A, E, G, T, R, Comb] = orderGroups(Ordering.by[G, B](f))
 
     /**
       * Like Order By clause in SQL
@@ -453,7 +454,7 @@ object QueryBuilder {
       **/
     def orderAggregations(
         implicit Ord: Ordering[R]
-    ): MaybeOrderedHaving[F, A, E, G, T, R, Comb] =
+    ): MaybeOrderedHaving[F, Er, A, E, G, T, R, Comb] =
       new MaybeOrderedHaving(
         pipeline,
         getG,
@@ -475,7 +476,7 @@ object QueryBuilder {
       **/
     def orderAggregationsBy[B: Ordering](
         f: R => B
-    ): MaybeOrderedHaving[F, A, E, G, T, R, Comb] =
+    ): MaybeOrderedHaving[F, Er, A, E, G, T, R, Comb] =
       orderAggregations(Ordering.by[R, B](f))
 
     /**
@@ -486,7 +487,7 @@ object QueryBuilder {
       * @param OrdG - implicit [[Ordering]] for [[G]]
       * @param OrdR - implicit [[Ordering]] for [[R]]
       **/
-    def ordered(implicit OrdA: Ordering[A], OrdG: Ordering[G], OrdR: Ordering[R]): MaybeOrderedHaving[F, A, E, G, T, R, Comb] =
+    def ordered(implicit OrdA: Ordering[A], OrdG: Ordering[G], OrdR: Ordering[R]): MaybeOrderedHaving[F, Er, A, E, G, T, R, Comb] =
       new MaybeOrderedHaving(
         pipeline,
         getG,
@@ -503,9 +504,9 @@ object QueryBuilder {
         F: Monad[F],
         E: E,
         run: Run[F, E]
-    ): DataPipelineT[F, QueryResult[A, G, R], E] =
+    ): BiDataPipelineT[F, Er, QueryResult[A, G, R], E] =
       trembitaql(
-        Query[F, A, E, G, T, R, Comb](
+        Query[F, Er, A, E, G, T, R, Comb](
           pipeline,
           getG,
           getT,
@@ -518,26 +519,26 @@ object QueryBuilder {
       )
   }
 
-  class MaybeOrderedHaving[F[_], A, E <: Environment, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
-      override val pipeline: DataPipelineT[F, A, E],
+  class MaybeOrderedHaving[F[_], Er, A, E <: Environment, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
+      override val pipeline: BiDataPipelineT[F, Er, A, E],
       override val getG: A => G,
       override val getT: A => T,
       val havingF: R => Boolean,
-      override val filterOpt: Option[Where[F, A, E]],
+      override val filterOpt: Option[Where[F, Er, A, E]],
       val orderRecords: Option[Ordering[A]],
       val orderGroups: Option[Ordering[G]],
       val orderResults: Option[Ordering[R]]
   )(override implicit val aggF: AggFunc[T, R, Comb])
-      extends Aggregate[F, A, E, G, T, R, Comb](pipeline, getG, getT, filterOpt) {
+      extends Aggregate[F, Er, A, E, G, T, R, Comb](pipeline, getG, getT, filterOpt) {
 
     override def compile(
         implicit trembitaql: trembitaql[A, G, T, R, Comb, E],
         F: Monad[F],
         E: E,
         run: Run[F, E]
-    ): DataPipelineT[F, QueryResult[A, G, R], E] =
+    ): BiDataPipelineT[F, Er, QueryResult[A, G, R], E] =
       trembitaql(
-        Query[F, A, E, G, T, R, Comb](
+        Query[F, Er, A, E, G, T, R, Comb](
           pipeline,
           getG,
           getT,
@@ -551,8 +552,8 @@ object QueryBuilder {
   }
 
   /** * A query ready to use by [[trembitaql]]* */
-  final case class Query[F[_], A, E <: Environment, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
-      pipeline: DataPipelineT[F, A, E],
+  final case class Query[F[_], Er, A, E <: Environment, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb](
+      pipeline: BiDataPipelineT[F, Er, A, E],
       getG: A => G,
       getT: A => T,
       filterF: A => Boolean,

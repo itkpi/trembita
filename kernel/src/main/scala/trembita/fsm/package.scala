@@ -9,12 +9,12 @@ import scala.reflect.ClassTag
 
 package object fsm {
 
-  implicit class StatefulOps[A, F[_], E <: Environment](
-      val self: DataPipelineT[F, A, E]
+  implicit class StatefulOps[A, F[_], Er, E <: Environment](
+      val self: BiDataPipelineT[F, Er, A, E]
   ) extends AnyVal {
 
     /**
-      * Map [[DataPipelineT]] elements
+      * Map [[BiDataPipelineT]] elements
       * into an instance of type [[B]]
       * according to some state
       *
@@ -27,7 +27,7 @@ package object fsm {
       **/
     def fsm[N, D, B: ClassTag](initial: InitialState[N, D, F])(
         fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
-    )(implicit canFSM: CanFSM[F, E], A: ClassTag[A]): DataPipelineT[F, B, E] =
+    )(implicit canFSM: CanFSM[F, Er, E], A: ClassTag[A]): BiDataPipelineT[F, Er, B, E] =
       canFSM.fsm[A, N, D, B](self)(initial)(fsmF)
   }
 }

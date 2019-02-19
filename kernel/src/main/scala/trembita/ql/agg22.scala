@@ -5,7 +5,7 @@ import trembita.ql.AggDecl.{%::, DNil}
 import trembita.ql.QueryBuilder.{Aggregate, GroupBy}
 import scala.language.higherKinds
 
-trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F, A, E, G] =>
+trait agg22[F[_], Er, A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F, Er, A, E, G] =>
 
   /**
     * Like Group By clause in SQL
@@ -13,8 +13,8 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
     **/
   def aggregate[T, H <: TaggedAgg[_, _, _], R <: AggRes, Comb](
       f: A => H
-  )(implicit aggF: AggFunc[H %:: DNil, R, Comb]): Aggregate[F, A, E, G, H %:: DNil, R, Comb] =
-    new Aggregate[F, A, E, G, H %:: DNil, R, Comb](pipeline, self.getG, a => f(a) %:: DNil, self.filterOpt)
+  )(implicit aggF: AggFunc[H %:: DNil, R, Comb]): Aggregate[F, Er, A, E, G, H %:: DNil, R, Comb] =
+    new Aggregate[F, Er, A, E, G, H %:: DNil, R, Comb](pipeline, self.getG, a => f(a) %:: DNil, self.filterOpt)
 
   def aggregate[T, H1 <: TaggedAgg[_, _, _], H2 <: TaggedAgg[_, _, _], R <: AggRes, Comb](
       f1: A => H1,
@@ -25,8 +25,8 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
         DNil,
       R,
       Comb
-    ]): Aggregate[F, A, E, G, H1 %:: H2 %:: DNil, R, Comb] =
-    new Aggregate[F, A, E, G, H1 %:: H2 %:: DNil, R, Comb](pipeline, self.getG, a => f1(a) %:: f2(a) %:: DNil, self.filterOpt)
+    ]): Aggregate[F, Er, A, E, G, H1 %:: H2 %:: DNil, R, Comb] =
+    new Aggregate[F, Er, A, E, G, H1 %:: H2 %:: DNil, R, Comb](pipeline, self.getG, a => f1(a) %:: f2(a) %:: DNil, self.filterOpt)
 
   def aggregate[
       T,
@@ -48,6 +48,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -60,6 +61,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -101,6 +103,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -114,6 +117,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -160,6 +164,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -174,6 +179,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -225,6 +231,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -240,6 +247,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -296,6 +304,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -312,6 +321,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -373,6 +383,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -390,6 +401,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -458,6 +470,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -476,6 +489,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -549,6 +563,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -568,6 +583,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -646,6 +662,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -666,6 +683,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -749,6 +767,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -770,6 +789,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -858,6 +878,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -880,6 +901,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -973,6 +995,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -996,6 +1019,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -1094,6 +1118,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -1118,6 +1143,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -1221,6 +1247,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -1246,6 +1273,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -1354,6 +1382,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -1380,6 +1409,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -1493,6 +1523,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -1520,6 +1551,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -1638,6 +1670,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -1666,6 +1699,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -1789,6 +1823,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -1818,6 +1853,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -1946,6 +1982,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -1976,6 +2013,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,
@@ -2109,6 +2147,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
       Comb
     ]): Aggregate[
     F,
+    Er,
     A,
     E,
     G,
@@ -2140,6 +2179,7 @@ trait agg22[F[_], A, E <: Environment, G <: GroupingCriteria] { self: GroupBy[F,
   ] =
     new Aggregate[
       F,
+      Er,
       A,
       E,
       G,

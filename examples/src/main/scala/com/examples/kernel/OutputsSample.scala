@@ -4,7 +4,7 @@ import cats.effect.IO
 import trembita._
 
 object OutputsSample extends App {
-  val pipeline: DataPipelineT[IO, Int, Parallel] = Input
+  val pipeline: BiDataPipelineT[IO, Int, Parallel] = Input
     .parallelF[IO, Seq]
     .create[Int](IO(1 to 100))
 

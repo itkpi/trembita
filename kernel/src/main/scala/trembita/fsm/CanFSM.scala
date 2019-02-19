@@ -15,38 +15,38 @@ import scala.reflect.ClassTag
     In most cases it means that ${E} does not provide an efficient implementation
     for stateful transformations
   """)
-trait CanFSM[F[_], E <: Environment] {
+trait CanFSM[F[_], Er, E <: Environment] {
   def fsm[A: ClassTag, N, D, B: ClassTag](
-      pipeline: DataPipelineT[F, A, E]
+      pipeline: BiDataPipelineT[F, Er, A, E]
   )(initial: InitialState[N, D, F])(
       fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
-  ): DataPipelineT[F, B, E]
+  ): BiDataPipelineT[F, Er, B, E]
 }
 
 object CanFSM {
-  implicit val fsmIdForSequential: CanFSM[Id, Sequential] =
+  implicit val fsmIdForSequential: CanFSM[Id, Nothing, Sequential] =
     new FromIdSeq
 
-  implicit val fsmIdForParallel: CanFSM[Id, Parallel] =
+  implicit val fsmIdForParallel: CanFSM[Id, Nothing, Parallel] =
     new FromIdParallel
 
   implicit def fsmSyncForSequential[F[_]](
       implicit F: Sync[F]
-  ): CanFSM[F, Sequential] =
+  ): CanFSM[F, Throwable, Sequential] =
     new FromSyncSequential[F]
 
   implicit def fsmSyncForParallel[F[_]](
       implicit F: Sync[F]
-  ): CanFSM[F, Parallel] =
+  ): CanFSM[F, Throwable, Parallel] =
     new FromSyncParallel[F]
 }
 
-class FromIdSeq extends CanFSM[Id, Sequential] {
+class FromIdSeq extends CanFSM[Id, Nothing, Sequential] {
   def fsm[A: ClassTag, N, D, B: ClassTag](
-      pipeline: DataPipelineT[Id, A, Sequential]
+      pipeline: BiDataPipelineT[Id, Nothing, A, Sequential]
   )(initial: InitialState[N, D, Id])(
       fsmF: FSM.Empty[Id, N, D, A, B] => FSM.Func[Id, N, D, A, B]
-  ): DataPipelineT[Id, B, Sequential] = {
+  ): BiDataPipelineT[Id, Nothing, B, Sequential] = {
     val stateF                                = fsmF(new FSM.Empty)
     var stateOpt: Option[FSM.State[N, D, Id]] = None
     pipeline map { elem: A =>
@@ -73,12 +73,12 @@ class FromIdSeq extends CanFSM[Id, Sequential] {
   }
 }
 
-class FromIdParallel extends CanFSM[Id, Parallel] {
+class FromIdParallel extends CanFSM[Id, Nothing, Parallel] {
   def fsm[A: ClassTag, N, D, B: ClassTag](
-      pipeline: DataPipelineT[Id, A, Parallel]
+      pipeline: BiDataPipelineT[Id, Nothing, A, Parallel]
   )(initial: InitialState[N, D, Id])(
       fsmF: FSM.Empty[Id, N, D, A, B] => FSM.Func[Id, N, D, A, B]
-  ): DataPipelineT[Id, B, Parallel] = {
+  ): BiDataPipelineT[Id, Nothing, B, Parallel] = {
     val stateF = fsmF(new FSM.Empty)
     val stateOpt: AtomicReference[Option[FSM.State[N, D, Id]]] =
       new AtomicReference(None)
@@ -106,12 +106,12 @@ class FromIdParallel extends CanFSM[Id, Parallel] {
   }
 }
 
-class FromSyncSequential[F[_]](implicit F: Sync[F]) extends CanFSM[F, Sequential] {
+class FromSyncSequential[F[_]](implicit F: Sync[F]) extends CanFSM[F, Throwable, Sequential] {
   def fsm[A: ClassTag, N, D, B: ClassTag](
-      pipeline: DataPipelineT[F, A, Sequential]
+      pipeline: BiDataPipelineT[F, Throwable, A, Sequential]
   )(initial: InitialState[N, D, F])(
       fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
-  ): DataPipelineT[F, B, Sequential] = {
+  ): BiDataPipelineT[F, Throwable, B, Sequential] = {
     val stateF    = fsmF(new FSM.Empty)
     val stateOptF = Ref.unsafe[F, Option[FSM.State[N, D, F]]](None)
     pipeline mapM { elem: A =>
@@ -140,12 +140,12 @@ class FromSyncSequential[F[_]](implicit F: Sync[F]) extends CanFSM[F, Sequential
   }
 }
 
-class FromSyncParallel[F[_]](implicit F: Sync[F]) extends CanFSM[F, Parallel] {
+class FromSyncParallel[F[_]](implicit F: Sync[F]) extends CanFSM[F, Throwable, Parallel] {
   def fsm[A: ClassTag, N, D, B: ClassTag](
-      pipeline: DataPipelineT[F, A, Parallel]
+      pipeline: BiDataPipelineT[F, Throwable, A, Parallel]
   )(initial: InitialState[N, D, F])(
       fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
-  ): DataPipelineT[F, B, Parallel] = {
+  ): BiDataPipelineT[F, Throwable, B, Parallel] = {
     val stateF    = fsmF(new FSM.Empty)
     val stateOptF = Ref.unsafe[F, Option[FSM.State[N, D, F]]](None)
     pipeline mapM { elem: A =>

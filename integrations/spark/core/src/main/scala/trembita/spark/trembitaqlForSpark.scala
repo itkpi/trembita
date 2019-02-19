@@ -3,7 +3,7 @@ package trembita.spark
 import cats.Monad
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql._
-import trembita.DataPipelineT
+import trembita.BiDataPipelineT
 import trembita.ql.QueryBuilder.Query
 import trembita.ql._
 import scala.language.higherKinds
@@ -18,7 +18,7 @@ trait trembitaqlForSpark {
           implicit F: Monad[F],
           ex: Spark,
           run: RunOnSpark[F]
-      ): DataPipelineT[F, QueryResult[A, G, R], Spark] = {
+      ): BiDataPipelineT[F, QueryResult[A, G, R], Spark] = {
 
         val getG: A => G = query.getG
         val getT: A => T = query.getT

@@ -62,10 +62,10 @@ trait operations {
   ): CanFSM[F, Akka[Mat]] =
     new CanFSM[F, Akka[Mat]] {
       def fsm[A: ClassTag, N, D, B: ClassTag](
-          pipeline: DataPipelineT[F, A, Akka[Mat]]
+          pipeline: BiDataPipelineT[F, A, Akka[Mat]]
       )(initial: InitialState[N, D, F])(
           fsmF: FSM.Empty[F, N, D, A, B] => FSM.Func[F, N, D, A, B]
-      ): DataPipelineT[F, B, Akka[Mat]] =
+      ): BiDataPipelineT[F, B, Akka[Mat]] =
         pipeline.mapRepr[B](akkaFSM[A, N, D, B](_)(initial)(fsmF))
     }
 
