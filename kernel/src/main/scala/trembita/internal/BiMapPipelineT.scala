@@ -52,7 +52,7 @@ trait BiMapPipelineT[F[_], Er, K, V, E <: Environment]
   * @tparam V - value
   * @param source - (K, V) pair pipeline
   **/
-protected[trembita] class BaseMapPipelineT[F[_], Er, K, V, E <: Environment](
+protected[trembita] case class BaseMapPipelineT[F[_], Er: ClassTag, K, V, E <: Environment](
   source: BiDataPipelineT[F,Er, (K, V), E],
   F: Monad[F]
 )(implicit K: ClassTag[K], V: ClassTag[V]) extends SeqSource[F,Er, (K, V), E](F)
@@ -74,11 +74,15 @@ protected[trembita] class BaseMapPipelineT[F[_], Er, K, V, E <: Environment](
   def values(implicit F: Monad[F]): BiDataPipelineT[F,Er, V, E] =
     new MappingPipelineT[F,Er, (K, V), V, E](_._2, this)(F)
 
-  protected[trembita] def evalFunc[B >: (K, V)](E: E)(implicit run: E.Run[F]): F[E.Repr[B]] =
+  protected[trembita] def evalFunc[B >: (K, V)](E: E)(implicit run: E.Run[F]): F[E.Repr[Either[Er, B]]] =
     F.map(
       source
         .evalFunc[(K, V)](E)
-    )(vs => E.distinctKeys(vs).asInstanceOf[E.Repr[B]])
+    ){ vs =>
+      val (errors, values) = E.FlatMapRepr.separate(vs)
+      val res: E.Repr[Either[Er, (K, V)]] = E.unite(errors,E.distinctKeys(values))
+      res.asInstanceOf[E.Repr[Either[Er, B]]]
+    }
 
   override def handleErrorImpl[Err >: Er, B >: (K, V): ClassTag](
     f: Err => B
@@ -87,7 +91,19 @@ protected[trembita] class BaseMapPipelineT[F[_], Er, K, V, E <: Environment](
       source
         .handleErrorImpl[Err, B](f).asInstanceOf[BiDataPipelineT[F, Err, (K, V), E]],
       F
-    )
+    )(implicitly[ClassTag[Er]].asInstanceOf[ClassTag[Err]], implicitly, implicitly)
+
+  override def handleErrorWithImpl[Err >: Er, B >: (K, V) : ClassTag](f:  Err => F[B])(implicit F:  MonadError[F, Err]): BiDataPipelineT[F, Err, B, E] =
+    new BaseMapPipelineT[F,Err, K, V, E](
+      source
+        .handleErrorWithImpl[Err, B](f).asInstanceOf[BiDataPipelineT[F, Err, (K, V), E]],
+      F
+    )(implicitly[ClassTag[Er]].asInstanceOf[ClassTag[Err]], implicitly, implicitly)
+
+  protected[trembita] def transformErrorImpl[Err >: Er: ClassTag, Er2: ClassTag](
+      f: Err => Er2
+  )(implicit F0: MonadError[F, Err], F: MonadError[F, Er2]): BiDataPipelineT[F, Er2, (K, V), E] =
+  new BaseMapPipelineT[F,Er2, K, V, E](source.transformErrorImpl[Err, Er2](f), F)
 }
 
 /**
@@ -99,24 +115,31 @@ protected[trembita] class BaseMapPipelineT[F[_], Er, K, V, E <: Environment](
   * @param f - grouping function
   **/
 object GroupByPipelineT {
-  def make[F[_],Er, K, V, Ex <: Environment](
+  def make[F[_],Er:ClassTag, K, V, E <: Environment](
                                            f: V => K,
-                                           source: BiDataPipelineT[F,Er, V, Ex],
+                                           source: BiDataPipelineT[F,Er, V, E],
                                            F: Monad[F],
-                                           canGroupBy: CanGroupBy[Ex#Repr]
+                                           canGroupBy: CanGroupBy[E#Repr]
                                          )(
     implicit K: ClassTag[K], V: ClassTag[V]
-  ): BiDataPipelineT[F,Er, (K, Iterable[V]), Ex]   =
- new SeqSource[F,Er, (K, Iterable[V]), Ex](F) {
-  protected[trembita] def evalFunc[B >: (K, Iterable[V])](Ex: Ex)(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
+  ): BiDataPipelineT[F,Er, (K, Iterable[V]), E]   =
+ new SeqSource[F,Er, (K, Iterable[V]), E](F) {
+  protected[trembita] def evalFunc[B >: (K, Iterable[V])](E: E)(implicit run: E.Run[F]): F[E.Repr[Either[Er, B]]] =
     F.map(
       source
-        .evalFunc[V](Ex)
-    )(
-      vs =>
-        canGroupBy.groupBy(vs.asInstanceOf[Ex#Repr[V]])(f).asInstanceOf[Ex.Repr[B]]
-    )
-  }
+        .evalFunc[V](E)
+    ) { vs =>
+      val (errors, values) = E.FlatMapRepr.separate(vs)
+      val res: E.Repr[Either[Er, (K, Iterable[V])]] = E.unite(errors, canGroupBy.groupBy(values.asInstanceOf[E#Repr[V]])(f).asInstanceOf[E.Repr[(K, Iterable[V])]])
+      res.asInstanceOf[E.Repr[Either[Er, B]]]
+    }
+    protected[trembita] def handleErrorImpl[Err >: Er, B >: (K, Iterable[V]) : ClassTag](f:  Err => B)(implicit F:  MonadError[F, Err]): BiDataPipelineT[F, Err, B, E] = this // todo: think about it
+    protected[trembita] def handleErrorWithImpl[Err >: Er, B >: (K, Iterable[V]) : ClassTag](f:  Err => F[B])(implicit F:  MonadError[F, Err]): BiDataPipelineT[F, Err, B, E] = this // todo: think about it
+    protected[trembita] def transformErrorImpl[Err >: Er:ClassTag, Er2:ClassTag](f:  Err => Er2)(implicit F0:  MonadError[F, Err], F:  MonadError[F, Er2]): BiDataPipelineT[F, Er2, (K, Iterable[V]), E] = this.asInstanceOf // todo: think about it
+
+
+ override def toString: String = s"GroupByPipelineT($f, $source, $f, $canGroupBy)($K, $V)"
+ }
 }
 
 /**
@@ -128,23 +151,32 @@ object GroupByPipelineT {
   * @param f - grouping function
   **/
 object GroupByOrderedPipelineT {
-  def make[F[_],Er, K, V, Ex <: Environment](
+  def make[F[_], Er: ClassTag, K, V, E <: Environment](
                                            f: V => K,
-                                           source: BiDataPipelineT[F,Er, V, Ex],
+                                           source: BiDataPipelineT[F,Er, V, E],
                                            F: Monad[F],
-                                           canGroupBy: CanGroupByOrdered[Ex#Repr]
+                                           canGroupBy: CanGroupByOrdered[E#Repr]
                                          )(
                                            implicit K: ClassTag[K], V: ClassTag[V],
                                            ordering: Ordering[K]
-                                         ): BiDataPipelineT[F,Er, (K, Iterable[V]), Ex]   =
-    new SeqSource[F, Er, (K, Iterable[V]), Ex](F) {
-      protected[trembita] def evalFunc[B >: (K, Iterable[V])](Ex: Ex)(implicit run: Ex.Run[F]): F[Ex.Repr[B]] =
+                                         ): BiDataPipelineT[F,Er, (K, Iterable[V]), E]   =
+    new SeqSource[F, Er, (K, Iterable[V]), E](F) {
+      protected[trembita] def evalFunc[B >: (K, Iterable[V])](E: E)(implicit run: E.Run[F]): F[E.Repr[Either[Er, B]]] =
         F.map(
           source
-            .evalFunc[V](Ex)
-        )(
+            .evalFunc[V](E)
+        ){
           vs =>
-            canGroupBy.groupBy(vs.asInstanceOf[Ex#Repr[V]])(f).asInstanceOf[Ex.Repr[B]]
-        )
+            val (errors, values) = E.FlatMapRepr.separate(vs)
+            val res: E.Repr[Either[Er, (K, Iterable[V])]] = E.unite(errors, canGroupBy.groupBy(values.asInstanceOf[E#Repr[V]])(f).asInstanceOf[E.Repr[(K, Iterable[V])]])
+            res.asInstanceOf[E.Repr[Either[Er, B]]]
+        }
+
+protected[trembita] def handleErrorImpl[Err >: Er, B >: (K, Iterable[V]) : ClassTag](f:  Err => B)(implicit F:  MonadError[F, Err]): BiDataPipelineT[F, Err, B, E] = this // todo: think about it
+protected[trembita] def handleErrorWithImpl[Err >: Er, B >: (K, Iterable[V]) : ClassTag](f:  Err => F[B])(implicit F:  MonadError[F, Err]): BiDataPipelineT[F, Err, B, E] = this // todo: think about it
+protected[trembita] def transformErrorImpl[Err >: Er:ClassTag, Er2:ClassTag](f:  Err => Er2)(implicit F0:  MonadError[F, Err], F:  MonadError[F, Er2]): BiDataPipelineT[F, Er2, (K, Iterable[V]), E] = this.asInstanceOf // todo: think about it
+
+
+    override def toString: String = s"GroupByOrderedPipelineT($f, $source, $f, $canGroupBy)($K, $V, $ordering)"
     }
 }

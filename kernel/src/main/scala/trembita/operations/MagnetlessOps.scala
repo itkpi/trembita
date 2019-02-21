@@ -74,4 +74,17 @@ trait MagnetlessOps[F[_], Er, A, E <: Environment] extends Any {
       val fb = funcK(gb)
       fb
     }
+
+  def transformError[Er2: ClassTag](f: Er => Er2)(
+      implicit F0: MonadError[F, Er],
+      F1: MonadError[F, Er2],
+      Er: ClassTag[Er]
+  ): BiDataPipelineT[F, Er2, A, E] =
+    `this`.transformErrorImpl[Er, Er2](f)
+
+  def mapError(f: Er => Er)(implicit F: MonadError[F, Er], Er: ClassTag[Er]): BiDataPipelineT[F, Er, A, E] =
+    `this`.transformErrorImpl[Er, Er](f)
+
+  def attempt(implicit F: MonadError[F, Er]): BiDataPipelineT[F, Er, Either[Er, A], E] =
+    `this`.mapImpl[Either[Er, A]](Right(_)).handleErrorImpl(Left(_))
 }

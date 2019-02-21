@@ -265,4 +265,138 @@ class SequentialSpec extends FlatSpec {
 
     assert(evaled == Vector("2", "4", "6"))
   }
+
+  "DataPipeline.mapError" should "work correctly" in {
+    val pipeline = Input.sequentialF[IO, Throwable, Seq].create(IO(Seq(0, 1, 2, 3, 4, 5)))
+    val evaled = pipeline
+      .map(10 / _)
+      .mapError {
+        case e: ArithmeticException => new IllegalArgumentException("Not allowed operation on pipeline", e): Throwable
+      }
+      .into(Output.vector)
+      .run
+
+    assertThrows[IllegalArgumentException] {
+      evaled.unsafeRunSync()
+    }
+
+    val evaled2 = pipeline
+      .mapM(x => IO { 10 / x })
+      .mapError {
+        case e: ArithmeticException => new IllegalArgumentException("Not allowed operation on pipeline", e): Throwable
+      }
+      .into(Output.vector)
+      .run
+
+    assertThrows[IllegalArgumentException] {
+      evaled2.unsafeRunSync()
+    }
+
+    val evaled3 = pipeline
+      .mapConcat(x => List(10 / x, 20 / x))
+      .mapError {
+        case e: ArithmeticException => new IllegalArgumentException("Not allowed operation on pipeline", e): Throwable
+      }
+      .into(Output.vector)
+      .run
+
+    assertThrows[IllegalArgumentException] {
+      evaled3.unsafeRunSync()
+    }
+
+    val evaled4 = pipeline
+      .flatMap(x => Input.sequentialF[IO, Throwable, Seq].create(IO { Seq(10 / x, 20 / x) }))
+      .map(_ + 1)
+      .mapConcat(_ to 5)
+      .mapError {
+        case e: ArithmeticException => new IllegalArgumentException("Not allowed operation on pipeline", e)
+      }
+      .mapM { x =>
+        IO { x - 1 }
+      }
+      .withPrintedPlan()
+      .into(Output.vector)
+      .run
+
+    assertThrows[IllegalArgumentException] {
+      evaled4.unsafeRunSync()
+    }
+  }
+
+  it should "allow to handle error" in {
+    val seq      = Vector(0, 1, 2, 3, 4, 5)
+    val pipeline = Input.sequentialF[IO, Throwable, Seq].create(IO(seq))
+    val evaled = pipeline
+      .map(10 / _)
+      .mapError {
+        case e: ArithmeticException => new IllegalArgumentException("Not allowed operation on pipeline", e)
+      }
+      .recover {
+        case _: IllegalArgumentException => -1
+      }
+      .into(Output.vector)
+      .run
+
+    assert(evaled.unsafeRunSync() == seq.map {
+      case 0 => -1
+      case x => 10 / x
+    })
+
+    val evaled2 = pipeline
+      .mapM(x => IO { 10 / x })
+      .mapError {
+        case e: ArithmeticException => new IllegalArgumentException("Not allowed operation on pipeline", e)
+      }
+      .recover {
+        case _: IllegalArgumentException => -1
+      }
+      .into(Output.vector)
+      .run
+
+    assert(evaled2.unsafeRunSync() == seq.map {
+      case 0 => -1
+      case x => 10 / x
+    })
+
+    val evaled3 = pipeline
+      .mapConcat(x => List(10 / x, 20 / x))
+      .mapError {
+        case e: ArithmeticException => new IllegalArgumentException("Not allowed operation on pipeline", e)
+      }
+      .recover {
+        case _: IllegalArgumentException => -1
+      }
+      .withPrintedPlan()
+      .into(Output.vector)
+      .run
+
+    assert(
+      evaled3.unsafeRunSync() ==
+        seq.flatMap {
+          case 0 => List(-1)
+          case x => List(10 / x, 20 / x)
+        }
+    )
+
+    val evaled4 = pipeline
+      .flatMap(x => Input.sequentialF[IO, Throwable, Seq].create(IO { Seq(10 / x, 20 / x) }))
+      .map(_ + 1)
+      .mapConcat(_ to 5)
+      .mapError {
+        case e: ArithmeticException => new IllegalArgumentException("Not allowed operation on pipeline", e)
+      }
+      .mapM { x =>
+        IO { x - 1 }
+      }
+      .recover {
+        case _: IllegalArgumentException => -1
+      }
+      .into(Output.vector)
+      .run
+
+    assert(evaled4.unsafeRunSync() == seq.flatMap {
+      case 0 => List(-1)
+      case x => List(10 / x, 20 / x).flatMap(_ to 5).map(_ - 1)
+    })
+  }
 }

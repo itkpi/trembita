@@ -7,6 +7,7 @@ import trembita.{BiDataPipelineT, Environment, Run}
 
 import scala.annotation.implicitNotFound
 import scala.language.higherKinds
+import scala.reflect.ClassTag
 
 /**
   * Represents some value A tagged with type U
@@ -501,9 +502,10 @@ object QueryBuilder {
 
     def compile(
         implicit trembitaql: trembitaql[A, G, T, R, Comb, E],
-        F: Monad[F],
+        F: MonadError[F, Er],
         E: E,
-        run: Run[F, E]
+        run: Run[F, E],
+        Er: ClassTag[Er]
     ): BiDataPipelineT[F, Er, QueryResult[A, G, R], E] =
       trembitaql(
         Query[F, Er, A, E, G, T, R, Comb](
@@ -533,9 +535,10 @@ object QueryBuilder {
 
     override def compile(
         implicit trembitaql: trembitaql[A, G, T, R, Comb, E],
-        F: Monad[F],
+        F: MonadError[F, Er],
         E: E,
-        run: Run[F, E]
+        run: Run[F, E],
+        Er: ClassTag[Er]
     ): BiDataPipelineT[F, Er, QueryResult[A, G, R], E] =
       trembitaql(
         Query[F, Er, A, E, G, T, R, Comb](

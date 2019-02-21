@@ -67,15 +67,20 @@ trait BiDataPipelineT[F[_], +Er, +A, E <: Environment] extends Serializable with
       implicit F: MonadError[F, Err]
   ): BiDataPipelineT[F, Err, B, E]
 
+  protected[trembita] def transformErrorImpl[Err >: Er: ClassTag, Er2: ClassTag](f: Err => Er2)(
+      implicit F0: MonadError[F, Err],
+      F: MonadError[F, Er2]
+  ): BiDataPipelineT[F, Er2, A, E]
+
   /**
     * Forces evaluation of [[BiDataPipelineT]]
     * collecting data into [[Iterable]]
     *
     * @return - collected data
     **/
-  protected[trembita] def evalFunc[B >: A](Ex: E @uncheckedVariance)(
-      implicit run: Ex.Run[F]
-  ): F[Ex.Repr[B]]
+  protected[trembita] def evalFunc[B >: A](E: E)(
+      implicit run: E.Run[F]
+  ): F[E.Repr[Either[Er @uncheckedVariance, B]]]
 }
 
 class WithErrorCatched[a, b](val `this`: a => b) extends AnyVal {
@@ -91,11 +96,11 @@ object BiDataPipelineT {
   /** Implicit conversions */
   implicit def fromIterable[Er, A: ClassTag, F[_], Ex <: Environment](
       iterable: Iterable[A]
-  )(implicit liftPipeline: LiftPipeline[F, Er, Ex]): BiDataPipelineT[F,Er, A, Ex] =
+  )(implicit liftPipeline: LiftPipeline[F, Er, Ex]): BiDataPipelineT[F, Er, A, Ex] =
     liftPipeline.liftIterable(iterable)
 
   implicit def fromArray[Er, A: ClassTag, F[_], Ex <: Environment](
       array: Array[A]
-  )(implicit liftPipeline: LiftPipeline[F, Er, Ex]): BiDataPipelineT[F, Er,A, Ex] =
+  )(implicit liftPipeline: LiftPipeline[F, Er, Ex]): BiDataPipelineT[F, Er, A, Ex] =
     liftPipeline.liftIterable(array.toIterable)
 }

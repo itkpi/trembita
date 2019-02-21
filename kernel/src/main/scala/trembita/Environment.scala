@@ -17,10 +17,19 @@ trait ApplicativeFlatMap[F[_]] extends Serializable {
 
   /** Allows to create [[F]] of [[B]] applying function from [[A]] to [[Iterable]] on each element of [[F]] */
   def mapConcat[A, B: ClassTag](fa: F[A])(f: A => Iterable[B]): F[B]
+
   def flatten[A: ClassTag](ffa: F[Iterable[A]]): F[A] = mapConcat(ffa)(identity)
 
   def foreach[A](fa: F[A])(f: A => Unit): Unit = map(fa)(f)
+
+  def pure[A: ClassTag](a: A): F[A]
+
+  def separate[Er: ClassTag, A: ClassTag](fa: F[Either[Er, A]]): (F[Er], F[A]) = (
+    mapConcat(fa)(_.left.toOption),
+    mapConcat(fa)(_.right.toOption)
+  )
 }
+
 trait TraverseTag[F[_], Run[_[_]]] extends Serializable {
   def traverse[G[_], A, B: ClassTag](fa: F[A])(f: A => G[B])(
       implicit G: Run[G]
@@ -47,9 +56,6 @@ trait Environment extends Serializable {
   type Result[X]
   type ResultRepr[X] = Result[Repr[X]]
 
-  def absorbF[F[_], A](rfa: Result[F[A]])(implicit F: Monad[F], arrow: Result ~> F): F[A] =
-    F.flatten(arrow(rfa))
-
   val FlatMapResult: Monad[Result]
   val FlatMapRepr: ApplicativeFlatMap[Repr]
   val TraverseRepr: TraverseTag[Repr, Run]
@@ -66,6 +72,9 @@ trait Environment extends Serializable {
   def distinctKeys[A: ClassTag, B: ClassTag](repr: Repr[(A, B)]): Repr[(A, B)]
 
   def concat[A](xs: Repr[A], ys: Repr[A]): Repr[A]
+
+  def unite[Er, A: ClassTag](errors: Repr[Er], values: Repr[A]): Repr[Either[Er, A]] =
+    concat(FlatMapRepr.map(errors)(Left(_)), FlatMapRepr.map(values)(Right(_)))
 
   def memoize[A: ClassTag](xs: Repr[A]): Repr[A]
 }

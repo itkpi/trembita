@@ -55,7 +55,7 @@ package object trembita extends standardMagnets with arrows with lowPriorityTric
       self.mapImpl(_._2)
 
     /** @return - [[BiMapPipelineT]] */
-    def toMapPipeline(implicit K: ClassTag[K], V: ClassTag[V], F: Monad[F]): BiMapPipelineT[F, Er, K, V, E] =
+    def toMapPipeline(implicit K: ClassTag[K], V: ClassTag[V], F: Monad[F], Er: ClassTag[Er]): BiMapPipelineT[F, Er, K, V, E] =
       new BaseMapPipelineT[F, Er, K, V, E](
         self.asInstanceOf[BiDataPipelineT[F, Er, (K, V), E]],
         F
@@ -63,7 +63,7 @@ package object trembita extends standardMagnets with arrows with lowPriorityTric
 
     def reduceByKey(f: (V, V) => V)(
         implicit canReduceByKey: CanReduceByKey[E#Repr],
-        F: Monad[F],
+        F: MonadError[F, Er],
         E: E,
         run: E#Run[F],
         K: ClassTag[K],
@@ -78,7 +78,7 @@ package object trembita extends standardMagnets with arrows with lowPriorityTric
         mergeCombiners: (C, C) => C
     )(
         implicit canCombineByKey: CanCombineByKey[E#Repr],
-        F: Monad[F],
+        F: MonadError[F, Er],
         E: E,
         run: E#Run[F],
         K: ClassTag[K],
@@ -93,7 +93,7 @@ package object trembita extends standardMagnets with arrows with lowPriorityTric
         mergeCombiners: (C, C) => C
     )(
         implicit canCombineByKey: CanCombineByKeyWithParallelism[E#Repr],
-        F: Monad[F],
+        F: MonadError[F, Er],
         E: E,
         run: E#Run[F],
         K: ClassTag[K],

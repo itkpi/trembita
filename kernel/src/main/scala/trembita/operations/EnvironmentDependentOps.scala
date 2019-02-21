@@ -14,7 +14,7 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
     * Evaluates environment-specific data representation
     * */
   @internalAPI("Used in output DSL. Try to use output DSL instead because in most cases it allows to do what you want")
-  def evalRepr(implicit E: E, run: E#Run[F]): F[E.Repr[A]] =
+  def evalRepr(implicit E: E, run: E#Run[F]): F[E.Repr[Either[Er, A]]] =
     `this`.evalFunc[A](E)(widen(run)(E))
 
   /**
@@ -23,14 +23,10 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
     * @param n - number of elements to take
     * @return - first N elements
     **/
-  def take(n: Int)(implicit F: Monad[F], canTake: CanTake[E#Repr], A: ClassTag[A], E: E, Run: E#Run[F]): BiDataPipelineT[F, Er, A, E] =
-    new SeqSource[F, Er, A, E](F) {
-      protected[trembita] def evalFunc[B >: A](
-          ex0: E
-      )(implicit run: ex0.Run[F]): F[ex0.Repr[B]] =
-        F.map(`this`.evalFunc[B](E)(widen(Run)(E)))(canTake.take(_, n))
-          .asInstanceOf[F[ex0.Repr[B]]]
-    }
+  def take(
+      n: Int
+  )(implicit F: MonadError[F, Er], canTake: CanTake[E#Repr], A: ClassTag[A], E: E, Run: E#Run[F]): BiDataPipelineT[F, Er, A, E] =
+    mapRepr(canTake.take(_, n))
 
   /**
     * Take all elements of the pipeline
@@ -39,27 +35,16 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
     * @param n - number of elements to drop
     * @return - all elements with first N dropped
       **/
-  def drop(n: Int)(implicit F: Monad[F], canDrop: CanDrop[E#Repr], A: ClassTag[A], E: E, Run: E#Run[F]): BiDataPipelineT[F, Er, A, E] =
-    new SeqSource[F, Er, A, E](F) {
-      protected[trembita] def evalFunc[B >: A](
-          ex0: E
-      )(implicit run: ex0.Run[F]): F[ex0.Repr[B]] =
-        F.map(`this`.evalFunc[B](E)(widen(Run)(E)))(canDrop.drop(_, n))
-          .asInstanceOf[F[ex0.Repr[B]]]
-    }
+  def drop(
+      n: Int
+  )(implicit F: MonadError[F, Er], canDrop: CanDrop[E#Repr], A: ClassTag[A], E: E, Run: E#Run[F]): BiDataPipelineT[F, Er, A, E] =
+    mapRepr(canDrop.drop(_, n))
 
-  def slice(from: Int,
-            to: Int)(implicit F: Monad[F], canSlice: CanSlice[E#Repr], A: ClassTag[A], E: E, Run: E#Run[F]): BiDataPipelineT[F, Er, A, E] =
-    new SeqSource[F, Er, A, E](F) {
-      protected[trembita] def evalFunc[B >: A](
-          ex0: E
-      )(implicit run: ex0.Run[F]): F[ex0.Repr[B]] =
-        F.map(
-            `this`
-              .evalFunc[B](E)(widen(Run)(E))
-          )(canSlice.slice(_, from, to))
-          .asInstanceOf[F[ex0.Repr[B]]]
-    }
+  def slice(
+      from: Int,
+      to: Int
+  )(implicit F: MonadError[F, Er], canSlice: CanSlice[E#Repr], A: ClassTag[A], E: E, Run: E#Run[F]): BiDataPipelineT[F, Er, A, E] =
+    mapRepr(canSlice.slice(_, from, to))
 
   /**
     * Allows to run shift pipeline transformations into other environment
@@ -102,8 +87,10 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
     * Allows to change pipeline evaluation context
     * (for instance from IO to scala.concurrent.Future)
     * */
-  def mapK[G[_]](arrow: F ~> G)(implicit G: Monad[G], E: E, run0: E#Run[F], A: ClassTag[A]): BiDataPipelineT[G, Er, A, E] =
-    MapKPipelineT.make[F, Er, G, A, E](`this`, E, arrow, G)(A, widen(run0)(E))
+  def mapK[G[_]](
+      arrow: F ~> G
+  )(implicit F: Monad[F], G: Monad[G], E: E, run0: E#Run[F], A: ClassTag[A]): BiDataPipelineT[G, Er, A, E] =
+    MapKPipelineT.make[F, Er, G, A, E](`this`, E, arrow, F, G)(A, widen(run0)(E))
 
   /**
     * Orders elements of the [[BiDataPipelineT]]
@@ -111,7 +98,11 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
     *
     * @return - the same pipeline sorted
     **/
-  def sorted(implicit F: Monad[F], A: ClassTag[A], ordering: Ordering[A], canSort: CanSort[E#Repr]): BiDataPipelineT[F, Er, A, E] =
+  def sorted(implicit F: Monad[F],
+             A: ClassTag[A],
+             ordering: Ordering[A],
+             canSort: CanSort[E#Repr],
+             Er: ClassTag[Er]): BiDataPipelineT[F, Er, A, E] =
     new SortedPipelineT[A, F, Er, E](
       `this`,
       F,
@@ -127,13 +118,14 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
   def sortBy[B: Ordering](f: A => B)(
       implicit A: ClassTag[A],
       F: Monad[F],
-      canSort: CanSort[E#Repr]
+      canSort: CanSort[E#Repr],
+      Er: ClassTag[Er]
   ): BiDataPipelineT[F, Er, A, E] =
     new SortedPipelineT[A, F, Er, E](
       `this`,
       F,
       canSort.asInstanceOf[CanSort[E#Repr]]
-    )(Ordering.by(f), A)
+    )(Ordering.by(f), Er, A)
 
   /**
     * Allows to transform [[E]] environment internal data representation.
@@ -141,7 +133,7 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
     * (.via on Akka Stream, combineByKey on RDD, etc.)
     **/
   def mapRepr[B: ClassTag](f: E#Repr[A] => E#Repr[B])(
-      implicit F: Monad[F],
+      implicit F: MonadError[F, Er],
       E: E,
       run: E#Run[F],
       A: ClassTag[A]
@@ -153,7 +145,7 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
     )
 
   def tapRepr[U: ClassTag](f: E#Repr[A] => U)(
-      implicit F: Monad[F],
+      implicit F: MonadError[F, Er],
       E: E,
       run: E#Run[F],
       A: ClassTag[A]
@@ -168,7 +160,7 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
     * (.via on Akka Stream, combineByKey on RDD, etc.)
     **/
   def mapReprF[B: ClassTag](f: E#Repr[A] => F[E#Repr[B]])(
-      implicit F: Monad[F],
+      implicit F: MonadError[F, Er],
       E: E,
       run: E#Run[F],
       A: ClassTag[A],
@@ -184,17 +176,17 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
     * Monad.flatMap
     **/
   def flatMap[B: ClassTag](f: A => BiDataPipelineT[F, Er, B, E])(
-      implicit F: Monad[F],
+      implicit F: MonadError[F, Er],
       E: E,
       run: E#Run[F],
       A: ClassTag[A],
       canFlatMap: CanFlatMap[E],
-      ctg: ClassTag[E#Repr[B]]
+      ctg: ClassTag[E#Repr[B]],
   ): BiDataPipelineT[F, Er, B, E] =
     `this`.mapReprF[B] { repr =>
       F.map(
         E.TraverseRepr.traverse(repr.asInstanceOf[E.Repr[A]])(a => f(a).evalFunc[B](E)(widen(run)))(
-          ctg.asInstanceOf[ClassTag[E.Repr[B]]],
+          ctg.asInstanceOf[ClassTag[E.Repr[Either[Er, B]]]],
           widen(run)
         )
       )(reprF => canFlatMap.flatten(reprF.asInstanceOf[E#Repr[E#Repr[B]]]))
@@ -218,7 +210,11 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
     *
     * @return - pipeline with only unique elements
     **/
-  def distinct(implicit canDistinct: CanDistinct[E#Repr], A: ClassTag[A], F: Monad[F], E: E, run: E#Run[F]): BiDataPipelineT[F, Er, A, E] =
+  def distinct(implicit canDistinct: CanDistinct[E#Repr],
+               A: ClassTag[A],
+               F: MonadError[F, Er],
+               E: E,
+               run: E#Run[F]): BiDataPipelineT[F, Er, A, E] =
     `this`.mapRepr(canDistinct.distinct)
 
   /**
@@ -231,17 +227,29 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
     **/
   def distinctBy[K: ClassTag](
       f: A => K
-  )(implicit canDistinctBy: CanDistinctBy[E#Repr], F: Monad[F], A: ClassTag[A], E: E, run: E#Run[F]): BiDataPipelineT[F, Er, A, E] =
+  )(implicit canDistinctBy: CanDistinctBy[E#Repr],
+    F: MonadError[F, Er],
+    A: ClassTag[A],
+    E: E,
+    run: E#Run[F]): BiDataPipelineT[F, Er, A, E] =
     `this`.mapRepr(canDistinctBy.distinctBy(_)(f))
 
   def grouped(
       size: Int
-  )(implicit canGrouped: CanGrouped[E#Repr], F: Monad[F], A: ClassTag[A], E: E, run: E#Run[F]): BiDataPipelineT[F, Er, Iterable[A], E] =
+  )(implicit canGrouped: CanGrouped[E#Repr],
+    F: MonadError[F, Er],
+    A: ClassTag[A],
+    E: E,
+    run: E#Run[F]): BiDataPipelineT[F, Er, Iterable[A], E] =
     `this`.mapRepr(canGrouped.grouped(_, size))
 
   def batched(
       parts: Int
-  )(implicit canBatched: CanBatched[E#Repr], F: Monad[F], A: ClassTag[A], E: E, run: E#Run[F]): BiDataPipelineT[F, Er, Iterable[A], E] =
+  )(implicit canBatched: CanBatched[E#Repr],
+    F: MonadError[F, Er],
+    A: ClassTag[A],
+    E: E,
+    run: E#Run[F]): BiDataPipelineT[F, Er, Iterable[A], E] =
     `this`.mapRepr(canBatched.batched(_, parts))
 
   private def widen(run: E#Run[F])(implicit E: E): E.Run[F] =

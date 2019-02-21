@@ -5,7 +5,7 @@ import scala.language.experimental.macros
 import scala.language.higherKinds
 import trembita._
 import QueryBuilder._
-import cats.Monad
+import cats.{Monad, MonadError}
 import trembita.operations.{CanGroupBy, CanSort}
 
 import scala.collection.parallel.immutable.ParVector
@@ -21,9 +21,10 @@ import scala.reflect.ClassTag
   """)
 trait trembitaql[A, G <: GroupingCriteria, T <: AggDecl, R <: AggRes, Comb, E <: Environment] extends Serializable {
   def apply[F[_], Er](query: Query[F, Er, A, E, G, T, R, Comb])(
-      implicit F: Monad[F],
+      implicit F: MonadError[F, Er],
       ex: E,
-      run: E#Run[F]
+      run: E#Run[F],
+      Er: ClassTag[Er]
   ): BiDataPipelineT[F, Er, QueryResult[A, G, R], E]
 }
 
@@ -41,7 +42,7 @@ object trembitaql {
       type QueryRes = QueryResult[A, G, R]
       override def apply[F[_], Er](
           query: Query[F, Er, A, E, G, T, R, Comb]
-      )(implicit F: Monad[F], ex: E, run: E#Run[F]): BiDataPipelineT[F, Er, QueryResult[A, G, R], E] = {
+      )(implicit F: MonadError[F, Er], ex: E, run: E#Run[F], Er: ClassTag[Er]): BiDataPipelineT[F, Er, QueryResult[A, G, R], E] = {
         val grouped: BiDataPipelineT[F, Er, QueryRes, E] = query.pipeline
           .filterImpl[A](query.filterF)
           .groupByKey(query.getG)

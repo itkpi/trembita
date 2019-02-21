@@ -280,12 +280,16 @@ class collectionDsl[Col[x] <: Iterable[x]](val `dummy`: Boolean = true) extends 
 object collectionDsl {
   implicit def dslToSeqOutput[F[_], Er, Col[x] <: Iterable[x]](
       dsl: collectionDsl[Col]
-  ): OutputWithPropsT.Aux[F, Er, Sequential, λ[A => CanBuildFrom[Col[A], A, Col[A]]], λ[(G[_], A) => G[Col[A]]]] =
+  ): OutputWithPropsT.Aux[F, Er, Sequential, λ[A => CanBuildFrom[Col[Either[Er, A]], Either[Er, A], Col[Either[Er, A]]]], λ[
+    (G[_], A) => G[Col[Either[Er, A]]]
+  ]] =
     new SequentialCollectionOutput[Col, F, Er]()
 
   implicit def dslToParOutput[F[_], Er, Col[x] <: Iterable[x]](
       dsl: collectionDsl[Col]
-  ): OutputWithPropsT.Aux[F, Er, Parallel, λ[A => CanBuildFrom[Col[A], A, Col[A]]], λ[(G[_], A) => G[Col[A]]]] =
+  ): OutputWithPropsT.Aux[F, Er, Parallel, λ[A => CanBuildFrom[Col[Either[Er, A]], Either[Er, A], Col[Either[Er, A]]]], λ[
+    (G[_], A) => G[Col[Either[Er, A]]]
+  ]] =
     new ParallelCollectionOutput[Col, F, Er]()
 }
 
@@ -313,17 +317,17 @@ trait LowPriorityReduceConversions extends Serializable {
   implicit def dslToOutput[F[_], Er, A, E <: Environment, R0[_]](dsl: reduceDsl[A])(
       implicit canReduce: CanReduce.Aux[E#Repr, R0],
       arrow: R0 ~> F
-  ): OutputT.Aux[F, Er, A, E, λ[(G[_], β) => G[β]]] = dsl[F, Er, E](canReduce)(arrow)
+  ): OutputT.Aux[F, Er, A, E, λ[(G[_], β) => G[Either[Er, β]]]] = dsl[F, Er, E](canReduce)(arrow)
 
   implicit def dslToOutputApplicative[F[_]: Applicative, Er, A, E <: Environment](dsl: reduceDsl[A])(
       implicit canReduce: CanReduce.Aux[E#Repr, Id]
-  ): OutputT.Aux[F, Er, A, E, λ[(G[_], β) => G[β]]] = dsl[F, Er, E](canReduce)(idTo[F])
+  ): OutputT.Aux[F, Er, A, E, λ[(G[_], β) => G[Either[Er, β]]]] = dsl[F, Er, E](canReduce)(idTo[F])
 }
 
 object reduceDsl extends LowPriorityReduceConversions {
   implicit def dslToOutputId[A, E <: Environment](dsl: reduceDsl[A])(
       implicit canReduce: CanReduce.Aux[E#Repr, Id]
-  ): OutputT.Aux[Id, Nothing, A, E, λ[(G[_], β) => G[β]]] = dsl[Id, Nothing, E](canReduce)(identityK[Id])
+  ): OutputT.Aux[Id, Nothing, A, E, λ[(G[_], β) => G[Either[Nothing, β]]]] = dsl[Id, Nothing, E](canReduce)(identityK[Id])
 }
 
 class reduceOptDsl[A](val `f`: (A, A) => A) extends AnyVal with Serializable {
@@ -335,17 +339,17 @@ trait LowPriorityReduceOptDsl extends Serializable {
   implicit def dslToOutputT[F[_], Er, A, E <: Environment, R0[_]](dsl: reduceOptDsl[A])(
       implicit canReduce: CanReduce.Aux[E#Repr, R0],
       arrow: R0 ~> F
-  ): OutputT.Aux[F, Er, A, E, λ[(G[_], β) => G[Option[β]]]] = dsl[F, Er, E](canReduce)(arrow)
+  ): OutputT.Aux[F, Er, A, E, λ[(G[_], β) => G[Option[Either[Er, β]]]]] = dsl[F, Er, E](canReduce)(arrow)
 
   implicit def dslToOutputApplicative[F[_]: Applicative, Er, A, E <: Environment](dsl: reduceOptDsl[A])(
       implicit canReduce: CanReduce.Aux[E#Repr, Id]
-  ): OutputT.Aux[F, Er, A, E, λ[(G[_], β) => G[Option[β]]]] = dsl[F, Er, E](canReduce)(idTo)
+  ): OutputT.Aux[F, Er, A, E, λ[(G[_], β) => G[Option[Either[Er, β]]]]] = dsl[F, Er, E](canReduce)(idTo)
 }
 
 object reduceOptDsl extends LowPriorityReduceOptDsl {
   implicit def dslToOutputId[A, E <: Environment](dsl: reduceOptDsl[A])(
       implicit canReduce: CanReduce.Aux[E#Repr, Id]
-  ): OutputT.Aux[Id, Nothing, A, E, λ[(G[_], β) => G[Option[β]]]] = dsl[Id, Nothing, E](canReduce)(identityK[Id])
+  ): OutputT.Aux[Id, Nothing, A, E, λ[(G[_], β) => G[Option[Either[Nothing, β]]]]] = dsl[Id, Nothing, E](canReduce)(identityK[Id])
 }
 
 class foldDsl[A](val `this`: (A, (A, A) => A)) extends AnyVal with Serializable {
@@ -357,17 +361,17 @@ trait LowPriorityFoldConversions extends Serializable {
   implicit def dslToOutputT[F[_], Er, A, E <: Environment, R0[_]](dsl: foldDsl[A])(
       implicit canFold: CanFold.Aux[E#Repr, R0],
       arrow: R0 ~> F
-  ): OutputT.Aux[F, Er, A, E, λ[(G[_], β) => G[β]]] = dsl[F, Er, E](canFold)(arrow)
+  ): OutputT.Aux[F, Er, A, E, λ[(G[_], β) => G[Either[Er, β]]]] = dsl[F, Er, E](canFold)(arrow)
 
   implicit def dslToOutputApplicative[F[_]: Applicative, Er, A, E <: Environment](dsl: foldDsl[A])(
       implicit canFold: CanFold.Aux[E#Repr, Id]
-  ): OutputT.Aux[F, Er, A, E, λ[(G[_], β) => G[β]]] = dsl[F, Er, E](canFold)(idTo[F])
+  ): OutputT.Aux[F, Er, A, E, λ[(G[_], β) => G[Either[Er, β]]]] = dsl[F, Er, E](canFold)(idTo[F])
 }
 
 object foldDsl extends LowPriorityFoldConversions {
   implicit def dslToOutputId[A, E <: Environment](dsl: foldDsl[A])(
       implicit canFold: CanFold.Aux[E#Repr, Id]
-  ): OutputT.Aux[Id, Nothing, A, E, λ[(G[_], β) => G[β]]] = dsl[Id, Nothing, E](canFold)(identityK[Id])
+  ): OutputT.Aux[Id, Nothing, A, E, λ[(G[_], β) => G[Either[Nothing, β]]]] = dsl[Id, Nothing, E](canFold)(identityK[Id])
 }
 
 class foldLeftDsl[A, B](val `this`: (B, (B, A) => B)) extends AnyVal with Serializable {
@@ -379,17 +383,17 @@ trait LowPriorityFoldLeftConversions extends Serializable {
   implicit def dslToOutputT[F[_], Er, A, B: ClassTag, E <: Environment, R0[_]](dsl: foldLeftDsl[A, B])(
       implicit canFold: CanFold.Aux[E#Repr, R0],
       arrow: R0 ~> F
-  ): OutputT.Aux[F, Er, A, E, λ[(G[_], β) => G[B]]] = dsl[F, Er, E](canFold)(arrow)
+  ): OutputT.Aux[F, Er, A, E, λ[(G[_], β) => G[Either[Er, B]]]] = dsl[F, Er, E](canFold)(arrow)
 
   implicit def dslToOutputApplicative[F[_]: Applicative, Er, A, B: ClassTag, E <: Environment](dsl: foldLeftDsl[A, B])(
       implicit canFold: CanFold.Aux[E#Repr, Id]
-  ): OutputT.Aux[F, Er, A, E, λ[(G[_], β) => G[B]]] = dsl[F, Er, E](canFold)(idTo[F])
+  ): OutputT.Aux[F, Er, A, E, λ[(G[_], β) => G[Either[Er, B]]]] = dsl[F, Er, E](canFold)(idTo[F])
 }
 
 object foldLeftDsl extends LowPriorityFoldLeftConversions {
   implicit def dslToOutputId[A, B: ClassTag, E <: Environment](dsl: foldLeftDsl[A, B])(
       implicit canFold: CanFold.Aux[E#Repr, Id]
-  ): OutputT.Aux[Id, Nothing, A, E, λ[(G[_], β) => G[B]]] = dsl[Id, Nothing, E](canFold)(identityK[Id])
+  ): OutputT.Aux[Id, Nothing, A, E, λ[(G[_], β) => G[Either[Nothing, B]]]] = dsl[Id, Nothing, E](canFold)(identityK[Id])
 }
 
 class foldFDsl[F[_], A, B](val `this`: (B, (B, A) => F[B])) extends AnyVal {
@@ -398,9 +402,9 @@ class foldFDsl[F[_], A, B](val `this`: (B, (B, A) => F[B])) extends AnyVal {
 }
 
 object foldFDsl {
-  implicit def dslToOutputId[F[_], A, B: ClassTag, E <: Environment](dsl: foldFDsl[F, A, B])(
+  implicit def dslToOutputF[F[_], Er, A, B: ClassTag, E <: Environment](dsl: foldFDsl[F, A, B])(
       implicit canFold: CanFoldF[E#Repr, F]
-  ): OutputT.Aux[F, Nothing, A, E, λ[(G[_], β) => G[B]]] = dsl[Nothing, E]
+  ): OutputT.Aux[F, Er, A, E, λ[(G[_], β) => G[Either[Er, B]]]] = dsl[Er, E]
 }
 
 class sizeDsl(val `dummy`: Boolean = true) extends AnyVal with Serializable {
