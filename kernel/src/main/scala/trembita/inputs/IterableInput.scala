@@ -1,6 +1,6 @@
 package trembita.inputs
 
-import cats.{Id, Monad}
+import cats.{Id, MonadError}
 import trembita._
 import trembita.internal.EvaluatedSource
 import trembita.operations.LiftPipeline
@@ -9,27 +9,30 @@ import scala.language.higherKinds
 import scala.reflect.ClassTag
 import scala.util.Random
 
-class IterableInput[Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[Col[_], _, Col[_]])
-    extends InputT[Id, Nothing, Sequential, Col]
-    with InputWithEmptyT[Id, Nothing, Sequential] {
+class IterableInput[F[+ _], Er, Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[Col[_], _, Col[_]])
+    extends InputT[F, Er, Sequential, Col]
+    with InputWithEmptyT[F, Er, Sequential] {
 
-  def create[A: ClassTag](props: Col[A])(implicit F: Monad[Id]): DataPipeline[A, Sequential] =
-    LiftPipeline[Id, Nothing, Sequential].liftIterable[A](props)
+  def create[A: ClassTag](props: Col[A])(
+      implicit F: MonadError[F, Er]
+  ): BiDataPipelineT[F, Er, A, Sequential] = LiftPipeline[F, Er, Sequential].liftIterable[A](props)
 
   def empty[A: ClassTag](
-      implicit F: Monad[Id]
-  ): DataPipeline[A, Sequential] = create[A](cbf().result().asInstanceOf[Col[A]])
+      implicit F: MonadError[F, Er]
+  ): BiDataPipelineT[F, Er, A, Sequential] = create[A](cbf().result().asInstanceOf[Col[A]])
 }
 
-class ParIterableInput[Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[Col[_], _, Col[_]])
-    extends InputT[Id, Nothing, Parallel, Col]
-    with InputWithEmptyT[Id, Nothing, Parallel] {
-  def create[A: ClassTag](props: Col[A])(implicit F: Monad[Id]): DataPipeline[A, Parallel] =
-    LiftPipeline[Id, Nothing, Parallel].liftIterable[A](props)
+class ParIterableInput[F[+ _], Er, Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[Col[_], _, Col[_]])
+    extends InputT[F, Er, Parallel, Col]
+    with InputWithEmptyT[F, Er, Parallel] {
+
+  def create[A: ClassTag](props: Col[A])(
+      implicit F: MonadError[F, Er]
+  ): BiDataPipelineT[F, Er, A, Parallel] = LiftPipeline[F, Er, Parallel].liftIterable[A](props)
 
   def empty[A: ClassTag](
-      implicit F: Monad[Id]
-  ): BiDataPipelineT[Id, Nothing, A, Parallel] = create[A](cbf().result().asInstanceOf[Col[A]])
+      implicit F: MonadError[F, Er]
+  ): BiDataPipelineT[F, Er, A, Parallel] = create[A](cbf().result().asInstanceOf[Col[A]])
 }
 
 class IterableInputF[F[+ _], Er, Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[Col[_], _, Col[_]])
@@ -37,11 +40,11 @@ class IterableInputF[F[+ _], Er, Col[+x] <: Iterable[x]] private[trembita] (impl
     with InputWithEmptyT[F, Er, Sequential] {
 
   final type Props[A] = F[Col[A]]
-  def create[A: ClassTag](props: Props[A])(implicit F: Monad[F]): BiDataPipelineT[F, Er, A, Sequential] =
+  def create[A: ClassTag](props: Props[A])(implicit F: MonadError[F, Er]): BiDataPipelineT[F, Er, A, Sequential] =
     LiftPipeline[F, Er, Sequential].liftIterableF[A](props)
 
   def empty[A: ClassTag](
-      implicit F: Monad[F]
+      implicit F: MonadError[F, Er]
   ): BiDataPipelineT[F, Er, A, Sequential] = create[A](F.pure[Col[A]](cbf().result().asInstanceOf[Col[A]]))
 }
 
@@ -49,20 +52,20 @@ class ParIterableInputF[F[+ _], Er, Col[+x] <: Iterable[x]] private[trembita] (i
     extends InputT[F, Er, Parallel, λ[β => F[Col[β]]]]
     with InputWithEmptyT[F, Er, Parallel] {
 
-  def create[A: ClassTag](props: F[Col[A]])(implicit F: Monad[F]): BiDataPipelineT[F, Er, A, Parallel] =
+  def create[A: ClassTag](props: F[Col[A]])(implicit F: MonadError[F, Er]): BiDataPipelineT[F, Er, A, Parallel] =
     LiftPipeline[F, Er, Parallel].liftIterableF[A](props)
 
   def empty[A: ClassTag](
-      implicit F: Monad[F]
+      implicit F: MonadError[F, Er]
   ): BiDataPipelineT[F, Er, A, Parallel] = create[A](F.pure[Col[A]](cbf().result().asInstanceOf[Col[A]]))
 }
 
-class RandomInput private[trembita] () extends InputT[Id, Nothing, Sequential, RandomInput.Props] {
+class RandomInput[F[_], Er] private[trembita] () extends InputT[F, Er, Sequential, RandomInput.Props] {
   def create[A: ClassTag](props: RandomInput.Props[A])(
-      implicit F: Monad[Id]
-  ): BiDataPipelineT[Id, Nothing, A, Sequential] =
-    EvaluatedSource.make[Id, Nothing, A, Sequential](
-      Vector.tabulate(props.count)(_ => props.nOpt.fold(ifEmpty = Random.nextInt())(Random.nextInt)).map(props.gen),
+      implicit F: MonadError[F, Er]
+  ): BiDataPipelineT[F, Er, A, Sequential] =
+    EvaluatedSource.makePure[F, Er, A, Sequential](
+      F.pure(Vector.tabulate(props.count)(_ => props.nOpt.fold(ifEmpty = Random.nextInt())(Random.nextInt)).map(props.gen)),
       F
     )
 }
@@ -71,10 +74,10 @@ class RandomInputF[F[_], Er] private[trembita] (implicit ctgF: ClassTag[F[_]]) e
   private implicit def ctgFA[A: ClassTag]: ClassTag[F[A]] = ClassTag[F[A]](ctgF.runtimeClass)
 
   def create[A: ClassTag](props: RandomInput.PropsT[F, A])(
-      implicit F: Monad[F]
+      implicit F: MonadError[F, Er]
   ): BiDataPipelineT[F, Er, A, Sequential] =
     EvaluatedSource
-      .make[F, Er, F[A], Sequential](
+      .makePure[F, Er, F[A], Sequential](
         F.pure(Vector.tabulate(props.count)(_ => props.nOpt.fold(ifEmpty = Random.nextInt())(Random.nextInt)).map(props.gen)),
         F
       )

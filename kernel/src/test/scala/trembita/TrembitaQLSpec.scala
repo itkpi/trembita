@@ -4,7 +4,7 @@ import org.scalatest.FlatSpec
 import ql._
 import GroupingCriteria._
 import AggRes._
-import cats._
+import cats.effect.IO
 import shapeless.syntax.singleton._
 import shapeless.Witness
 
@@ -19,7 +19,7 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
   type `max integer`    = Witness.`"max integer"`.T
 
   "A simple DataPipeline.query(...)" should "produce correct result" in {
-    val pipeline = Input.sequential[Seq].create(Seq(3, 1, 2))
+    val pipeline = Input.sequential[IO, Throwable, Seq].create(Seq(3, 1, 2))
     val result =
       pipeline
         .groupBy(
@@ -27,8 +27,9 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
         )
         .aggregate(col[Int] agg sum as "sum")
         .compile
-        .into(Output.vector)
+        .into(Output.vector.ignoreErrors)
         .run
+        .unsafeRunSync()
 
     assert(
       result == Vector(
@@ -47,15 +48,16 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
   }
 
   "A simple DataPipeline.query(...) with ordering records" should "produce correct result" in {
-    val pipeline = Input.sequential[Seq].create(Seq(3, 1, 2))
+    val pipeline = Input.sequential[IO, Throwable, Seq].create(Seq(3, 1, 2))
     val result =
       pipeline
         .groupBy(expr[Int](_ % 2 == 0) as "divisible by 2")
         .aggregate(col[Int] agg sum as "sum")
         .orderRecords
         .compile
-        .into(Output.vector)
+        .into(Output.vector.ignoreErrors)
         .run
+        .unsafeRunSync()
 
     assert(
       result == Vector(
@@ -74,7 +76,7 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
   }
 
   "A complicated DataPipeline.query(...)" should "produce correct result" in {
-    val pipeline = Input.sequential[Seq].create(Seq(3, 1, 8, 2))
+    val pipeline = Input.sequential[IO, Throwable, Seq].create(Seq(3, 1, 8, 2))
     val result =
       pipeline
         .groupBy(
@@ -89,8 +91,9 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
         )
         .ordered
         .compile
-        .into(Output.vector)
+        .into(Output.vector.ignoreErrors)
         .run
+        .unsafeRunSync()
 
     assert(
       result == Vector(
@@ -124,7 +127,7 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
         values: Vector[Int]
     )
 
-    val pipeline = Input.sequential[Seq].create(Seq(3, 1, 8, 2))
+    val pipeline = Input.sequential[IO, Throwable, Seq].create(Seq(3, 1, 8, 2))
     val result: Vector[Numbers] =
       pipeline
         .groupBy(
@@ -141,8 +144,9 @@ class TrembitaQLSpec extends FlatSpec with algebra.instances.AllInstances {
         .ordered
         .compile
         .as[Numbers]
-        .into(Output.vector)
+        .into(Output.vector.ignoreErrors)
         .run
+        .unsafeRunSync()
 
     assert(
       result == Vector(

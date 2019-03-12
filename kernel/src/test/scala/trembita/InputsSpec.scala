@@ -7,19 +7,23 @@ import org.scalatest.FlatSpec
 
 class InputsSpec extends FlatSpec {
   "Input.randomInts" should "work correctly" in {
-    val rands: Vector[String] = Input.random
+    val rands: Vector[String] = Input
+      .random[IO, Throwable]
       .create(RandomInput.props[String](n = 10, count = 100)(_.toString))
-      .into(Output.vector)
+      .into(Output.vector.ignoreErrors)
       .run
+      .unsafeRunSync()
 
     assert(rands.size == 100)
   }
 
   "Input.repeat" should "work correctly" in {
-    val rands: Vector[String] = Input.repeat
+    val rands: Vector[String] = Input
+      .repeat[IO, Throwable]
       .create(RepeatInput.props(count = 100)("Foo"))
-      .into(Output.vector)
+      .into(Output.vector.ignoreErrors)
       .run
+      .unsafeRunSync()
 
     assert(rands.size == 100)
     assert(rands.forall(_ == "Foo"))
@@ -29,7 +33,7 @@ class InputsSpec extends FlatSpec {
     val rands: IO[Vector[String]] = Input
       .repeatF[IO, Throwable]
       .create(RepeatInput.propsT(count = 100)(IO { "Foo" }))
-      .into(Output.vector)
+      .into(Output.vector.ignoreErrors)
       .run
 
     val result = rands.unsafeRunSync()
@@ -39,19 +43,22 @@ class InputsSpec extends FlatSpec {
 
   "Input.repr" should "work correctly" in {
     val rands: Vector[Int] = Input
-      .repr[Parallel]
+      .repr[IO, Throwable, Parallel]
       .create(Vector(1, 2, 3).par)
-      .into(Output.vector)
+      .into(Output.vector.ignoreErrors)
       .run
+      .unsafeRunSync()
 
     assert(rands == Vector(1, 2, 3))
   }
 
   "Input.file" should "work correctly" in {
-    val rands: Vector[String] = Input.file
+    val rands: Vector[String] = Input
+      .file[IO]
       .create(FileInput.props(Paths.get("kernel/src/test/resources/test.txt")))
-      .into(Output.vector)
+      .into(Output.vector.ignoreErrors)
       .run
+      .unsafeRunSync()
 
     assert(rands == Vector("foo", "bar", "baz", "foo1", "bar1", "baz1"))
   }

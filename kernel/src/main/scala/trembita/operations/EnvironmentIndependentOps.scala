@@ -11,7 +11,7 @@ import scala.reflect.ClassTag
 trait EnvironmentIndependentOps[F[_], Er, A, E <: Environment] extends Any {
   def `this`: BiDataPipelineT[F, Er, A, E]
 
-  def flatten[B: ClassTag](implicit ev: A <:< Iterable[B], F: Monad[F]): BiDataPipelineT[F, Er, B, E] =
+  def flatten[B: ClassTag](implicit ev: A <:< Iterable[B], F: MonadError[F, Er]): BiDataPipelineT[F, Er, B, E] =
     `this`.mapConcatImpl(ev)
 
   /**
@@ -23,7 +23,7 @@ trait EnvironmentIndependentOps[F[_], Er, A, E <: Environment] extends Any {
     **/
   def groupByKey[K: ClassTag](f: A => K)(
       implicit canGroupBy: CanGroupBy[E#Repr],
-      F: Monad[F],
+      F: MonadError[F, Er],
       A: ClassTag[A],
       Er: ClassTag[Er]
   ): BiDataPipelineT[F, Er, (K, Iterable[A]), E] = GroupByPipelineT.make[F, Er, K, A, E](f, `this`, F, canGroupBy)
@@ -37,24 +37,24 @@ trait EnvironmentIndependentOps[F[_], Er, A, E <: Environment] extends Any {
     **/
   def groupByKeyOrdered[K: ClassTag: Ordering](f: A => K)(
       implicit canGroupByOrdered: CanGroupByOrdered[E#Repr],
-      F: Monad[F],
+      F: MonadError[F, Er],
       A: ClassTag[A],
       Er: ClassTag[Er]
   ): BiDataPipelineT[F, Er, (K, Iterable[A]), E] = GroupByOrderedPipelineT.make[F, Er, K, A, E](f, `this`, F, canGroupByOrdered)
 
   def zip[B: ClassTag](
       that: BiDataPipelineT[F, Er, B, E]
-  )(implicit A: ClassTag[A], F: Monad[F], canZip: CanZip[E#Repr], Er: ClassTag[Er]): BiDataPipelineT[F, Er, (A, B), E] =
+  )(implicit A: ClassTag[A], F: MonadError[F, Er], canZip: CanZip[E#Repr], Er: ClassTag[Er]): BiDataPipelineT[F, Er, (A, B), E] =
     new ZipPipelineT[F, Er, A, B, E](`this`, that, canZip)
 
-  def ++(that: BiDataPipelineT[F, Er, A, E])(implicit A: ClassTag[A], F: Monad[F], Er: ClassTag[Er]): BiDataPipelineT[F, Er, A, E] =
+  def ++(that: BiDataPipelineT[F, Er, A, E])(implicit A: ClassTag[A], F: MonadError[F, Er], Er: ClassTag[Er]): BiDataPipelineT[F, Er, A, E] =
     new ConcatPipelineT[F, Er, A, E](`this`, that)
 
   def join[B](that: BiDataPipelineT[F, Er, B, E])(on: (A, B) => Boolean)(
       implicit canJoin: CanJoin[E#Repr],
       A: ClassTag[A],
       B: ClassTag[B],
-      F: Monad[F],
+      F: MonadError[F, Er],
       Er: ClassTag[Er]
   ): BiDataPipelineT[F, Er, (A, B), E] =
     new JoinPipelineT[F, Er, A, B, E](`this`, that, on)
@@ -63,7 +63,7 @@ trait EnvironmentIndependentOps[F[_], Er, A, E <: Environment] extends Any {
       implicit canJoin: CanJoin[E#Repr],
       A: ClassTag[A],
       B: ClassTag[B],
-      F: Monad[F],
+      F: MonadError[F, Er],
       Er: ClassTag[Er]
   ): BiDataPipelineT[F, Er, (A, Option[B]), E] =
     new JoinLeftPipelineT[F, Er, A, B, E](`this`, that, on)
@@ -72,7 +72,7 @@ trait EnvironmentIndependentOps[F[_], Er, A, E <: Environment] extends Any {
       implicit canJoin: CanJoin[E#Repr],
       A: ClassTag[A],
       B: ClassTag[B],
-      F: Monad[F],
+      F: MonadError[F, Er],
       Er: ClassTag[Er]
   ): BiDataPipelineT[F, Er, (Option[A], B), E] =
     new JoinRightPipelineT[F, Er, A, B, E](`this`, that, on)

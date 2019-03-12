@@ -24,12 +24,6 @@ trait CanFSM[F[_], Er, E <: Environment] {
 }
 
 object CanFSM {
-  implicit val fsmIdForSequential: CanFSM[Id, Nothing, Sequential] =
-    new FromIdSeq
-
-  implicit val fsmIdForParallel: CanFSM[Id, Nothing, Parallel] =
-    new FromIdParallel
-
   implicit def fsmSyncForSequential[F[_]](
       implicit F: Sync[F]
   ): CanFSM[F, Throwable, Sequential] =
@@ -39,71 +33,6 @@ object CanFSM {
       implicit F: Sync[F]
   ): CanFSM[F, Throwable, Parallel] =
     new FromSyncParallel[F]
-}
-
-class FromIdSeq extends CanFSM[Id, Nothing, Sequential] {
-  def fsm[A: ClassTag, N, D, B: ClassTag](
-      pipeline: BiDataPipelineT[Id, Nothing, A, Sequential]
-  )(initial: InitialState[N, D, Id])(
-      fsmF: FSM.Empty[Id, N, D, A, B] => FSM.Func[Id, N, D, A, B]
-  ): BiDataPipelineT[Id, Nothing, B, Sequential] = {
-    val stateF                                = fsmF(new FSM.Empty)
-    var stateOpt: Option[FSM.State[N, D, Id]] = None
-    pipeline map { elem: A =>
-      val elemF: Iterable[B] = {
-        val currState = stateOpt match {
-          case None =>
-            initial match {
-              case InitialState.Pure(s) => s
-              case InitialState.FromFirstElement(
-                  f: (A => FSM.State[N, D, Id]) @unchecked
-                  ) =>
-                f(elem)
-            }
-          case Some(s) => s
-        }
-        val (newState, elems) = stateF(currState)(elem)
-        stateOpt = Some(newState)
-        elems
-      }
-      elemF
-    } mapConcat { vs =>
-      vs
-    }
-  }
-}
-
-class FromIdParallel extends CanFSM[Id, Nothing, Parallel] {
-  def fsm[A: ClassTag, N, D, B: ClassTag](
-      pipeline: BiDataPipelineT[Id, Nothing, A, Parallel]
-  )(initial: InitialState[N, D, Id])(
-      fsmF: FSM.Empty[Id, N, D, A, B] => FSM.Func[Id, N, D, A, B]
-  ): BiDataPipelineT[Id, Nothing, B, Parallel] = {
-    val stateF = fsmF(new FSM.Empty)
-    val stateOpt: AtomicReference[Option[FSM.State[N, D, Id]]] =
-      new AtomicReference(None)
-    pipeline map { elem: A =>
-      val elemF: Iterable[B] = {
-        val currState = stateOpt.get() match {
-          case None =>
-            initial match {
-              case InitialState.Pure(s) => s
-              case InitialState.FromFirstElement(
-                  f: (A => FSM.State[N, D, Id]) @unchecked
-                  ) =>
-                f(elem)
-            }
-          case Some(s) => s
-        }
-        val (newState, elems) = stateF(currState)(elem)
-        stateOpt.set(Some(newState))
-        elems
-      }
-      elemF
-    } mapConcat { vs =>
-      vs
-    }
-  }
 }
 
 class FromSyncSequential[F[_]](implicit F: Sync[F]) extends CanFSM[F, Throwable, Sequential] {

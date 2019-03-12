@@ -90,7 +90,7 @@ package object ql extends orderingInstances with aggregationInstances with monoi
   implicit class AsOps[F[_], Er, E <: Environment, A, G <: GroupingCriteria, T](
       private val self: BiDataPipelineT[F, Er, QueryResult[A, G, T], E]
   ) extends AnyVal {
-    def as[R: ClassTag](implicit ev: ToCaseClass.Aux[A, G, T, R], F: Monad[F]): BiDataPipelineT[F, Er, R, E] =
+    def as[R: ClassTag](implicit ev: ToCaseClass.Aux[A, G, T, R], F: MonadError[F, Er]): BiDataPipelineT[F, Er, R, E] =
       self.mapImpl(_.as[R])
   }
 

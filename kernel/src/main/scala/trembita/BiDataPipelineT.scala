@@ -22,7 +22,7 @@ trait BiDataPipelineT[F[_], +Er, +A, E <: Environment] extends Serializable with
     * @return - transformed [[BiDataPipelineT]]
     **/
   protected[trembita] def mapImpl[B: ClassTag](f: A => B)(
-      implicit F: Monad[F]
+      implicit F: MonadError[F, Er @uncheckedVariance]
   ): BiDataPipelineT[F, Er, B, E]
 
   /**
@@ -33,7 +33,7 @@ trait BiDataPipelineT[F[_], +Er, +A, E <: Environment] extends Serializable with
     **/
   protected[trembita] def mapConcatImpl[B: ClassTag](
       f: A => Iterable[B]
-  )(implicit F: Monad[F]): BiDataPipelineT[F, Er, B, E]
+  )(implicit F: MonadError[F, Er @uncheckedVariance]): BiDataPipelineT[F, Er, B, E]
 
   /**
     * Guarantees that [[BiDataPipelineT]]
@@ -42,7 +42,8 @@ trait BiDataPipelineT[F[_], +Er, +A, E <: Environment] extends Serializable with
     * @param p - predicate
     * @return - filtered [[BiDataPipelineT]]
     **/
-  protected[trembita] def filterImpl[AA >: A](p: A => Boolean)(implicit F: Monad[F], A: ClassTag[AA]): BiDataPipelineT[F, Er, AA, E] =
+  protected[trembita] def filterImpl[AA >: A](p: A => Boolean)(implicit F: MonadError[F, Er @uncheckedVariance],
+                                                               A: ClassTag[AA]): BiDataPipelineT[F, Er, AA, E] =
     collectImpl[AA]({ case a if p(a) => a })
 
   /**
@@ -53,24 +54,26 @@ trait BiDataPipelineT[F[_], +Er, +A, E <: Environment] extends Serializable with
     * @return - transformed [[BiDataPipelineT]]
     **/
   protected[trembita] def collectImpl[B: ClassTag](pf: PartialFunction[A, B])(
-      implicit F: Monad[F]
+      implicit F: MonadError[F, Er @uncheckedVariance]
   ): BiDataPipelineT[F, Er, B, E]
 
-  protected[trembita] def mapMImpl[AA >: A, B: ClassTag](f: A => F[B])(implicit F: Monad[F]): BiDataPipelineT[F, Er, B, E] =
+  protected[trembita] def mapMImpl[AA >: A, B: ClassTag](
+      f: A => F[B]
+  )(implicit F: MonadError[F, Er @uncheckedVariance]): BiDataPipelineT[F, Er, B, E] =
     new MapMonadicPipelineT[F, Er, A, B, E](f, this)(F)
 
-  protected[trembita] def handleErrorImpl[Err >: Er, B >: A: ClassTag](f: Err => B)(
+  protected[trembita] def handleErrorImpl[Err >: Er, AA >: A: ClassTag](f: Err => AA)(
       implicit F: MonadError[F, Err]
-  ): BiDataPipelineT[F, Err, B, E]
+  ): BiDataPipelineT[F, Err, AA, E] = new HandleErrorPipelineT[F, Err, AA, E](f, this)(F)
 
-  protected[trembita] def handleErrorWithImpl[Err >: Er, B >: A: ClassTag](f: Err => F[B])(
+  protected[trembita] def handleErrorWithImpl[Err >: Er, AA >: A: ClassTag](f: Err => F[AA])(
       implicit F: MonadError[F, Err]
-  ): BiDataPipelineT[F, Err, B, E]
+  ): BiDataPipelineT[F, Err, AA, E] = new HandleErrorWithPipelineT[F, Err, AA, E](f, this)(F)
 
   protected[trembita] def transformErrorImpl[Err >: Er: ClassTag, Er2: ClassTag](f: Err => Er2)(
       implicit F0: MonadError[F, Err],
       F: MonadError[F, Er2]
-  ): BiDataPipelineT[F, Er2, A, E]
+  ): BiDataPipelineT[F, Er2, A, E] = new TransformErrorPipelineT[F, Err, Er2, A, E](this, f)
 
   /**
     * Forces evaluation of [[BiDataPipelineT]]

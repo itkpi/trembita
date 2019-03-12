@@ -1,16 +1,16 @@
 package trembita.inputs
 
-import cats.{Id, Monad}
+import cats.{Id, MonadError}
 import trembita._
-import trembita.internal.{EvaluatedSource, StrictSource}
-import scala.reflect.ClassTag
+import trembita.internal.EvaluatedSource
 import scala.language.higherKinds
+import scala.reflect.ClassTag
 
-class RepeatInput private[trembita] () extends InputT[Id, Nothing, Sequential, RepeatInput.Props] {
+class RepeatInput[F[_], Er] private[trembita] () extends InputT[F, Er, Sequential, RepeatInput.Props] {
   def create[A: ClassTag](props: RepeatInput.Props[A])(
-      implicit F: Monad[Id]
-  ): BiDataPipelineT[Id, Nothing, A, Sequential] =
-    EvaluatedSource.make[Id, Nothing, A, Sequential](Vector.tabulate(props.count)(_ => props.gen()), F)
+      implicit F: MonadError[F, Er]
+  ): BiDataPipelineT[F, Er, A, Sequential] =
+    EvaluatedSource.makePure[F, Er, A, Sequential](F.pure(Vector.tabulate(props.count)(_ => props.gen())), F)
 }
 
 object RepeatInput {
@@ -27,9 +27,9 @@ private[trembita] class RepeatInputT[F[_], Er] private[trembita] (implicit ctgF:
     ClassTag[F[A]](ctgF.runtimeClass)
 
   def create[A: ClassTag](props: RepeatInput.PropsT[F, A])(
-      implicit F: Monad[F]
+      implicit F: MonadError[F, Er]
   ): BiDataPipelineT[F, Er, A, Sequential] =
     EvaluatedSource
-      .make[F, Er, F[A], Sequential](F.pure(Vector.tabulate(props.count)(_ => props.gen())), F)
+      .makePure[F, Er, F[A], Sequential](F.pure(Vector.tabulate(props.count)(_ => props.gen())), F)
       .mapMImpl[F[A], A](fa => fa)
 }

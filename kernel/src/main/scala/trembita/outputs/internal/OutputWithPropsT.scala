@@ -1,9 +1,10 @@
 package trembita.outputs.internal
 
-import cats.Monad
+import cats.MonadError
 import trembita.outputs.Keep
 import trembita.{BiDataPipelineT, Environment}
 
+import scala.annotation.unchecked.uncheckedVariance
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
@@ -20,7 +21,7 @@ trait OutputWithPropsT[F[_], +Er, E <: Environment] extends BaseOutputT[F, Er, N
 
   def apply[Err >: Er, A: ClassTag](props: Props[A])(
       pipeline: BiDataPipelineT[F, Err, A, E]
-  )(implicit F: Monad[F], E: E, run: E#Run[F]): Out[F, A]
+  )(implicit F: MonadError[F, Er @uncheckedVariance], E: E, run: E#Run[F]): Out[F, A]
 
   def widen: OutputWithPropsT.Aux[F, Er, E, Props, Out] = this
 }
@@ -38,14 +39,16 @@ object OutputWithPropsT {
   def apply[F[_], Er, E <: Environment](implicit ev: OutputWithPropsT[F, Er, E]): Aux[F, Er, E, ev.Props, ev.Out] = ev
 }
 
-trait OutputT[F[_], +Er, A, E <: Environment] extends BaseOutputT[F, Er, A, E] {
-  def apply[Err >: Er](pipeline: BiDataPipelineT[F, Err, A, E])(implicit F: Monad[F], E: E, run: E#Run[F], A: ClassTag[A]): Out[F, A]
+trait OutputT[F[_], +Er, +A, E <: Environment] extends BaseOutputT[F, Er, A, E] {
+  def apply[Err >: Er, AA >: A](
+      pipeline: BiDataPipelineT[F, Err, AA, E]
+  )(implicit F: MonadError[F, Er @uncheckedVariance], E: E, run: E#Run[F], A: ClassTag[AA]): Out[F, AA]
 
   def widen: OutputT.Aux[F, Er, A, E, Out] = this
 }
 
 object OutputT {
-  type Aux[F[_], +Er, A, E <: Environment, Out0[_[_], _]] = OutputT[F, Er, A, E] { type Out[G[_], x] = Out0[G, x] }
+  type Aux[F[_], +Er, +A, E <: Environment, Out0[_[_], _]] = OutputT[F, Er, A, E] { type Out[G[_], x] = Out0[G, x] }
 
   def apply[F[_], Er, A, E <: Environment](implicit ev: OutputT[F, Er, A, E]): OutputT[F, Er, A, E] = ev
 }
@@ -61,10 +64,10 @@ class CombinedOutput[F[_], +Er, E <: Environment, P0[_], Out0[_[_], _], Out1[_[_
 
   @inline def apply[Err >: Er, A: ClassTag](
       props: Props[A]
-  )(pipeline: BiDataPipelineT[F, Err, A, E])(implicit F: Monad[F], E: E, run: E#Run[F]): Out[F, A] = {
-    val ppln  = pipeline.memoize()
+  )(pipeline: BiDataPipelineT[F, Err, A, E])(implicit F: MonadError[F, Er @uncheckedVariance], E: E, run: E#Run[F]): Out[F, A] = {
+    val ppln  = pipeline.memoize()(F.asInstanceOf[MonadError[F, Err]], E, run, implicitly)
     val left  = outputWithProps.apply[Err, A](props)(ppln)
-    val right = outputWithoutProps.apply[Err](ppln.asInstanceOf[BiDataPipelineT[F, Er, Any, E]])
+    val right = outputWithoutProps.apply[Err, Any](ppln.asInstanceOf[BiDataPipelineT[F, Er, Any, E]])
     keep[F, A](left, right.asInstanceOf[Out1[F, A]])
   }
 }

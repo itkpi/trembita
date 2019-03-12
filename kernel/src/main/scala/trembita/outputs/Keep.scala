@@ -1,10 +1,10 @@
 package trembita.outputs
 
-import cats.Monad
+import cats.{Monad, MonadError}
 import trembita.outputs.internal.{KeepLeft, KeepRight, OutputT, OutputWithPropsT}
 import trembita.{BiDataPipelineT, Environment}
-import scala.reflect.ClassTag
 import scala.language.higherKinds
+import scala.reflect.ClassTag
 
 object Keep {
   type Aux[Out0[_[_], _], Out1[_[_], _], OutX[_[_], _]] = Keep[Out0, Out1] { type Out[G[_], A] = OutX[G, A] }
@@ -40,10 +40,10 @@ trait Keep[Out0[_[_], _], Out1[_[_], _]] extends Serializable { self =>
     new OutputT[F, Er, A, E] {
       type Out[G[_], β] = self.Out[G, β]
 
-      def apply[Err >: Er](
-          pipeline: BiDataPipelineT[F, Err, A, E]
-      )(implicit F: Monad[F], E: E, run: E#Run[F], A: ClassTag[A]): Out[F, A] = {
-        val ppln     = pipeline.memoize()
+      def apply[Err >: Er, AA >: A](
+          pipeline: BiDataPipelineT[F, Err, AA, E]
+      )(implicit F: MonadError[F, Er], E: E, run: E#Run[F], A: ClassTag[AA]): Out[F, AA] = {
+        val ppln     = pipeline.memoize()(F.asInstanceOf[MonadError[F, Err]], E, run, implicitly)
         val leftOut  = left(ppln)
         val rightOut = right(ppln)
         self(leftOut, rightOut)
@@ -60,8 +60,8 @@ trait Keep[Out0[_[_], _], Out1[_[_], _]] extends Serializable { self =>
 
       def apply[Err >: Er, A: ClassTag](props: (P0[A], P1[A]))(
           pipeline: BiDataPipelineT[F, Err, A, E]
-      )(implicit F: Monad[F], E: E, run: E#Run[F]): Keep.this.Out[F, A] = {
-        val ppln     = pipeline.memoize().asInstanceOf[BiDataPipelineT[F, Er, A, E]]
+      )(implicit F: MonadError[F, Er], E: E, run: E#Run[F]): Keep.this.Out[F, A] = {
+        val ppln     = pipeline.memoize()(F.asInstanceOf[MonadError[F, Err]], E, run, implicitly).asInstanceOf[BiDataPipelineT[F, Er, A, E]]
         val leftOut  = left(props._1)(ppln)
         val rightOut = right(props._2)(ppln)
         self(leftOut, rightOut)

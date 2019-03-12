@@ -11,25 +11,25 @@ trait MagnetlessOps[F[_], Er, A, E <: Environment] extends Any {
 
   def map[B: ClassTag](
       f: A => B
-  )(implicit F: Monad[F]): BiDataPipelineT[F, Er, B, E] =
+  )(implicit F: MonadError[F, Er]): BiDataPipelineT[F, Er, B, E] =
     `this`.mapImpl(f)
 
   def mapConcat[B: ClassTag](
       f: A => Iterable[B]
-  )(implicit F: Monad[F]): BiDataPipelineT[F, Er, B, E] =
+  )(implicit F: MonadError[F, Er]): BiDataPipelineT[F, Er, B, E] =
     `this`.mapConcatImpl(f)
 
-  def filter(p: A => Boolean)(implicit F: Monad[F], A: ClassTag[A]): BiDataPipelineT[F, Er, A, E] =
+  def filter(p: A => Boolean)(implicit F: MonadError[F, Er], A: ClassTag[A]): BiDataPipelineT[F, Er, A, E] =
     `this`.filterImpl(p)
 
   def collect[B: ClassTag](
       pf: PartialFunction[A, B]
-  )(implicit F: Monad[F]): BiDataPipelineT[F, Er, B, E] =
+  )(implicit F: MonadError[F, Er]): BiDataPipelineT[F, Er, B, E] =
     `this`.collectImpl(pf)
 
   def flatCollect[B: ClassTag](
       pf: PartialFunction[A, Iterable[B]]
-  )(implicit F: Monad[F]): BiDataPipelineT[F, Er, B, E] =
+  )(implicit F: MonadError[F, Er]): BiDataPipelineT[F, Er, B, E] =
     `this`.collectImpl(pf).flatten
 
   def handleError(f: Er => A)(implicit F: MonadError[F, Er], A: ClassTag[A]): BiDataPipelineT[F, Er, A, E] =
@@ -63,12 +63,12 @@ trait MagnetlessOps[F[_], Er, A, E <: Environment] extends Any {
 
   def mapM[B: ClassTag](
       f: A => F[B]
-  )(implicit F: Monad[F]): BiDataPipelineT[F, Er, B, E] =
+  )(implicit F: MonadError[F, Er]): BiDataPipelineT[F, Er, B, E] =
     `this`.mapMImpl[A, B](f)
 
   def mapG[B: ClassTag, G[_]](
       f: A => G[B]
-  )(implicit funcK: G ~> F, F: Monad[F]): BiDataPipelineT[F, Er, B, E] =
+  )(implicit funcK: G ~> F, F: MonadError[F, Er]): BiDataPipelineT[F, Er, B, E] =
     `this`.mapMImpl[A, B] { a =>
       val gb = f(a)
       val fb = funcK(gb)

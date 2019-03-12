@@ -1,23 +1,25 @@
 import scala.language.{higherKinds, implicitConversions}
 import cats._
 import cats.data.Kleisli
+import shapeless.=:!=
 import trembita.internal.{BiMapPipelineT => _, _}
 import trembita.operations._
-import trembita.outputs.internal.{lowPriorityTricks, OutputDsl}
+import trembita.outputs.internal.{OutputDsl, lowPriorityTricks}
+
 import scala.reflect.ClassTag
 
 package object trembita extends standardMagnets with arrows with lowPriorityTricks {
 
+  implicit def monadErrorVariance[F[_], Er <: Throwable](implicit F: MonadError[F, Throwable], ev: Er =:!= Throwable): MonadError[F, Er] =
+    F.asInstanceOf[MonadError[F, Er]]
+
   type DataPipelineT[F[_], A, E <: Environment] = BiDataPipelineT[F, Throwable, A, E]
-  type DataPipeline[A, E <: Environment]        = BiDataPipelineT[Id, Nothing, A, E]
 
   type BiMapPipelineT[F[_], Er, K, V, E <: Environment] = internal.BiMapPipelineT[F, Er, K, V, E]
   type MapPipelineT[F[_], K, V, E <: Environment]       = internal.BiMapPipelineT[F, Throwable, K, V, E]
-  type MapPipeline[K, V, E <: Environment]              = internal.BiMapPipelineT[Id, Nothing, K, V, E]
 
   type BiPairPipelineT[F[_], Er, K, V, Ex <: Environment] = BiDataPipelineT[F, Er, (K, V), Ex]
   type PairPipelineT[F[_], K, V, Ex <: Environment]       = BiDataPipelineT[F, Throwable, (K, V), Ex]
-  type PairPipeline[K, V, Ex <: Environment]              = BiDataPipelineT[Id, Nothing, (K, V), Ex]
 
   type Supports[E <: Environment, Op[_[_]]] = Op[E#Repr]
   type Run[F[_], E <: Environment]          = E#Run[F]
@@ -44,18 +46,18 @@ package object trembita extends standardMagnets with arrows with lowPriorityTric
   ) extends AnyVal {
     def mapValues[W](
         f: V => W
-    )(implicit F: Monad[F]): BiPairPipelineT[F, Er, K, W, E] = self.mapImpl {
+    )(implicit F: MonadError[F, Er]): BiPairPipelineT[F, Er, K, W, E] = self.mapImpl {
       case (k, v) => (k, f(v))
     }
 
-    def keys(implicit F: Monad[F], K: ClassTag[K]): BiDataPipelineT[F, Er, K, E] =
+    def keys(implicit F: MonadError[F, Er], K: ClassTag[K]): BiDataPipelineT[F, Er, K, E] =
       self.mapImpl(_._1)
 
-    def values(implicit F: Monad[F], V: ClassTag[V]): BiDataPipelineT[F, Er, V, E] =
+    def values(implicit F: MonadError[F, Er], V: ClassTag[V]): BiDataPipelineT[F, Er, V, E] =
       self.mapImpl(_._2)
 
     /** @return - [[BiMapPipelineT]] */
-    def toMapPipeline(implicit K: ClassTag[K], V: ClassTag[V], F: Monad[F], Er: ClassTag[Er]): BiMapPipelineT[F, Er, K, V, E] =
+    def toMapPipeline(implicit K: ClassTag[K], V: ClassTag[V], F: MonadError[F, Er], Er: ClassTag[Er]): BiMapPipelineT[F, Er, K, V, E] =
       new BaseMapPipelineT[F, Er, K, V, E](
         self.asInstanceOf[BiDataPipelineT[F, Er, (K, V), E]],
         F
@@ -107,25 +109,24 @@ package object trembita extends standardMagnets with arrows with lowPriorityTric
   type PipeT[F[_], A, B, E <: Environment]       = BiPipeT[F, Throwable, A, B, E]
   type Pipe[A, B, E <: Environment]              = BiPipeT[Id, Nothing, A, B, E]
 
-  @inline def biPipeT[F[_], Er, A, B, E <: Environment](
+  @inline def biPipe[F[_], Er, A, B, E <: Environment](
       f: BiDataPipelineT[F, Er, A, E] => BiDataPipelineT[F, Er, B, E]
   ): BiPipeT[F, Er, A, B, E] =
     Kleisli[BiDataPipelineT[F, Er, ?, E], BiDataPipelineT[F, Er, A, E], B](f)
 
-  @inline def pipeT[F[_], A, B, E <: Environment](f: DataPipelineT[F, A, E] => DataPipelineT[F, B, E]): PipeT[F, A, B, E] =
+  @inline def pipe[F[_], A, B, E <: Environment](f: DataPipelineT[F, A, E] => DataPipelineT[F, B, E]): PipeT[F, A, B, E] =
     Kleisli[DataPipelineT[F, ?, E], DataPipelineT[F, A, E], B](f)
-
-  @inline def pipe[A, B, E <: Environment](f: DataPipeline[A, E] => DataPipeline[B, E]): Pipe[A, B, E] =
-    biPipeT[Id, Nothing, A, B, E](f)
 
   type Sequential = Environment.Sequential
   type Parallel   = Environment.Parallel
 
-  type FileInput   = inputs.FileInput
-  type RandomInput = inputs.RandomInput
-  type RepeatInput = inputs.RepeatInput
+  type FileInput[F[_]]       = inputs.FileInput[F]
+  type FileInputF[F[_]]      = inputs.FileInputF[F]
+  type RandomInput[F[_], Er] = inputs.RandomInput[F, Er]
+  type RepeatInput[F[_], Er] = inputs.RepeatInput[F, Er]
 
   val FileInput   = inputs.FileInput
+  val FileInputF  = inputs.FileInputF
   val RandomInput = inputs.RandomInput
   val RepeatInput = inputs.RepeatInput
 }

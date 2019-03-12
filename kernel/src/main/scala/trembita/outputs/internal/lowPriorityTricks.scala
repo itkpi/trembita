@@ -1,5 +1,9 @@
 package trembita.outputs.internal
 
+import cats.MonadError
+import cats.evidence.Liskov
+import shapeless.=:!=
+
 import scala.language.higherKinds
 
 trait lowPriorityTricks extends Serializable {

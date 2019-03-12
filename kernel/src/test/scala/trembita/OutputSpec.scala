@@ -1,21 +1,18 @@
 package trembita
 
-import java.nio.file.Paths
 import java.util.concurrent.atomic.AtomicInteger
-
-import cats._
 import cats.effect._
-import org.scalatest.FlatSpec
 import cats.instances.int._
+import cats.instances.try_._
+import org.scalatest.FlatSpec
 
-class OutputSpec extends FlatSpec {
-  private val vecCheck                                               = Vector(1, 2, 3, 4, 5, 6)
-  private val ppln: DataPipeline[Int, Sequential]                    = Input.sequential[Vector].create(vecCheck)
-  private val pplnT: BiDataPipelineT[IO, Throwable, Int, Sequential] = Input.sequentialF[IO, Throwable, Vector].create(IO(vecCheck))
-  private val sumCheck                                               = vecCheck.sum
-
-  private val output1 = Output.vector
-  private val output2 = Output.combineAll[Int]
+class OutputSpec extends FlatSpec { self =>
+  private val vec                                                   = Vector(1, 2, 3, 4, 5, 6)
+  private val vecCheck                                              = vec.map(Right(_))
+  private val ppln: BiDataPipelineT[IO, Throwable, Int, Sequential] = Input.sequentialF[IO, Throwable, Vector].create(IO(vec))
+  private val sumCheck                                              = vec.sum
+  private val output1                                               = Output.vector
+  private val output2                                               = Output.combineAll[Throwable, Int]
 
   "Output.keepLeft" should "work correctly" in {
     val i = new AtomicInteger()
@@ -24,22 +21,10 @@ class OutputSpec extends FlatSpec {
       .alsoInto(Output.foreach[Int](_ => i.incrementAndGet()))
       .keepLeft
       .run
-
-    assert(i.get() == 6)
-    assert(sum == sumCheck)
-  }
-
-  it should "also work for IO backed pipeline" in {
-    val i = new AtomicInteger()
-    val sum = pplnT
-      .into(output2)
-      .alsoInto(Output.foreach[Int](_ => i.incrementAndGet()))
-      .keepLeft
-      .run
       .unsafeRunSync()
 
     assert(i.get() == 6)
-    assert(sum == sumCheck)
+    assert(sum contains sumCheck)
   }
 
   "Output.keepRight" should "work correctly" in {
@@ -49,38 +34,26 @@ class OutputSpec extends FlatSpec {
       .alsoInto(output2)
       .keepRight
       .run
-
-    assert(i.get() == 6)
-    assert(sum == sumCheck)
-  }
-
-  it should "also work for IO backed pipeline" in {
-    val i = new AtomicInteger()
-    val sum = pplnT
-      .into(Output.foreach[Int](_ => i.incrementAndGet()))
-      .alsoInto(output2)
-      .keepRight
-      .run
       .unsafeRunSync()
 
     assert(i.get() == 6)
-    assert(sum == sumCheck)
+    assert(sum contains sumCheck)
   }
 
   "Output.keepBoth" should "work correctly" in {
     val (vec, sum) = ppln
-      .into(output1)
+      .into(output1.withErrors[Throwable])
       .alsoInto(output2)
       .keepBoth
       .run
 
-    assert(vec == vecCheck)
-    assert(sum == sumCheck)
+    assert(vec.unsafeRunSync() == vecCheck)
+    assert(sum.unsafeRunSync() contains sumCheck)
   }
 
   it should "also work for IO backed pipeline" in {
-    val (vecIO, sumIO) = pplnT
-      .into(output1)
+    val (vecIO, sumIO) = ppln
+      .into(output1.withErrors[Throwable])
       .alsoInto(output2)
       .keepBoth
       .run
@@ -91,13 +64,13 @@ class OutputSpec extends FlatSpec {
     } yield vec -> sum).unsafeRunSync()
 
     assert(vec == vecCheck)
-    assert(sum == sumCheck)
+    assert(sum contains sumCheck)
   }
 
   "Output.ignoreBoth" should "work correctly" in {
     val i = new AtomicInteger()
     val j = new AtomicInteger()
-    val resIO = pplnT
+    val resIO = ppln
       .into(Output.foreach[Int](_ => i.incrementAndGet()))
       .alsoInto(Output.foreach[Int](_ => j.incrementAndGet()))
       .ignoreBoth
@@ -110,20 +83,23 @@ class OutputSpec extends FlatSpec {
     assert(j.get() == 6)
   }
 
-  "Complex chaining" should "not evaluated pipeline several times" in {
+  "Complex chaining" should "not evaluated pipeline several times (with non-lazy monad context)" in {
     val i = new AtomicInteger()
     val (vec, sum) = ppln
       .map { x =>
-        x + i.incrementAndGet()
+        val res = x + i.incrementAndGet()
+        println(s"$x -> $res")
+        res
       }
-      .into(output1)
+      .mapK(ioToTry)
+      .into(output1.withErrors[Throwable])
       .alsoInto(output2)
       .keepBoth
       .run
 
+    assert(vec.get == Vector(2, 4, 6, 8, 10, 12).map(Right(_)))
+    assert(sum.get contains self.vec.foldLeft(Vector.empty[Int] -> 1)((acc, x) => (acc._1 :+ (x + acc._2), acc._2 + 1))._1.sum)
     assert(i.get() == 6)
-    assert(vec == Vector(2, 4, 6, 8, 10, 12))
-    assert(sum == vec.sum)
   }
 
   "Output.ignore" should "work correctly" in {
@@ -135,18 +111,18 @@ class OutputSpec extends FlatSpec {
       }
       .into(Output.ignore[Int])
       .run
+      .unsafeRunSync()
 
     assert(i.get() == 6)
   }
 
   "Output.foldF" should "work correctly" in {
     val i = new AtomicInteger()
-    val output = Output.foldF[IO, Int, String](zero = "") {
+    val output = Output.foldF.failOnError[IO, Throwable, Int, String](zero = "") {
       case ("", x)  => IO.pure(x.toString)
       case (acc, x) => IO { s"$acc with $x" }
     }
     val result = ppln
-      .mapK(idTo[IO])
       .map { x =>
         i.incrementAndGet()
         x
@@ -156,6 +132,6 @@ class OutputSpec extends FlatSpec {
       .unsafeRunSync()
 
     assert(i.get() == 6)
-    assert(result == "1 with 2 with 3 with 4 with 5 with 6")
+    assert(result contains "1 with 2 with 3 with 4 with 5 with 6")
   }
 }

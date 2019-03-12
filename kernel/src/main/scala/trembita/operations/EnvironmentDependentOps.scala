@@ -54,7 +54,7 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
       implicit E: E,
       run1: E#Run[F],
       A: ClassTag[A],
-      F: Monad[F],
+      F: MonadError[F, Er],
       injectK: InjectTaggedK[E#Repr, Ex2#Repr]
   ): BiDataPipelineT[F, Er, A, Ex2] =
     BridgePipelineT.make[F, Er, A, E, Ex2](`this`, E, F)(
@@ -74,7 +74,7 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
       implicit E: E,
       run1: E#Run[F],
       A: ClassTag[A],
-      F: Monad[F],
+      F: MonadError[F, Er],
       injectK: InjectTaggedK[E#Repr, λ[β => F[Ex2#Repr[β]]]]
   ): BiDataPipelineT[F, Er, A, Ex2] =
     BridgePipelineT.make[F, Er, A, E, Ex2](`this`, E, F)(
@@ -89,7 +89,7 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
     * */
   def mapK[G[_]](
       arrow: F ~> G
-  )(implicit F: Monad[F], G: Monad[G], E: E, run0: E#Run[F], A: ClassTag[A]): BiDataPipelineT[G, Er, A, E] =
+  )(implicit F: MonadError[F, Er], G: MonadError[G, Er], E: E, run0: E#Run[F], A: ClassTag[A]): BiDataPipelineT[G, Er, A, E] =
     MapKPipelineT.make[F, Er, G, A, E](`this`, E, arrow, F, G)(A, widen(run0)(E))
 
   /**
@@ -98,7 +98,7 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
     *
     * @return - the same pipeline sorted
     **/
-  def sorted(implicit F: Monad[F],
+  def sorted(implicit F: MonadError[F, Er],
              A: ClassTag[A],
              ordering: Ordering[A],
              canSort: CanSort[E#Repr],
@@ -117,7 +117,7 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
     **/
   def sortBy[B: Ordering](f: A => B)(
       implicit A: ClassTag[A],
-      F: Monad[F],
+      F: MonadError[F, Er],
       canSort: CanSort[E#Repr],
       Er: ClassTag[Er]
   ): BiDataPipelineT[F, Er, A, E] =
@@ -138,7 +138,7 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
       run: E#Run[F],
       A: ClassTag[A]
   ): BiDataPipelineT[F, Er, B, E] =
-    MapReprPipeline.make[F, Er, A, B, E](`this`, E)(
+    MapReprPipeline.makePure[F, Er, A, B, E](`this`, E)(
       widen(f)(E),
       F,
       widen(run)(E)
@@ -163,8 +163,24 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
       implicit F: MonadError[F, Er],
       E: E,
       run: E#Run[F],
-      A: ClassTag[A],
-      canFlatMap: CanFlatMap[E]
+      A: ClassTag[A]
+  ): BiDataPipelineT[F, Er, B, E] =
+    MapReprFPipeline.makePure[F, Er, A, B, E](`this`, E)(
+      widenF(f)(E),
+      F,
+      widen(run)(E)
+    )
+
+  /**
+    * Allows to transform [[E]] environment internal data representation within [[F]] context into error or value.
+    * For instance, using [[mapRepr]] you can call [[E#Repr]] specific functions
+    * (.via on Akka Stream, combineByKey on RDD, etc.)
+    **/
+  def attemptMapReprF[B: ClassTag](f: E#Repr[Either[Er, A]] => F[E#Repr[Either[Er, B]]])(
+      implicit F: MonadError[F, Er],
+      E: E,
+      run: E#Run[F],
+      A: ClassTag[A]
   ): BiDataPipelineT[F, Er, B, E] =
     MapReprFPipeline.make[F, Er, A, B, E](`this`, E)(
       widenF(f)(E),
@@ -180,16 +196,20 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
       E: E,
       run: E#Run[F],
       A: ClassTag[A],
-      canFlatMap: CanFlatMap[E],
+      canFlatTraverse: CanFlatTraverse[F, E],
       ctg: ClassTag[E#Repr[B]],
   ): BiDataPipelineT[F, Er, B, E] =
-    `this`.mapReprF[B] { repr =>
-      F.map(
-        E.TraverseRepr.traverse(repr.asInstanceOf[E.Repr[A]])(a => f(a).evalFunc[B](E)(widen(run)))(
-          ctg.asInstanceOf[ClassTag[E.Repr[Either[Er, B]]]],
-          widen(run)
-        )
-      )(reprF => canFlatMap.flatten(reprF.asInstanceOf[E#Repr[E#Repr[B]]]))
+    `this`.attemptMapReprF[B] { repr =>
+      val traversed = canFlatTraverse.flatTraverse(repr) {
+        case Left(e) => E.FlatMapRepr.pure(e.asLeft[B]).asInstanceOf[E#Repr[Either[Er, B]]].pure[F]
+        case Right(v) =>
+          f(v).evalRepr.attempt
+            .map[E#Repr[Either[Er, B]]] {
+              case Right(vs) => vs
+              case Left(er)  => E.FlatMapRepr.pure(er.asLeft[B]).asInstanceOf[E#Repr[Either[Er, B]]]
+            }
+      }
+      traversed
     }
 
   /**
@@ -198,8 +218,11 @@ trait EnvironmentDependentOps[F[_], Er, A, E <: Environment] extends Any {
     * - for sequential pipeline it leads to intermediate collection allocation
     * - for Akka / Spark pipelines it's not such necessary
     * */
-  def memoize()(implicit F: Monad[F], E: E, run: E#Run[F], A: ClassTag[A]): BiDataPipelineT[F, Er, A, E] =
-    EvaluatedSource.make[F, Er, A, E](evalRepr.asInstanceOf[F[E#Repr[A]]] /* The cast is not redundant! Do not trust IDEA =) */, F)
+  def memoize()(implicit F: MonadError[F, Er], E: E, run: E#Run[F], A: ClassTag[A]): BiDataPipelineT[F, Er, A, E] =
+    EvaluatedSource.make[F, Er, A, E](
+      evalRepr.asInstanceOf[F[E#Repr[Either[Er, A]]]] /* The cast is not redundant! Do not trust IDEA =) */,
+      F
+    )
 
   /**
     * Special case of [[distinctBy]]
