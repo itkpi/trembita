@@ -1,15 +1,13 @@
 package trembita.collections
 
 import cats._
-import cats.implicits._
 import shapeless._
 import shapeless.nat._
 import shapeless.ops.nat
-
 import scala.collection.generic.CanBuildFrom
 import scala.collection.immutable
 import scala.language.experimental.macros
-import scala.language.{higherKinds, implicitConversions}
+import scala.language.implicitConversions
 import scala.reflect.macros.blackbox
 
 final class SizedAtLeast[A, AtLeast <: Nat, Repr[X] <: immutable.Seq[X]](
@@ -18,7 +16,7 @@ final class SizedAtLeast[A, AtLeast <: Nat, Repr[X] <: immutable.Seq[X]](
   def :+(elem: A)(
       implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]]
   ): SizedAtLeast[A, AtLeast, Repr] = {
-    val builder = cbf()
+    val builder = cbf(unsized)
     builder ++= unsized
     builder += elem
     new SizedAtLeast[A, AtLeast, Repr](builder.result())
@@ -29,7 +27,7 @@ final class SizedAtLeast[A, AtLeast <: Nat, Repr[X] <: immutable.Seq[X]](
       implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]],
       sum: nat.Sum[AtLeast, _1]
   ): SizedAtLeast[A, sum.Out, Repr] = {
-    val builder = cbf()
+    val builder = cbf(unsized)
     builder ++= unsized
     builder += elem
     new SizedAtLeast[A, sum.Out, Repr](builder.result())
@@ -38,7 +36,7 @@ final class SizedAtLeast[A, AtLeast <: Nat, Repr[X] <: immutable.Seq[X]](
   def ++(elems: TraversableOnce[A])(
       implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]]
   ): SizedAtLeast[A, AtLeast, Repr] = {
-    val builder = cbf()
+    val builder = cbf(unsized)
     builder ++= unsized
     builder ++= elems
     new SizedAtLeast[A, AtLeast, Repr](builder.result())
@@ -53,7 +51,7 @@ final class SizedAtLeast[A, AtLeast <: Nat, Repr[X] <: immutable.Seq[X]](
       implicit cbf: CanBuildFrom[Repr[A], A, Repr[A]],
       sum: nat.Sum[AtLeast, N]
   ): SizedAtLeast[A, sum.Out, Repr] = {
-    val builder = cbf()
+    val builder = cbf(unsized)
     builder ++= unsized
     builder ++= elems.unsized
     new SizedAtLeast[A, sum.Out, Repr](builder.result())
@@ -125,7 +123,7 @@ object SizedAtLeast {
             def apply[Repr[X] <: scala.collection.immutable.Seq[X]]
             (implicit cbf: scala.collection.generic.CanBuildFrom[Repr[$A], $A, Repr[$A]])
             : SizedAtLeast[$A, $AtLeast, Repr] = {
-              val builder = cbf()
+              val builder = cbf()s
               $build
               new SizedAtLeast[$A, $AtLeast, Repr](builder.result())
             }

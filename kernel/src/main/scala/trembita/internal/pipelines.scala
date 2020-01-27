@@ -414,12 +414,12 @@ protected[trembita] class StrictSource[F[_], +A](
   override def handleErrorImpl[B >: A: ClassTag](
       f: Throwable => B
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Sequential] =
-    new StrictSource[F, B](iterF.map { iterator =>
+    new StrictSource[F, B](iterF.map { iter =>
       new Iterator[B] {
-        def hasNext: Boolean = iterator.hasNext
+        def hasNext: Boolean = iter.hasNext
 
         def next(): B =
-          try iterator.next()
+          try iter.next()
           catch {
             case e: Throwable => f(e)
           }
@@ -430,13 +430,13 @@ protected[trembita] class StrictSource[F[_], +A](
       f: Throwable => F[B]
   )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, Sequential] =
     new StrictSource[F, F[B]](
-      iterF.map { iterator =>
+      iterF.map { iter =>
         new Iterator[F[B]] {
-          def hasNext: Boolean = iterator.hasNext
+          def hasNext: Boolean = iter.hasNext
 
           def next(): F[B] =
             try {
-              (iterator.next(): B).pure[F]
+              (iter.next(): B).pure[F]
             } catch {
               case e: Throwable => f(e)
             }

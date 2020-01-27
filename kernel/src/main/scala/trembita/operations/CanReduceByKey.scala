@@ -32,7 +32,7 @@ object CanReduceByKey {
         if (map contains k) map.update(k, reduce(map(k), v))
         else map += (k -> v)
       }
-      map.toVector.par
+      ParVector(map.toVector: _*)
     }
   }
 }

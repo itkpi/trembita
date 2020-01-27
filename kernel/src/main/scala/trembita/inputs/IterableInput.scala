@@ -9,7 +9,7 @@ import scala.language.higherKinds
 import scala.reflect.ClassTag
 import scala.util.Random
 
-class IterableInput[Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[Col[_], _, Col[_]])
+class IterableInput[Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[List[_], _, Col[_]])
     extends InputT[Id, Sequential, Col]
     with InputWithEmptyT[Id, Sequential] {
 
@@ -18,10 +18,10 @@ class IterableInput[Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: Can
 
   def empty[A: ClassTag](
       implicit F: Monad[Id]
-  ): DataPipelineT[Id, A, Sequential] = create[A](cbf().result().asInstanceOf[Col[A]])
+  ): DataPipelineT[Id, A, Sequential] = create[A](cbf(Nil).result().asInstanceOf[Col[A]])
 }
 
-class ParIterableInput[Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[Col[_], _, Col[_]])
+class ParIterableInput[Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[List[_], _, Col[_]])
     extends InputT[Id, Parallel, Col]
     with InputWithEmptyT[Id, Parallel] {
   def create[A: ClassTag](props: Col[A])(implicit F: Monad[Id]): DataPipeline[A, Parallel] =
@@ -29,10 +29,10 @@ class ParIterableInput[Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: 
 
   def empty[A: ClassTag](
       implicit F: Monad[Id]
-  ): DataPipelineT[Id, A, Parallel] = create[A](cbf().result().asInstanceOf[Col[A]])
+  ): DataPipelineT[Id, A, Parallel] = create[A](cbf(Nil).result().asInstanceOf[Col[A]])
 }
 
-class IterableInputF[F[+ _], Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[Col[_], _, Col[_]])
+class IterableInputF[F[+ _], Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[List[_], _, Col[_]])
     extends InputT[F, Sequential, λ[β => F[Col[β]]]]
     with InputWithEmptyT[F, Sequential] {
 
@@ -42,10 +42,10 @@ class IterableInputF[F[+ _], Col[+x] <: Iterable[x]] private[trembita] (implicit
 
   def empty[A: ClassTag](
       implicit F: Monad[F]
-  ): DataPipelineT[F, A, Sequential] = create[A](F.pure[Col[A]](cbf().result().asInstanceOf[Col[A]]))
+  ): DataPipelineT[F, A, Sequential] = create[A](F.pure[Col[A]](cbf(Nil).result().asInstanceOf[Col[A]]))
 }
 
-class ParIterableInputF[F[+ _], Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[Col[_], _, Col[_]])
+class ParIterableInputF[F[+ _], Col[+x] <: Iterable[x]] private[trembita] (implicit cbf: CanBuildFrom[List[_], _, Col[_]])
     extends InputT[F, Parallel, λ[β => F[Col[β]]]]
     with InputWithEmptyT[F, Parallel] {
 
@@ -54,7 +54,7 @@ class ParIterableInputF[F[+ _], Col[+x] <: Iterable[x]] private[trembita] (impli
 
   def empty[A: ClassTag](
       implicit F: Monad[F]
-  ): DataPipelineT[F, A, Parallel] = create[A](F.pure[Col[A]](cbf().result().asInstanceOf[Col[A]]))
+  ): DataPipelineT[F, A, Parallel] = create[A](F.pure[Col[A]](cbf(Nil).result().asInstanceOf[Col[A]]))
 }
 
 class RandomInput private[trembita] () extends InputT[Id, Sequential, RandomInput.Props] {

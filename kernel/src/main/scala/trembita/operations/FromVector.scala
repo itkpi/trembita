@@ -1,4 +1,5 @@
 package trembita.operations
+
 import scala.annotation.implicitNotFound
 import scala.collection.parallel.immutable.ParVector
 import scala.language.higherKinds
@@ -17,6 +18,6 @@ object FromVector {
   }
 
   implicit val parVectorFromVector: FromVector[ParVector] = new FromVector[ParVector] {
-    def apply[A](vs: Vector[A]): ParVector[A] = vs.par
+    def apply[A](vs: Vector[A]): ParVector[A] = ParVector(vs:_*)
   }
 }

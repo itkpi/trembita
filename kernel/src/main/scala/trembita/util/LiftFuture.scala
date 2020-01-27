@@ -17,9 +17,9 @@ trait LiftFuture[F[_]] {
 object LiftFuture {
   def apply[F[_]](implicit liftFuture: LiftFuture[F]): LiftFuture[F] = liftFuture
 
-  implicit val liftFutureToIO: LiftFuture[IO] = new LiftFuture[IO] {
-    def apply[A](future: => Future[A]): IO[A] = IO.fromFuture(IO.delay(future))
-  }
+//  implicit val liftFutureToIO: LiftFuture[IO] = new LiftFuture[IO] {
+//    def apply[A](future: => Future[A]): IO[A] = IO.fromFuture(IO.delay(future))
+//  }
 
   implicit val liftFutureToFuture: LiftFuture[Future] = new LiftFuture[Future] {
     override def apply[A](future: => Future[A]): Future[A] = future

@@ -10,8 +10,8 @@ import scala.util.Try
 trait arrows {
   @inline implicit def identityK[F[_]]: F ~> F = FunctionK.id
 
-  implicit val futureToIO: Future ~> IO =
-    λ[Future[?] ~> IO[?]](x => IO.fromFuture(IO { x }))
+//  implicit val futureToIO: Future ~> IO =
+//    λ[Future[?] ~> IO[?]](x => IO.fromFuture(IO { x }))
 
   implicit val ioToFuture: IO ~> Future =
     λ[IO[?] ~> Future[?]](_.unsafeToFuture)

@@ -3,8 +3,8 @@ package trembita.operations
 import cats.Monad
 import trembita.internal.{EvaluatedSource, StrictSource}
 import trembita.{DataPipelineT, Environment, Parallel, Sequential}
-
 import scala.annotation.implicitNotFound
+import scala.collection.parallel.immutable.ParVector
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
@@ -46,6 +46,6 @@ object LiftPipeline {
     def liftIterableF[A: ClassTag](
         fa: F[Iterable[A]]
     ): DataPipelineT[F, A, Parallel] =
-      EvaluatedSource.make[F, A, Parallel](F.map(fa)(_.toVector.par), F)
+      EvaluatedSource.make[F, A, Parallel](F.map(fa)(xs => ParVector(xs.toVector: _*)), F)
   }
 }

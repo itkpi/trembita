@@ -1,9 +1,6 @@
 package trembita.operations
 
-import cats.{~>, Applicative, Id}
-import trembita.Environment
-import shapeless.{=:!=, ∃}
-
+import cats.{~>, Applicative}
 import scala.annotation.implicitNotFound
 import scala.collection.parallel.immutable.ParVector
 import scala.language.higherKinds
@@ -23,7 +20,7 @@ object InjectTaggedK {
     }
 
   implicit val injectVectorIntoPar: InjectTaggedK[Vector, ParVector] =
-    InjectTaggedK.fromArrow(λ[Vector[?] ~> ParVector[?]](_.par))
+    InjectTaggedK.fromArrow(λ[Vector[?] ~> ParVector[?]](xs => ParVector(xs: _*)))
 
   implicit val injectParVectorIntoSeq: InjectTaggedK[ParVector, Vector] =
     InjectTaggedK.fromArrow(λ[ParVector[?] ~> Vector[?]](_.seq))

@@ -9,7 +9,7 @@ import cats.implicits._
 import algebra.ring._
 import AggFunc.Type
 import spire.algebra.NRoot
-import shapeless._
+import shapeless.{Default => _, _}
 import scala.concurrent.duration._
 
 trait aggregationInstances extends Serializable {

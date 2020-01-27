@@ -5,7 +5,6 @@ import scala.language.higherKinds
 import scala.reflect.ClassTag
 import trembita.collections._
 import trembita.internal.BatchUtils
-
 import scala.collection.{immutable, mutable}
 
 trait CanCombineByKey[F[_]] {
@@ -36,7 +35,7 @@ object CanCombineByKeyWithParallelism {
         parallelism: Int
     )(init: V => C, addValue: (C, V) => C, mergeCombiners: (C, C) => C): ParVector[(K, C)] = {
       val batched = BatchUtils.batch(parts = parallelism)(fa.seq)
-      val processed = batched.par
+      val processed = ParVector(batched.toVector: _*)
         .map { batch =>
           val iterator             = batch.iterator
           val (initKey, initValue) = iterator.next()
@@ -66,7 +65,8 @@ object CanCombineByKeyWithParallelism {
           map.toMap
         }
 
-      processed.reduce(_.mergeConcat(_)(mergeCombiners).toMap).seq.toVector.par
+      val res = processed.reduce(_.mergeConcat(_)(mergeCombiners).toMap).toVector
+      ParVector(res: _*)
     }
   }
 }

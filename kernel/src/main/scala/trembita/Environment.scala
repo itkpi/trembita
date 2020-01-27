@@ -127,11 +127,11 @@ object Environment {
     final type Run[G[_]] = Applicative[G]
     final type Result[X] = X
 
-    def fromVector[A: ClassTag](vs: Vector[A]): ParVector[A] = vs.par
+    def fromVector[A: ClassTag](vs: Vector[A]): ParVector[A] = ParVector(vs: _*)
 
-    def fromIterable[A: ClassTag](vs: Iterable[A]): Repr[A] = vs.to[ParVector]
+    def fromIterable[A: ClassTag](vs: Iterable[A]): Repr[A] = ParVector(vs.toVector: _*)
 
-    def fromIterator[A: ClassTag](vs: Iterator[A]): Repr[A] = vs.to[ParVector]
+    def fromIterator[A: ClassTag](vs: Iterator[A]): Repr[A] = ParVector(vs.toVector: _*)
 
     def collect[A, B: ClassTag](repr: ParVector[A])(
         pf: PartialFunction[A, B]
@@ -142,7 +142,7 @@ object Environment {
     def distinctKeys[A: ClassTag, B: ClassTag](
         repr: Repr[(A, B)]
     ): Repr[(A, B)] =
-      repr.groupBy(_._1).mapValues(_.head._2).to[ParVector]
+      ParVector(repr.groupBy(_._1).mapValues(_.head._2).toVector: _*)
 
     def absorb[F[_], A](fa: Result[F[A]]): F[A] = fa
 

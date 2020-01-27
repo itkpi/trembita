@@ -1,4 +1,5 @@
 package trembita.operations
+
 import scala.annotation.implicitNotFound
 import scala.collection.parallel.immutable.ParVector
 import scala.collection.mutable
@@ -48,7 +49,7 @@ object CanSpanBy {
             currKey = Some(key)
         }
       }
-      buffers.mapValues(_.toVector).toVector.par
+      ParVector(buffers.mapValues(_.toVector).toVector: _*)
     }
   }
 

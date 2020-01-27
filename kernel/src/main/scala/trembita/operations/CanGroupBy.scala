@@ -23,12 +23,17 @@ object CanGroupBy {
   }
 
   implicit val canGroupByParVector: CanGroupBy[ParVector] = new CanGroupBy[ParVector] {
-    def groupBy[K: ClassTag, V: ClassTag](fa: ParVector[V])(f: V => K): ParVector[(K, Iterable[V])] =
-      fa.groupBy(f).mapValues(_.seq).toVector.par
+    def groupBy[K: ClassTag, V: ClassTag](fa: ParVector[V])(f: V => K): ParVector[(K, Iterable[V])] = {
+      val res = fa.groupBy(f).mapValues(_.seq).toVector
+      ParVector(res: _*)
+    }
 
     override def distinct[A: ClassTag](fa: ParVector[A]): ParVector[A] = fa.distinct
     def distinctBy[A: ClassTag, B: ClassTag](
         fa: ParVector[A]
-    )(f: A => B): ParVector[A] = fa.groupBy(f).map(_._2.head).toVector.par
+    )(f: A => B): ParVector[A] = {
+      val res = fa.groupBy(f).map(_._2.head).toVector
+      ParVector(res: _*)
+    }
   }
 }

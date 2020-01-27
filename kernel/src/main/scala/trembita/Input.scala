@@ -23,12 +23,12 @@ object Input {
   }
 
   @inline def sequentialF[F[+ _], Col[+x] <: Iterable[x]](
-      implicit cbf: CanBuildFrom[Col[_], _, Col[_]]
+      implicit cbf: CanBuildFrom[List[_], _, Col[_]]
   ): InputT[F, Sequential, λ[β => F[Col[β]]]] with InputWithEmptyT[F, Sequential] =
     new IterableInputF[F, Col]
 
   @inline def parallelF[F[+ _], Col[+x] <: Iterable[x]](
-      implicit cbf: CanBuildFrom[Col[_], _, Col[_]]
+      implicit cbf: CanBuildFrom[List[_], _, Col[_]]
   ): InputT[F, Parallel, λ[β => F[Col[β]]]] with InputWithEmptyT[F, Parallel] =
     new ParIterableInputF[F, Col]
 
@@ -39,11 +39,11 @@ object Input {
   val file: InputT[Id, Sequential, FileInput.Props]                = new FileInput
 
   def sequential[Col[+x] <: Iterable[x]](
-      implicit cbf: CanBuildFrom[Col[_], _, Col[_]]
+      implicit cbf: CanBuildFrom[List[_], _, Col[_]]
   ): InputT[Id, Sequential, Col] with InputWithEmptyT[Id, Sequential] =
     new IterableInput[Col]
 
   def parallel[Col[+x] <: Iterable[x]](
-      implicit cbf: CanBuildFrom[Col[_], _, Col[_]]
+      implicit cbf: CanBuildFrom[List[_], _, Col[_]]
   ): InputT[Id, Parallel, Col] with InputWithEmptyT[Id, Parallel] = new ParIterableInput[Col]
 }

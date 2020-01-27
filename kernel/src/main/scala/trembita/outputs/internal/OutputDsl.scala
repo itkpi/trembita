@@ -5,8 +5,8 @@ import cats.{~>, Applicative, Id, Monad}
 import trembita._
 import trembita.operations._
 import trembita.outputs.Keep
-
 import scala.collection.generic.CanBuildFrom
+import scala.collection.parallel.immutable.ParVector
 import scala.language.{existentials, higherKinds, implicitConversions}
 import scala.reflect.ClassTag
 
@@ -278,12 +278,12 @@ class collectionDsl[Col[x] <: Iterable[x]](val `dummy`: Boolean = true) extends 
 object collectionDsl {
   implicit def dslToSeqOutput[F[_], Col[x] <: Iterable[x]](
       dsl: collectionDsl[Col]
-  ): OutputWithPropsT.Aux[F, Sequential, λ[A => CanBuildFrom[Col[A], A, Col[A]]], λ[(G[_], A) => G[Col[A]]]] =
+  ): OutputWithPropsT.Aux[F, Sequential, λ[A => CanBuildFrom[Vector[A], A, Col[A]]], λ[(G[_], A) => G[Col[A]]]] =
     new SequentialCollectionOutput[Col, F]()
 
   implicit def dslToParOutput[F[_], Col[x] <: Iterable[x]](
       dsl: collectionDsl[Col]
-  ): OutputWithPropsT.Aux[F, Parallel, λ[A => CanBuildFrom[Col[A], A, Col[A]]], λ[(G[_], A) => G[Col[A]]]] =
+  ): OutputWithPropsT.Aux[F, Parallel, λ[A => CanBuildFrom[Vector[A], A, Col[A]]], λ[(G[_], A) => G[Col[A]]]] =
     new ParallelCollectionOutput[Col, F]()
 }
 

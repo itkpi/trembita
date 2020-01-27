@@ -13,6 +13,8 @@ object CanBatched {
     def batched[A](fa: Vector[A], parts: Int): Vector[Iterable[A]] = BatchUtils.batch(parts)(fa).toVector
   }
   implicit val parVectorCanBeCatched: CanBatched[ParVector] = new CanBatched[ParVector] {
-    def batched[A](fa: ParVector[A], parts: Int): ParVector[Iterable[A]] = BatchUtils.batch(parts)(fa.seq).toVector.par
+    def batched[A](fa: ParVector[A], parts: Int): ParVector[Iterable[A]] = ParVector(
+      BatchUtils.batch(parts)(fa.seq).toVector: _*
+    )
   }
 }

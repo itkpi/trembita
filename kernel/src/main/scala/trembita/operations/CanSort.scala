@@ -23,8 +23,8 @@ object CanSort {
 
   implicit val canSortParVector: CanSort[ParVector] = new CanSort[ParVector] {
     def sorted[A: Ordering: ClassTag](fa: ParVector[A]): ParVector[A] =
-      fa.seq.sorted.par
+      ParVector(fa.seq.sorted: _*)
     def sortedBy[A: ClassTag, B: Ordering: ClassTag](fa: ParVector[A])(f: A => B): ParVector[A] =
-      fa.seq.sortBy(f).par
+      ParVector(fa.seq.sortBy(f): _*)
   }
 }

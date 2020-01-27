@@ -130,7 +130,7 @@ By default a special macro detects all references to `ExecutionContext` within l
 All `ExecutionContext`'s should be globally accessible (e.g. need to be `def` or `val` in some object).
 If not - your code won't compile with appropriate error.
 If everything is ok - macro creates helper object with references to all found `ExecutionContext`s making them `@transient lazy val` (well known technique) and rewrites your lambda so that all async transformations references to fields in that object.
-You can find full example [here](./examples/src/main/scala/com/examples/spark/Main.scala).
+You can find full example [here](examples/src/main/scala-2.12/com/examples/spark/Main.scala).
 
 Happy to say that using `cats.effect.IO` on spark is also supported =)
 ### FSM on Spark Datasets
@@ -142,9 +142,9 @@ To do so, use `fsmByKey`:
 val pipeline: DataPipelineT[F, A, Spark] = ???
 pipeline.fsmByKey(getKey = ???)(... /* your FSM definition here */)
 ```
-Full example can be found [here](./examples/src/main/scala/com/examples/spark/FSMSample.scala).
+Full example can be found [here](examples/src/main/scala-2.12/com/examples/spark/FSMSample.scala).
 ### Typesafe QL on RDD
-See the full example [here](./examples/src/main/scala/com/examples/spark/QLExample.scala)
+See the full example [here](examples/src/main/scala-2.12/com/examples/spark/QLExample.scala)
 ### Limitations
  - Be careful not to make closures against the `SparkContext` or `SparkSession` because it will fall in runtime
  - Other non-serializable resources also will fail in runtime. This will be adapted later
@@ -213,7 +213,7 @@ Trembita now allows to write `QL` and `FSM` upon [spark DStreams](https://spark.
 libraryDependencies += "ua.pp.itkpi" %%  "trembita-spark-streaming" % trembitaV
 ```
 
-For examples see [here](./examples/src/main/scala/com/examples/spark/streaming)
+For examples see [here](examples/src/main/scala-2.12/com/examples/spark/streaming)
 Run scripts:
 - [basic](./examples/src/main/resources/spark/cluster/run_streaming.sh)
 - [FSM](./examples/src/main/resources/spark/cluster/run_streaming_fsm.sh)

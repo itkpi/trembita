@@ -20,7 +20,9 @@ object CanGroupByOrdered {
   }
 
   implicit val canGroupByParVector: CanGroupByOrdered[ParVector] = new CanGroupByOrdered[ParVector] {
-    def groupBy[K: ClassTag: Ordering, V: ClassTag](fa: ParVector[V])(f: V => K): ParVector[(K, Iterable[V])] =
-      fa.groupBy(f).mapValues(_.seq).toVector.sortBy(_._1).par
+    def groupBy[K: ClassTag: Ordering, V: ClassTag](fa: ParVector[V])(f: V => K): ParVector[(K, Iterable[V])] = {
+      val res = fa.groupBy(f).mapValues(_.seq).toVector.sortBy(_._1)
+      ParVector(res: _*)
+    }
   }
 }

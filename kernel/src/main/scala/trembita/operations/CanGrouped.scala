@@ -1,4 +1,5 @@
 package trembita.operations
+
 import scala.collection.parallel.immutable.ParVector
 import scala.language.higherKinds
 
@@ -11,6 +12,6 @@ object CanGrouped {
     def grouped[A](fa: Vector[A], n: Int): Vector[Iterable[A]] = fa.grouped(n).toVector
   }
   implicit val parVectorCanBeGrouped: CanGrouped[ParVector] = new CanGrouped[ParVector] {
-    def grouped[A](fa: ParVector[A], n: Int): ParVector[Iterable[A]] = fa.seq.grouped(n).toVector.par
+    def grouped[A](fa: ParVector[A], n: Int): ParVector[Iterable[A]] = ParVector(fa.seq.grouped(n).toVector: _*)
   }
 }
