@@ -177,20 +177,6 @@ lazy val trembita_caching =
       version := v
     )
 
-lazy val trembita_caching_infinispan =
-  sonatypeProject(id = "trembita-caching-infinispan", base = file("./caching/infinispan"))
-    .dependsOn(trembita_caching)
-    .settings(
-      name := "trembita-caching-infinispan",
-      version := v,
-      libraryDependencies ++= Seq(
-        Infinispan.core,
-        Infinispan.commons,
-        ScalaCompat.java8compat,
-        Testing.mockito % "test"
-      )
-    )
-
 lazy val trembita_java_streams =
   sonatypeProject(id = "trembita-java-streams", base = file("./integrations/java/streams"))
     .dependsOn(kernel)
@@ -203,24 +189,6 @@ lazy val trembita_java_streams =
         "-target:jvm-1.8"
       ),
       libraryDependencies += ScalaCompat.java8compat
-    )
-
-lazy val seamless_akka_infinispan =
-  sonatypeProject(id = "trembita-seamless-akka-infinispan", base = file("./integrations/seamless/akka-infinispan"))
-    .dependsOn(kernel, trembita_akka_streams, trembita_caching_infinispan)
-    .settings(
-      name := "trembita-seamless-akka-infinispan",
-      version := v,
-      scalacOptions ++= Seq(
-        "-Ypartial-unification",
-        "-language:experimental.macros",
-        "-target:jvm-1.8"
-      ),
-      libraryDependencies ++= Seq(
-        ScalaCompat.java8compat,
-        Akka.testkit,
-        Testing.mockito % "test"
-      )
     )
 
 lazy val bench = Project(id = "trembita-bench", base = file("./bench"))
@@ -236,9 +204,7 @@ lazy val bench = Project(id = "trembita-bench", base = file("./bench"))
     seamless_akka_spark,
     trembita_spark_streaming,
     trembita_caching,
-    trembita_caching_infinispan,
-    trembita_java_streams,
-    seamless_akka_infinispan
+    trembita_java_streams
   )
   .settings(
     name := "trembita-bench",
@@ -275,9 +241,7 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
     seamless_akka_spark,
     trembita_spark_streaming,
     trembita_caching,
-    trembita_caching_infinispan,
-    trembita_java_streams,
-    seamless_akka_infinispan
+    trembita_java_streams
   )
   .settings(
     name := "trembita-examples",
@@ -304,7 +268,6 @@ lazy val examples = Project(id = "trembita-examples", base = file("./examples"))
         Utils.console,
         Akka.csv,
         Akka.http,
-        Infinispan.hotrod,
         Sttp.core,
         Sttp.catsBackend,
         Sttp.asyncHttp
@@ -339,11 +302,9 @@ lazy val root = Project(id = "trembita", base = file("."))
     seamless_akka_spark,
     trembita_spark_streaming,
     trembita_caching,
-    trembita_caching_infinispan,
     log4j,
     logging_commons,
-    trembita_java_streams,
-    seamless_akka_infinispan
+    trembita_java_streams
   )
   .settings(
     name := "trembita",

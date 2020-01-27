@@ -15,7 +15,6 @@ object Dependencies {
   val akkaHttpV         = "10.1.6"
   val alpakkaV          = "0.8"
   val catsConsoleV      = "0.5"
-  val infinispanV       = "9.4.5.Final"
   val scalaJava8CompatV = "0.9.0"
   val mockitoV          = "2.23.4"
   val sttpV             = "1.5.2"
@@ -63,12 +62,6 @@ object Dependencies {
     val http    = "com.typesafe.akka"  %% "akka-http"               % akkaHttpV withSources ()
     val csv     = "com.lightbend.akka" %% "akka-stream-alpakka-csv" % alpakkaV withSources ()
     val testkit = "com.typesafe.akka"  %% "akka-testkit"            % akkaV % "test" withSources ()
-  }
-
-  object Infinispan {
-    val core    = "org.infinispan" % "infinispan-core"          % infinispanV withSources ()
-    val commons = "org.infinispan" % "infinispan-commons"       % infinispanV withSources ()
-    val hotrod  = "org.infinispan" % "infinispan-client-hotrod" % infinispanV withSources ()
   }
 
   object ScalaCompat {
