@@ -3,6 +3,4 @@ target/
 *.iml
 *.log
 logs/
-.DS_Store
-.bloop/
-.metals/
+sonatype.sbt
