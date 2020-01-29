@@ -6,7 +6,7 @@ object Dependencies {
   val `scala-2.13`         = "2.13.1"
   val parallelCollectionsV = "0.2.0"
   val testV                = "3.1.0"
-  val catsEffectsV         = "2.0.0"
+  val catsVersion          = "2.0.0"
   val shapelessV           = "2.3.3"
   val spireV               = "0.17.0-M1"
   val slf4jV               = "1.7.25"
@@ -19,6 +19,10 @@ object Dependencies {
   val sttpV                = "1.6.4"
   val zioV                 = "1.0.0-RC17"
 
+  object Zio {
+    val zio = "dev.zio" %% "zio" % zioV withSources ()
+  }
+
   object Testing {
     val scalastic = "org.scalactic" %% "scalactic"   % testV withSources ()
     val scalatest = "org.scalatest" %% "scalatest"   % testV withSources ()
@@ -26,9 +30,9 @@ object Dependencies {
   }
 
   object Typelevel {
-    val catsEffect = "org.typelevel" %% "cats-effect" % catsEffectsV withSources ()
-    val shapeless  = "com.chuusai"   %% "shapeless"   % shapelessV withSources ()
-    val spire      = "org.typelevel" %% "spire"       % spireV withSources ()
+    val catsCore  = "org.typelevel" %% "cats-core" % catsVersion withSources ()
+    val shapeless = "com.chuusai"   %% "shapeless" % shapelessV withSources ()
+    val spire     = "org.typelevel" %% "spire"     % spireV withSources ()
   }
 
   object Utils {
@@ -90,9 +94,10 @@ object Dependencies {
         `on-2-13` = Nil
       )
       val baseDeps = List(
+        Zio.zio,
+        Typelevel.catsCore,
         Testing.scalastic,
         Testing.scalatest % "test",
-        Typelevel.catsEffect,
         Typelevel.shapeless,
         Typelevel.spire
       )

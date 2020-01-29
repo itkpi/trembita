@@ -8,7 +8,6 @@ import scala.reflect.ClassTag
 
 package object trembita extends standardMagnets with arrows with lowPriorityTricks {
 
-  type DataPipeline[A, E <: Environment]            = DataPipelineT[Id, A, E]
   type MapPipelineT[F[_], K, V, E <: Environment]   = internal.MapPipelineT[F, K, V, E]
   type PairPipelineT[F[_], K, V, Ex <: Environment] = DataPipelineT[F, (K, V), Ex]
   type Supports[E <: Environment, Op[_[_]]]         = Op[E#Repr]

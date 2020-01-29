@@ -38,19 +38,19 @@ trait MagnetlessSparkBasicOps[F[_], A, E <: BaseSpark] extends Any {
       implicit F: MonadError[F, Throwable],
       A: ClassTag[A]
   ): DataPipelineT[F, A, E] =
-    `this`.handleErrorImpl[A](f)
+    `this`.catchAll[A](f)
 
   def recover(pf: PartialFunction[Throwable, A])(
       implicit F: MonadError[F, Throwable],
       A: ClassTag[A]
   ): DataPipelineT[F, A, E] =
-    `this`.handleErrorImpl[A](pf.applyOrElse(_, (e: Throwable) => throw e))
+    `this`.catchAll[A](pf.applyOrElse(_, (e: Throwable) => throw e))
 
   def recoverNonFatal(f: Throwable => A)(
       implicit F: MonadError[F, Throwable],
       A: ClassTag[A]
   ): DataPipelineT[F, A, E] =
-    `this`.handleErrorImpl {
+    `this`.catchAll {
       case NonFatal(e) => f(e)
       case other       => throw other
     }
@@ -62,12 +62,12 @@ trait MagnetlessSparkIOOps[A, E <: BaseSpark] extends Any {
   def handleErrorWith(
       f: Throwable => IO[A]
   )(implicit A: ClassTag[A]): DataPipelineT[IO, A, E] =
-    `this`.handleErrorWithImpl(f)
+    `this`.catchAllWith(f)
 
   def recoverWith(
       pf: PartialFunction[Throwable, IO[A]]
   )(implicit A: ClassTag[A]): DataPipelineT[IO, A, E] =
-    `this`.handleErrorWithImpl(
+    `this`.catchAllWith(
       pf.applyOrElse(_, (e: Throwable) => IO.raiseError(e))
     )
 }

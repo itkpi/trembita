@@ -33,19 +33,19 @@ trait MagnetlessOps[F[_], A, Ex <: Environment] extends Any {
     `this`.collectImpl(pf).flatten
 
   def handleError(f: Throwable => A)(implicit F: MonadError[F, Throwable], A: ClassTag[A]): DataPipelineT[F, A, Ex] =
-    `this`.handleErrorImpl[A](f)
+    `this`.catchAll[A](f)
 
   def recover(pf: PartialFunction[Throwable, A])(
       implicit F: MonadError[F, Throwable],
       A: ClassTag[A]
   ): DataPipelineT[F, A, Ex] =
-    `this`.handleErrorImpl[A](pf.applyOrElse(_, (e: Throwable) => throw e))
+    `this`.catchAll[A](pf.applyOrElse(_, (e: Throwable) => throw e))
 
   def recoverNonFatal(f: Throwable => A)(
       implicit F: MonadError[F, Throwable],
       A: ClassTag[A]
   ): DataPipelineT[F, A, Ex] =
-    `this`.handleErrorImpl {
+    `this`.catchAll {
       case NonFatal(e) => f(e)
       case other       => throw other
     }
@@ -53,13 +53,13 @@ trait MagnetlessOps[F[_], A, Ex <: Environment] extends Any {
   def handleErrorWith(f: Throwable => F[A])(
       implicit F: MonadError[F, Throwable],
       A: ClassTag[A]
-  ): DataPipelineT[F, A, Ex] = `this`.handleErrorWithImpl[A](f)
+  ): DataPipelineT[F, A, Ex] = `this`.catchAllWith[A](f)
 
   def recoverWith(pf: PartialFunction[Throwable, F[A]])(
       implicit F: MonadError[F, Throwable],
       A: ClassTag[A]
   ): DataPipelineT[F, A, Ex] =
-    `this`.handleErrorWithImpl[A](pf.applyOrElse(_, (e: Throwable) => F.raiseError[A](e)))
+    `this`.catchAllWith[A](pf.applyOrElse(_, (e: Throwable) => F.raiseError[A](e)))
 
   def mapM[B: ClassTag](
       f: A => F[B]

@@ -33,7 +33,7 @@ package object logging {
       }
 
     def logErrors(msg: => String)(implicit F: MonadError[F, Throwable], loggingF: LoggingF[F], A: ClassTag[A]): DataPipelineT[F, A, E] =
-      self.handleErrorWithImpl[A] { e =>
+      self.catchAllWith[A] { e =>
         loggingF.error(msg, e) *> F.raiseError(e)
       }
   }

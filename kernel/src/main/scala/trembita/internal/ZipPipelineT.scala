@@ -7,6 +7,7 @@ import trembita.operations.{CanJoin, CanZip}
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
+@internalAPI
 protected[trembita] class ZipPipelineT[F[_], A, B, Ex <: Environment](
     left: DataPipelineT[F, A, Ex],
     right: DataPipelineT[F, B, Ex],
@@ -23,6 +24,7 @@ protected[trembita] class ZipPipelineT[F[_], A, B, Ex <: Environment](
     }
 }
 
+@internalAPI
 protected[trembita] class ConcatPipelineT[F[_], A, Ex <: Environment](
     left: DataPipelineT[F, A, Ex],
     right: DataPipelineT[F, A, Ex]
@@ -38,6 +40,7 @@ protected[trembita] class ConcatPipelineT[F[_], A, Ex <: Environment](
     }
 }
 
+@internalAPI
 protected[trembita] class JoinPipelineT[F[_], A, B, Ex <: Environment](
     left: DataPipelineT[F, A, Ex],
     right: DataPipelineT[F, B, Ex],
@@ -54,6 +57,7 @@ protected[trembita] class JoinPipelineT[F[_], A, B, Ex <: Environment](
     }
 }
 
+@internalAPI
 protected[trembita] class JoinLeftPipelineT[F[_], A, B, Ex <: Environment](
     left: DataPipelineT[F, A, Ex],
     right: DataPipelineT[F, B, Ex],
@@ -70,6 +74,7 @@ protected[trembita] class JoinLeftPipelineT[F[_], A, B, Ex <: Environment](
     }
 }
 
+@internalAPI
 protected[trembita] class JoinRightPipelineT[F[_], A, B, Ex <: Environment](
     left: DataPipelineT[F, A, Ex],
     right: DataPipelineT[F, B, Ex],

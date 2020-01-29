@@ -1,10 +1,9 @@
 package trembita.internal
 
-import scala.collection.generic.CanBuildFrom
-
 /**
   * Used in [[trembita]]
   **/
+@internalAPI
 object BatchUtils {
 
   /**

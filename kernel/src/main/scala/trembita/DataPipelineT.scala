@@ -1,18 +1,18 @@
 package trembita
 
-import cats._
 import trembita.internal._
 import trembita.operations.LiftPipeline
 import scala.annotation.unchecked.uncheckedVariance
-import scala.language.{higherKinds, implicitConversions}
+import scala.language.implicitConversions
 import scala.reflect.ClassTag
+import zio._
 
 /**
   * Generic class representing a lazy pipeline of data
   *
   * @tparam A - type of data
   **/
-trait DataPipelineT[F[_], +A, E <: Environment] extends Serializable {
+trait DataPipelineT[+Er, +A, E <: Environment] extends Serializable {
 
   /**
     * Functor.map
@@ -21,9 +21,8 @@ trait DataPipelineT[F[_], +A, E <: Environment] extends Serializable {
     * @param f - transformation function
     * @return - transformed [[DataPipelineT]]
     **/
-  protected[trembita] def mapImpl[B: ClassTag](f: A => B)(
-      implicit F: Monad[F]
-  ): DataPipelineT[F, B, E]
+  @internalAPI
+  protected[trembita] def mapImpl[B: ClassTag](f: A => B): DataPipelineT[Er, B, E]
 
   /**
     *
@@ -31,9 +30,10 @@ trait DataPipelineT[F[_], +A, E <: Environment] extends Serializable {
     * @param f - transformation function from [[A]] into {{{Iterable[B]}}}
     * @return - transformed [[DataPipelineT]]
     **/
+  @internalAPI
   protected[trembita] def mapConcatImpl[B: ClassTag](
       f: A => Iterable[B]
-  )(implicit F: Monad[F]): DataPipelineT[F, B, E]
+  ): DataPipelineT[Er, B, E]
 
   /**
     * Guarantees that [[DataPipelineT]]
@@ -42,7 +42,8 @@ trait DataPipelineT[F[_], +A, E <: Environment] extends Serializable {
     * @param p - predicate
     * @return - filtered [[DataPipelineT]]
     **/
-  protected[trembita] def filterImpl[AA >: A](p: A => Boolean)(implicit F: Monad[F], A: ClassTag[AA]): DataPipelineT[F, AA, E] =
+  @internalAPI
+  protected[trembita] def filterImpl[AA >: A : ClassTag](p: A => Boolean): DataPipelineT[Er, AA, E] =
     collectImpl[AA]({ case a if p(a) => a })
 
   /**
@@ -52,20 +53,20 @@ trait DataPipelineT[F[_], +A, E <: Environment] extends Serializable {
     * @param pf - partial function
     * @return - transformed [[DataPipelineT]]
     **/
-  protected[trembita] def collectImpl[B: ClassTag](pf: PartialFunction[A, B])(
-      implicit F: Monad[F]
-  ): DataPipelineT[F, B, E]
+  @internalAPI
+  protected[trembita] def collectImpl[B: ClassTag](pf: PartialFunction[A, B]): DataPipelineT[Er, B, E]
 
-  protected[trembita] def mapMImpl[AA >: A, B: ClassTag](f: A => F[B])(implicit F: Monad[F]): DataPipelineT[F, B, E] =
+  @internalAPI
+  protected[trembita] def mapMImpl[EE >: Er, AA >: A, B: ClassTag](f: A => IO[EE, B]): DataPipelineT[EE, B, E] =
     new MapMonadicPipelineT[F, A, B, E](f, this)(F)
 
-  protected[trembita] def handleErrorImpl[B >: A: ClassTag](f: Throwable => B)(
-      implicit F: MonadError[F, Throwable]
-  ): DataPipelineT[F, B, E]
+  @internalAPI
+  protected[trembita] def catchAllImpl[B >: A: ClassTag](f: Er => B): DataPipelineT[Nothing, B, E]
 
-  protected[trembita] def handleErrorWithImpl[B >: A: ClassTag](
-      f: Throwable => F[B]
-  )(implicit F: MonadError[F, Throwable]): DataPipelineT[F, B, E]
+  @internalAPI
+  protected[trembita] def catchAllWithImpl[B >: A: ClassTag](
+      f: Er => UIO[B]
+  ): DataPipelineT[Nothing, B, E]
 
   /**
     * Forces evaluation of [[DataPipelineT]]
@@ -73,9 +74,8 @@ trait DataPipelineT[F[_], +A, E <: Environment] extends Serializable {
     *
     * @return - collected data
     **/
-  protected[trembita] def evalFunc[B >: A](Ex: E @uncheckedVariance)(
-      implicit run: Ex.Run[F]
-  ): F[Ex.Repr[B]]
+  @internalAPI
+  protected[trembita] def evalFunc[EE >: Er, B >: A](Ex: E @uncheckedVariance): UIO[Ex.Repr[Either[EE, B]]]
 }
 
 object DataPipelineT {
